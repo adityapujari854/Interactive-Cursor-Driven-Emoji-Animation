@@ -13,13 +13,20 @@ const CONFIG = {
   pushEase: 0.18,
   pushRadius: 150,
   pushDistance: 18,
+  mobileFrameMs: 22,
   breathingAmount: 2.2,
   breathingMinMs: 2800,
-  breathingSpreadMs: 1300
+  breathingSpreadMs: 1300,
+  snoozeEveryMs: 1800,
+  mobileSnoozeEveryMs: 3200,
+  maxSnoozes: 5,
+  mobileMaxSnoozes: 3
 };
 
 const scene = document.getElementById("scene");
 const grid = document.getElementById("emojiGrid");
+const snoozeLayer = document.getElementById("snoozeLayer");
+const coarsePointerQuery = window.matchMedia("(pointer: coarse)");
 
 const pointer = {
   active: false,
@@ -34,6 +41,9 @@ const previewParams = new URLSearchParams(window.location.search);
 
 let sceneRect = scene.getBoundingClientRect();
 let lastTime = performance.now();
+let lastRenderTime = 0;
+let nextSnoozeAt = performance.now() + 1200;
+let activeSnoozes = 0;
 let characters = [];
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
@@ -106,6 +116,11 @@ class EmojiCharacter {
     this.pupilY = 0;
     this.pushX = 0;
     this.pushY = 0;
+    this.shadowX = 0;
+    this.shadowY = 9;
+    this.shadowScale = 1;
+    this.shadowOpacity = 0.34;
+    this.shadowRotate = 0;
     this.phase = index * 0.73 + Math.random() * 1.8;
     this.breathMs = CONFIG.breathingMinMs + Math.random() * CONFIG.breathingSpreadMs;
 
@@ -135,7 +150,7 @@ class EmojiCharacter {
   }
 
   update(time) {
-    const radius = window.matchMedia("(pointer: coarse)").matches
+    const radius = coarsePointerQuery.matches
       ? CONFIG.touchWakeRadius
       : CONFIG.wakeRadius;
 
@@ -174,12 +189,41 @@ class EmojiCharacter {
     this.pushX = lerp(this.pushX, targetPushX, CONFIG.pushEase);
     this.pushY = lerp(this.pushY, targetPushY, CONFIG.pushEase);
 
+    let targetShadowX = 0;
+    let targetShadowY = 9;
+    let targetShadowScale = 1;
+    let targetShadowOpacity = 0.34;
+    let targetShadowRotate = 0;
+
+    if (pointer.opacity > 0.02) {
+      const distance = Math.max(1, Math.hypot(dx, dy));
+      const awayX = -dx / distance;
+      const awayY = -dy / distance;
+      const cast = 4 + this.shine * 18;
+      targetShadowX = awayX * cast;
+      targetShadowY = 9 + awayY * cast * 0.5 + this.shine * 8;
+      targetShadowScale = 1 + this.shine * 0.42;
+      targetShadowOpacity = 0.24 + this.shine * 0.36;
+      targetShadowRotate = clamp(awayX * 15, -18, 18);
+    }
+
+    this.shadowX = lerp(this.shadowX, targetShadowX, 0.14);
+    this.shadowY = lerp(this.shadowY, targetShadowY, 0.14);
+    this.shadowScale = lerp(this.shadowScale, targetShadowScale, 0.14);
+    this.shadowOpacity = lerp(this.shadowOpacity, targetShadowOpacity, 0.14);
+    this.shadowRotate = lerp(this.shadowRotate, targetShadowRotate, 0.14);
+
     const breath = Math.sin((time / this.breathMs) * Math.PI * 2 + this.phase)
       * CONFIG.breathingAmount
       * (1 - this.wake * 0.45);
     this.element.style.setProperty("--breath", `${breath.toFixed(2)}px`);
     this.element.style.setProperty("--push-x", `${this.pushX.toFixed(2)}px`);
     this.element.style.setProperty("--push-y", `${this.pushY.toFixed(2)}px`);
+    this.element.style.setProperty("--shadow-x", `${this.shadowX.toFixed(2)}px`);
+    this.element.style.setProperty("--shadow-y", `${this.shadowY.toFixed(2)}px`);
+    this.element.style.setProperty("--shadow-scale", this.shadowScale.toFixed(3));
+    this.element.style.setProperty("--shadow-opacity", this.shadowOpacity.toFixed(3));
+    this.element.style.setProperty("--shadow-rotate", `${this.shadowRotate.toFixed(2)}deg`);
   }
 
   render() {
@@ -187,12 +231,13 @@ class EmojiCharacter {
     const shine = clamp(this.shine, 0, 1);
     const eyeOpen = smoothstep(0.14, 0.98, w);
     const sleepFold = 1 - smoothstep(0.03, 0.25, w);
-    const eyeRy = 0.35 + eyeOpen * 6.7 + shine * 0.8;
+    const sadAmount = smoothstep(0.2, 0.95, w);
+    const eyeRy = 0.35 + eyeOpen * 6.1 + shine * 0.7;
     const eyeCy = 45.7 + eyeOpen * 1.4;
-    const lidOffset = (1 - eyeOpen) * 8;
+    const lidOffset = (1 - eyeOpen) * 8 + sadAmount * 1.2;
     const mouthSleep = 67;
-    const mouthWake = 69 + shine * 2.4;
-    const mouthCurve = lerp(73, 61, smoothstep(0.38, 1, w));
+    const mouthWake = 68.5 + shine * 1.8;
+    const mouthCurve = lerp(73, 60.5, sadAmount);
 
     this.element.style.setProperty("--wake", w.toFixed(3));
     this.element.style.setProperty("--shine", shine.toFixed(3));
@@ -214,14 +259,47 @@ class EmojiCharacter {
     this.parts.rightPupil.setAttribute("cx", (64 + this.pupilX).toFixed(2));
     this.parts.rightPupil.setAttribute("cy", (eyeCy + this.pupilY).toFixed(2));
 
-    this.parts.leftUpper.setAttribute("d", `M24 ${43 + lidOffset} Q36 ${37 + lidOffset * 0.55} 48 ${43 + lidOffset}`);
-    this.parts.rightUpper.setAttribute("d", `M52 ${43 + lidOffset} Q64 ${37 + lidOffset * 0.55} 76 ${43 + lidOffset}`);
-    this.parts.leftUpper.setAttribute("opacity", (0.12 + w * 0.34).toFixed(3));
-    this.parts.rightUpper.setAttribute("opacity", (0.12 + w * 0.34).toFixed(3));
+    this.parts.leftUpper.setAttribute("d", `M24 ${43 + lidOffset + sadAmount * 1.4} Q36 ${37 + lidOffset * 0.55 + sadAmount * 4.2} 48 ${43 + lidOffset - sadAmount * 0.8}`);
+    this.parts.rightUpper.setAttribute("d", `M52 ${43 + lidOffset - sadAmount * 0.8} Q64 ${37 + lidOffset * 0.55 + sadAmount * 4.2} 76 ${43 + lidOffset + sadAmount * 1.4}`);
+    this.parts.leftUpper.setAttribute("opacity", (0.08 + w * 0.42).toFixed(3));
+    this.parts.rightUpper.setAttribute("opacity", (0.08 + w * 0.42).toFixed(3));
 
     this.parts.mouth.setAttribute("d", `M43 ${lerp(mouthSleep, mouthWake, w).toFixed(2)} Q50 ${mouthCurve.toFixed(2)} 57 ${lerp(mouthSleep, mouthWake, w).toFixed(2)}`);
     this.parts.mouth.setAttribute("stroke", w > 0.55 ? "#134232" : "#176141");
   }
+}
+
+function spawnSnooze(time) {
+  const limit = coarsePointerQuery.matches ? CONFIG.mobileMaxSnoozes : CONFIG.maxSnoozes;
+  if (!snoozeLayer || activeSnoozes >= limit) {
+    return;
+  }
+
+  const sleepers = characters.filter((character) => character.wake < 0.12);
+  if (!sleepers.length) {
+    return;
+  }
+
+  const character = sleepers[Math.floor(Math.random() * sleepers.length)];
+  const node = document.createElement("span");
+  const driftX = 18 + Math.random() * 42;
+  const driftY = -(72 + Math.random() * 70);
+  const duration = 2600 + Math.random() * 1300;
+
+  node.className = "snooze";
+  node.textContent = Math.random() > 0.42 ? "zzz" : "Zzz";
+  node.style.setProperty("--snooze-x", `${character.centerX + 10}px`);
+  node.style.setProperty("--snooze-y", `${character.centerY - 36}px`);
+  node.style.setProperty("--snooze-dx", `${(Math.random() > 0.5 ? driftX : -driftX).toFixed(1)}px`);
+  node.style.setProperty("--snooze-dy", `${driftY.toFixed(1)}px`);
+  node.style.setProperty("--snooze-duration", `${duration.toFixed(0)}ms`);
+
+  activeSnoozes += 1;
+  snoozeLayer.appendChild(node);
+  node.addEventListener("animationend", () => {
+    activeSnoozes -= 1;
+    node.remove();
+  }, { once: true });
 }
 
 function createCharacters() {
@@ -283,12 +361,22 @@ function updateSceneLight() {
 function animate(time) {
   const delta = Math.min(32, time - lastTime);
   lastTime = time;
-  void delta;
+  if (coarsePointerQuery.matches && time - lastRenderTime < CONFIG.mobileFrameMs) {
+    requestAnimationFrame(animate);
+    return;
+  }
+  lastRenderTime = time;
 
   updateSceneLight();
   for (const character of characters) {
     character.update(time);
     character.render();
+  }
+
+  if (time > nextSnoozeAt && pointer.opacity < 0.72) {
+    spawnSnooze(time);
+    const snoozeGap = coarsePointerQuery.matches ? CONFIG.mobileSnoozeEveryMs : CONFIG.snoozeEveryMs;
+    nextSnoozeAt = time + snoozeGap + Math.random() * snoozeGap;
   }
 
   requestAnimationFrame(animate);

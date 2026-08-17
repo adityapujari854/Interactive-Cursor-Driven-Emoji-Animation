@@ -99,6 +99,7 @@ body {
 }
 
 .emoji {
+  position: relative;
   width: var(--face-size);
   aspect-ratio: 1;
   display: grid;
@@ -118,13 +119,84 @@ body {
   will-change: transform, filter, opacity;
 }
 
+.emoji::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 57%;
+  z-index: 0;
+  width: 78%;
+  height: 32%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(0, 0, 0, 0.52), rgba(0, 0, 0, 0.18) 48%, transparent 72%);
+  opacity: var(--shadow-opacity, 0.34);
+  transform:
+    translate3d(
+      calc(-50% + var(--shadow-x, 0px)),
+      calc(42% + var(--shadow-y, 9px)),
+      0
+    )
+    rotate(var(--shadow-rotate, 0deg))
+    scale(var(--shadow-scale, 1));
+  filter: blur(7px);
+  transform-origin: center;
+  will-change: transform, opacity;
+}
+
 .emoji svg {
+  position: relative;
+  z-index: 1;
   width: 100%;
   height: 100%;
   overflow: visible;
   display: block;
   filter: drop-shadow(0 12px 14px rgba(0, 0, 0, 0.34))
     drop-shadow(0 0 calc(var(--wake, 0) * 18px) rgba(113, 255, 139, 0.42));
+}
+
+.snooze-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  overflow: hidden;
+  pointer-events: none;
+  perspective: 700px;
+}
+
+.snooze {
+  position: absolute;
+  left: var(--snooze-x);
+  top: var(--snooze-y);
+  color: rgba(214, 255, 218, 0.84);
+  font-size: clamp(13px, 1.45vw, 24px);
+  font-weight: 700;
+  letter-spacing: 0;
+  text-shadow:
+    0 0 8px rgba(143, 255, 165, 0.42),
+    0 6px 12px rgba(0, 0, 0, 0.34);
+  transform-origin: center;
+  animation: snooze-float var(--snooze-duration, 3.2s) cubic-bezier(0.18, 0.65, 0.28, 1) forwards;
+  will-change: transform, opacity;
+}
+
+@keyframes snooze-float {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) rotateZ(-9deg) rotateY(18deg) scale(0.62);
+  }
+
+  18% {
+    opacity: 0.86;
+  }
+
+  100% {
+    opacity: 0;
+    transform:
+      translate3d(var(--snooze-dx, 28px), var(--snooze-dy, -92px), 90px)
+      rotateZ(13deg)
+      rotateY(-34deg)
+      scale(1.24);
+  }
 }
 
 .cursor-light {
@@ -175,6 +247,43 @@ body {
 
   .scene__grid {
     inset: clamp(42px, 14vh, 94px) clamp(26px, 8vw, 72px);
+  }
+
+  .scene::after {
+    opacity: 0.08;
+    filter: none;
+  }
+
+  .scene__atmosphere {
+    filter: blur(12px);
+  }
+
+  .emoji {
+    filter:
+      brightness(calc(0.74 + var(--wake, 0) * 0.44 + var(--shine, 0) * 0.18))
+      saturate(calc(0.84 + var(--wake, 0) * 0.58));
+  }
+
+  .emoji::before {
+    filter: blur(4px);
+  }
+
+  .emoji svg {
+    filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.3));
+  }
+
+  .cursor-light {
+    width: 220px;
+    height: 220px;
+    filter: none;
+  }
+
+  .cursor-light::before {
+    width: 20px;
+    height: 20px;
+    box-shadow:
+      0 0 10px 4px rgba(255, 255, 255, 0.76),
+      0 0 24px 9px rgba(136, 255, 180, 0.4);
   }
 }
 
