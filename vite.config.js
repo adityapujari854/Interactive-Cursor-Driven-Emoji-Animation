@@ -9,7 +9,13 @@ export default defineConfig({
     target: 'esnext',
     minify: 'terser',
     outDir: 'dist',
-    assetsDir: 'assets'
+    assetsDir: 'assets',
+    rollupOptions: {
+      output: {
+        assetFileNames: 'assets/[name].[hash][extname]'
+      }
+    }
   },
-  publicDir: 'public'
+  publicDir: 'public',
+  base: '/'
 })

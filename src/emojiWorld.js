@@ -99,11 +99,26 @@ export class EmojiWorld {
     for (let i = 1; i <= 24; i++) {
       assets.push({
         alias: `emoji${i}`,
-        src: `assets/emojis/512%20(${i}).webp`
+        src: `./assets/emojis/512 (${i}).webp`
       });
     }
 
-    await PIXI.Assets.load(assets);
+    try {
+      await PIXI.Assets.load(assets);
+    } catch (error) {
+      console.error('Failed to load emoji assets:', error);
+      console.warn('Attempting to load from public path...');
+      
+      // Fallback: try loading from public
+      const fallbackAssets = [];
+      for (let i = 1; i <= 24; i++) {
+        fallbackAssets.push({
+          alias: `emoji${i}`,
+          src: `/assets/emojis/512 (${i}).webp`
+        });
+      }
+      await PIXI.Assets.load(fallbackAssets);
+    }
   }
 
   /**
