@@ -4,38 +4,23 @@
  * EmojiWorld - PixiJS + Native Animated WebP
  * ================================================================
  *
- * IMPORTANT:
- * The emoji characters are rendered using native HTML <img>
- * elements instead of PIXI.Sprite.
+ * Native HTML <img> elements are used for the animated WebP emojis.
  *
- * Why?
- * Animated WebP is decoded and animated by the browser itself.
- * Pixi texture loading can display the WebP but may capture only
- * the first frame depending on the browser/loader path.
+ * Desktop:
+ *   - all 24 WebPs can animate
  *
- * PixiJS:
- *   - glass platforms
- *   - title
- *   - scene
+ * Mobile / Tablet:
+ *   - all 24 emojis remain visible
+ *   - only 5 animated WebPs are active at once
+ *   - inactive emojis use lightweight static frames
+ *   - animation slots rotate using a shuffle bag
  *
- * Native DOM:
- *   - animated WebP emojis
- *
- * Interaction:
- *   - mouse
- *   - touch
- *   - gyroscope tilt
- *   - device shake
- *   - physics falling
- *   - return-to-home animation
- *
- * Mobile optimization:
- *   - Desktop: all 24 WebPs remain animated
- *   - Tablet/Mobile: maximum 5 animated WebPs at once
- *   - Random shuffle-bag selection
- *   - Random animation duration
- *   - Fair rotation through all 24 emojis
- *
+ * Mobile shake:
+ *   - pauses the 5-animation scheduler
+ *   - all 24 emojis participate in physics
+ *   - emojis visibly fall and bounce
+ *   - emojis return to their original positions
+ *   - scheduler resumes afterwards
  * ================================================================
  */
 
@@ -48,91 +33,84 @@ export class EmojiWorld {
 
   constructor(canvasElement, options = {}) {
 
-    this.canvas = canvasElement;
-    this.options = options;
+    this.canvas =
+      canvasElement;
 
-    this.width = window.innerWidth;
-    this.height = window.innerHeight;
+    this.options =
+      options;
 
-    this.app = null;
-    this.physics = null;
-    this.gyro = new GyroHandler();
+    this.width =
+      window.innerWidth;
 
-    this.cubesContainer = null;
-    this.titleContainer = null;
+    this.height =
+      window.innerHeight;
+
+    this.app =
+      null;
+
+    this.physics =
+      null;
+
+    this.gyro =
+      new GyroHandler();
+
+    this.cubesContainer =
+      null;
+
+    this.titleContainer =
+      null;
+
+    this.emojiLayer =
+      null;
 
 
     /* ============================================================
-       MOBILE / TABLET ANIMATION LAYER
+       MOBILE / TABLET ANIMATION
        ============================================================ */
-
-    /*
-     * Native animated WebP layer.
-     *
-     * The WebP files are NOT converted into
-     * Pixi AnimatedSprites.
-     *
-     * The browser handles the actual WebP
-     * animation.
-     */
-
-    this.emojiLayer = null;
-
-
-    /* ============================================================
-       MOBILE / TABLET ANIMATION SCHEDULER
-       ============================================================ */
-
-    /*
-     * Desktop:
-     *   all 24 WebPs remain animated.
-     *
-     * Mobile/tablet:
-     *   only 5 WebPs are allowed to animate
-     *   at the same time.
-     */
 
     this.isMobileOrTablet =
       this._detectMobileOrTablet();
 
-
     this.mobileAnimationLimit =
       5;
-
-
-    /*
-     * Currently active animated emojis.
-     */
 
     this.mobileActiveEmojis =
       new Set();
 
-
-    /*
-     * Shuffle bag containing emoji indexes.
-     *
-     * Every emoji gets a turn before the
-     * bag is completely reshuffled.
-     */
-
     this.mobileShuffleBag =
       [];
-
-
-    /*
-     * Scheduler timeout.
-     */
 
     this.mobileSchedulerTimer =
       null;
 
+    this.mobileSchedulerGeneration =
+      0;
+
+
+    /* ============================================================
+       MOBILE STATIC FRAME CACHE
+       ============================================================ */
 
     /*
-     * Generation prevents an old timeout
-     * from modifying a new scheduler state.
+     * IMPORTANT:
+     *
+     * All 24 emojis must remain visible on mobile.
+     *
+     * Only 5 animated WebPs are active at once.
+     * The remaining emojis use lightweight static
+     * first-frame images.
      */
 
-    this.mobileSchedulerGeneration =
+    this.mobileStaticFramePromises =
+      new Map();
+
+    this.mobileStaticFrameReady =
+      new Set();
+
+    this.mobileStaticFrameLoading =
+      new Set();
+
+    this.mobileStaticFrameGeneration =
       0;
 
 
@@ -140,16 +118,18 @@ export class EmojiWorld {
        EMOJI OBJECTS
        ============================================================ */
 
-    this.emojis = [];
-    this.cubes = [];
+    this.emojis =
+      [];
 
+    this.cubes =
+      [];
 
     this.emojiConfigs =
       this._getEmojiConfigs();
 
 
     /* ============================================================
-       POINTER
+       POINTER / TOUCH
        ============================================================ */
 
     this.mouse = {
@@ -162,7 +142,6 @@ export class EmojiWorld {
 
     };
 
-
     this.touchActive =
       false;
 
@@ -174,10 +153,8 @@ export class EmojiWorld {
     this.isShaking =
       false;
 
-
     this.isRecovering =
       false;
-
 
     this.shakeRecoveryTime =
       0;
@@ -207,27 +184,15 @@ export class EmojiWorld {
        FRAME FUNCTION
        ============================================================ */
 
-    /*
-     * Bind once.
-     *
-     * This is important because the same
-     * function reference must be used when
-     * adding/removing it from the ticker.
-     */
-
     this._boundUpdateFrame =
-      this._updateFrame.bind(this);
+      this._updateFrame.bind(
+        this
+      );
 
 
     /* ============================================================
        READY PROMISE
        ============================================================ */
-
-    /*
-     * main.js waits for:
-     *
-     *   world.ready
-     */
 
     this.ready =
       this._init();
@@ -241,49 +206,29 @@ export class EmojiWorld {
 
   _detectMobileOrTablet() {
 
-    /*
-     * Do not use only screen width.
-     *
-     * Tablets can have relatively large
-     * CSS widths.
-     */
-
     const userAgent =
       navigator.userAgent ||
       '';
-
 
     const touchPoints =
       navigator.maxTouchPoints ||
       0;
 
-
     const touchDevice =
       touchPoints > 0 ||
       'ontouchstart' in window;
 
-
     const mobileUserAgent =
       /Android|iPhone|iPad|iPod|Mobile|Tablet/i
-        .test(userAgent);
-
-
-    /*
-     * Small/touch screens are treated as
-     * mobile/tablet.
-     *
-     * Desktop laptops with a touch screen
-     * are intentionally NOT forced into
-     * mobile mode unless their viewport is
-     * below 900px.
-     */
+        .test(
+          userAgent
+        );
 
     const smallViewport =
       Math.min(
         window.innerWidth,
         window.innerHeight
       ) <= 900;
-
 
     return (
       mobileUserAgent ||
@@ -313,8 +258,8 @@ export class EmojiWorld {
 
 
       /*
-       * Create the native HTML layer before
-       * the scene is populated.
+       * Create the native HTML layer
+       * before creating the emojis.
        */
 
       this._createEmojiDOMLayer();
@@ -330,10 +275,8 @@ export class EmojiWorld {
 
 
       /*
-       * Start the mobile scheduler ONLY
-       * after all 24 emoji elements exist.
-       *
-       * Desktop does not need it.
+       * Start mobile scheduler only after
+       * all 24 emoji objects exist.
        */
 
       if (
@@ -341,6 +284,17 @@ export class EmojiWorld {
       ) {
 
         this._startMobileAnimationScheduler();
+
+        /*
+         * IMPORTANT:
+         *
+         * Static frame preparation runs in
+         * the background.
+         *
+         * It MUST NOT block initialization.
+         */
+
+        this._prepareMobileStaticFrames();
 
       }
 
@@ -365,7 +319,6 @@ export class EmojiWorld {
         '❌ Failed to initialize Emoji World:',
         error
       );
-
 
       throw error;
 
@@ -403,13 +356,6 @@ export class EmojiWorld {
       backgroundAlpha:
         0,
 
-      /*
-       * Antialiasing is unnecessary for
-       * the native WebP emoji layer.
-       *
-       * This reduces GPU workload.
-       */
-
       antialias:
         false,
 
@@ -441,53 +387,35 @@ export class EmojiWorld {
     }
 
 
-    /* ------------------------------------------------------------
-       CANVAS
-       ------------------------------------------------------------ */
-
     this.app.canvas.style.display =
       'block';
-
 
     this.app.canvas.style.width =
       '100%';
 
-
     this.app.canvas.style.height =
       '100%';
-
 
     this.app.canvas.style.position =
       'fixed';
 
-
     this.app.canvas.style.inset =
       '0';
 
-
     this.app.canvas.style.zIndex =
       '1';
-
-
-    /*
-     * The native WebP elements receive
-     * pointer events.
-     */
 
     this.app.canvas.style.pointerEvents =
       'none';
 
 
     window.addEventListener(
-
       'resize',
-
       this._resizeHandler,
-
       {
-        passive: true
+        passive:
+          true
       }
-
     );
 
 
@@ -505,16 +433,9 @@ export class EmojiWorld {
   _getOptimalResolution() {
 
     const dpr =
-      window.devicePixelRatio || 1;
+      window.devicePixelRatio ||
+      1;
 
-
-    /*
-     * Mobile/tablet:
-     *
-     * Don't render a huge 3x/4x backing
-     * canvas when the Pixi layer only contains
-     * relatively simple glass/title graphics.
-     */
 
     if (
       this.isMobileOrTablet
@@ -527,10 +448,6 @@ export class EmojiWorld {
 
     }
 
-
-    /*
-     * Desktop keeps the current quality.
-     */
 
     return Math.min(
       dpr,
@@ -546,11 +463,6 @@ export class EmojiWorld {
 
   _createEmojiDOMLayer() {
 
-    /*
-     * Reuse an existing layer if main.js/
-     * CSS has already created one.
-     */
-
     let layer =
       document.getElementById(
         'emoji-layer'
@@ -564,10 +476,8 @@ export class EmojiWorld {
           'div'
         );
 
-
       layer.id =
         'emoji-layer';
-
 
       document.body.appendChild(
         layer
@@ -580,43 +490,26 @@ export class EmojiWorld {
       layer;
 
 
-    /*
-     * Keep the layer above Pixi but below
-     * UI elements.
-     */
-
     layer.style.position =
       'fixed';
-
 
     layer.style.inset =
       '0';
 
-
     layer.style.width =
       '100%';
-
 
     layer.style.height =
       '100%';
 
-
     layer.style.pointerEvents =
       'none';
-
 
     layer.style.zIndex =
       '10';
 
-
     layer.style.overflow =
       'hidden';
-
-
-    /*
-     * Tell the browser that the layer
-     * should not cause layout work.
-     */
 
     layer.style.contain =
       'layout style paint';
@@ -630,23 +523,12 @@ export class EmojiWorld {
 
 
   /* ================================================================
-     GRID LAYOUT CALCULATION
+     GRID LAYOUT
      ================================================================ */
 
   _getGridLayout() {
 
-    /*
-     * Single authoritative grid calculation.
-     *
-     * Desktop:
-     *   6 columns × 4 rows
-     *
-     * Mobile/tablet:
-     *   4 columns × 6 rows
-     */
-
     const isSmallScreen =
-      this.isMobileOrTablet ||
       this.width < 700;
 
 
@@ -742,77 +624,60 @@ export class EmojiWorld {
 
     const emojiSize =
       Math.max(
-
         isSmallScreen
           ? 52
           : 60,
 
         Math.min(
-
           isSmallScreen
             ? 82
             : 110,
 
           spacing * 0.70
-
         )
-
       );
 
 
     const cubeSize =
       Math.max(
-
         isSmallScreen
           ? 58
           : 68,
 
         Math.min(
-
           isSmallScreen
             ? 84
             : 120,
 
-          spacing *
-          0.82
-
+          spacing * 0.82
         )
-
       );
 
 
     return {
 
       cols,
-
       rows,
 
       sidePadding,
-
       top,
-
       bottom,
 
       availableWidth,
-
       availableHeight,
 
       xSpacing,
-
       ySpacing,
 
       spacing,
 
       gridWidth,
-
       gridHeight,
 
       startX,
-
       startY,
 
       emojiSize,
-
       cubeSize
 
     };
@@ -832,12 +697,11 @@ export class EmojiWorld {
 
 
     /*
-     * Remove old emoji elements if this
-     * method is called again after resize.
+     * Remove old DOM elements.
      */
 
     this.emojis.forEach(
-      (emoji) => {
+      emoji => {
 
         if (
           emoji.element &&
@@ -854,12 +718,9 @@ export class EmojiWorld {
     );
 
 
-    this.emojis = [];
+    this.emojis =
+      [];
 
-
-    /*
-     * Get authoritative grid layout.
-     */
 
     const layout =
       this._getGridLayout();
@@ -874,10 +735,6 @@ export class EmojiWorld {
     } =
       layout;
 
-
-    /*
-     * Create all 24 DOM elements.
-     */
 
     for (
       let i = 0;
@@ -911,11 +768,6 @@ export class EmojiWorld {
         );
 
 
-      /*
-       * Each emoji uses its original
-       * animated WebP asset.
-       */
-
       const src =
         `/assets/emojis/512 (${i + 1}).webp`;
 
@@ -942,30 +794,16 @@ export class EmojiWorld {
       );
 
 
-      /*
-       * Absolute positioning.
-       */
-
       element.style.position =
         'absolute';
 
 
-      /*
-       * Position is controlled exclusively by
-       * _applyEmojiTransform().
-       *
-       * Keeping left/top at 0 prevents the
-       * x/y coordinates from being applied
-       * twice (once by left/top and again by
-       * translate3d).
-       */
-
       element.style.left =
-        '0px';
+        `${x}px`;
 
 
       element.style.top =
-        '0px';
+        `${y}px`;
 
 
       element.style.width =
@@ -988,10 +826,6 @@ export class EmojiWorld {
         'none';
 
 
-      /*
-       * Avoid browser selection/dragging.
-       */
-
       element.style.userSelect =
         'none';
 
@@ -1000,18 +834,12 @@ export class EmojiWorld {
         'none';
 
 
-      /*
-       * Prevent the browser from treating
-       * the emoji as a normal content image.
-       */
-
       element.style.willChange =
         'transform';
 
 
       /*
-       * Store the source without immediately
-       * forcing all 24 animated WebPs to load.
+       * Store the real animated WebP.
        */
 
       element.dataset.src =
@@ -1019,13 +847,29 @@ export class EmojiWorld {
 
 
       /*
-       * IMPORTANT:
+       * IMPORTANT MOBILE CHANGE:
        *
-       * Desktop immediately receives its
-       * animated WebP.
+       * Do NOT leave mobile emojis hidden.
        *
-       * Mobile/tablet starts with only the
-       * scheduler-selected emojis.
+       * Every emoji is visible immediately.
+       *
+       * Only the src of the currently active
+       * 5 emojis will be changed to the animated
+       * WebP by the scheduler.
+       *
+       * Inactive emojis use their static frame.
+       */
+
+      element.style.visibility =
+        'visible';
+
+      element.style.opacity =
+        '1';
+
+
+      /*
+       * Desktop immediately receives
+       * its animated WebP.
        */
 
       if (
@@ -1042,10 +886,6 @@ export class EmojiWorld {
         element
       );
 
-
-      /*
-       * Emoji object.
-       */
 
       const emoji = {
 
@@ -1152,16 +992,6 @@ export class EmojiWorld {
         emoji
       );
 
-
-      /*
-       * Apply the real position immediately.
-       * The ticker will continue updating it.
-       */
-
-      this._applyEmojiTransform(
-        emoji
-      );
-
     }
 
 
@@ -1170,18 +1000,333 @@ export class EmojiWorld {
     );
 
   }
+
+
+  /* ================================================================
+     MOBILE STATIC FRAME PREPARATION
+     ================================================================ */
+
+  async _prepareMobileStaticFrames() {
+
+    if (
+      !this.isMobileOrTablet ||
+      !this.emojis ||
+      this.emojis.length === 0
+    ) {
+
+      return;
+
+    }
+
+
+    const generation =
+      ++this.mobileStaticFrameGeneration;
+
+
+    /*
+     * Small batches prevent all 24 images
+     * from decoding simultaneously.
+     */
+
+    const batchSize =
+      3;
+
+
+    for (
+      let start = 0;
+      start < this.emojis.length;
+      start += batchSize
+    ) {
+
+      if (
+        generation !==
+        this.mobileStaticFrameGeneration
+      ) {
+
+        return;
+
+      }
+
+
+      const batch =
+        this.emojis.slice(
+          start,
+          start + batchSize
+        );
+
+
+      await Promise.all(
+        batch.map(
+          emoji =>
+            this._prepareOneMobileStaticFrame(
+              emoji
+            )
+        )
+      );
+
+
+      /*
+       * Give the browser rendering time
+       * before processing the next batch.
+       */
+
+      await new Promise(
+        resolve => {
+
+          requestAnimationFrame(
+            () => {
+
+              requestAnimationFrame(
+                resolve
+              );
+
+            }
+          );
+
+        }
+      );
+
+    }
+
+  }
+
+
+  /* ================================================================
+     PREPARE ONE MOBILE STATIC FRAME
+     ================================================================ */
+
+  async _prepareOneMobileStaticFrame(
+    emoji
+  ) {
+
+    if (
+      !emoji ||
+      !emoji.element ||
+      !emoji.element.dataset.src
+    ) {
+
+      return;
+
+    }
+
+
+    if (
+      this.mobileStaticFrameReady.has(
+        emoji.index
+      )
+    ) {
+
+      return;
+
+    }
+
+
+    if (
+      this.mobileStaticFrameLoading.has(
+        emoji.index
+      )
+    ) {
+
+      return;
+
+    }
+
+
+    this.mobileStaticFrameLoading.add(
+      emoji.index
+    );
+
+
+    const src =
+      emoji.element.dataset.src;
+
+
+    try {
+
+      const response =
+        await fetch(
+          src,
+          {
+            cache:
+              'force-cache'
+          }
+        );
+
+
+      if (
+        !response.ok
+      ) {
+
+        throw new Error(
+          `HTTP ${response.status}`
+        );
+
+      }
+
+
+      const blob =
+        await response.blob();
+
+
+      /*
+       * Decode the default frame of the
+       * animated WebP.
+       */
+
+      const bitmap =
+        await createImageBitmap(
+          blob,
+          {
+            resizeWidth:
+              Math.max(
+                1,
+                Math.round(
+                  emoji.size
+                )
+              ),
+
+            resizeHeight:
+              Math.max(
+                1,
+                Math.round(
+                  emoji.size
+                )
+              ),
+
+            resizeQuality:
+              'low'
+          }
+        );
+
+
+      const canvas =
+        document.createElement(
+          'canvas'
+        );
+
+
+      canvas.width =
+        Math.max(
+          1,
+          Math.round(
+            emoji.size
+          )
+        );
+
+
+      canvas.height =
+        Math.max(
+          1,
+          Math.round(
+            emoji.size
+          )
+        );
+
+
+      const context =
+        canvas.getContext(
+          '2d',
+          {
+            alpha:
+              true,
+
+            desynchronized:
+              true
+          }
+        );
+
+
+      if (
+        !context
+      ) {
+
+        bitmap.close();
+
+        return;
+
+      }
+
+
+      context.clearRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+      );
+
+
+      context.drawImage(
+        bitmap,
+        0,
+        0,
+        canvas.width,
+        canvas.height
+      );
+
+
+      bitmap.close();
+
+
+      emoji.staticURL =
+        canvas.toDataURL(
+          'image/webp',
+          0.82
+        );
+
+
+      emoji.staticReady =
+        true;
+
+
+      this.mobileStaticFrameReady.add(
+        emoji.index
+      );
+
+
+      /*
+       * If it is currently inactive,
+       * immediately display the static frame.
+       */
+
+      if (
+        !emoji.isMobileActive &&
+        !emoji.isFlying
+      ) {
+
+        emoji.element.src =
+          emoji.staticURL;
+
+        emoji.element.style.visibility =
+          'visible';
+
+        emoji.element.style.opacity =
+          '1';
+
+      }
+
+    } catch (error) {
+
+      console.warn(
+        `[Emoji World] Static frame ${emoji.index + 1} preparation failed:`,
+        error
+      );
+
+    } finally {
+
+      this.mobileStaticFrameLoading.delete(
+        emoji.index
+      );
+
+    }
+
+  }
+
+
   /* ================================================================
      MOBILE ANIMATION SCHEDULER
      ================================================================ */
 
   _startMobileAnimationScheduler() {
-
-    /*
-     * Safety:
-     *
-     * Never create the scheduler on
-     * desktop.
-     */
 
     if (
       !this.isMobileOrTablet
@@ -1207,14 +1352,14 @@ export class EmojiWorld {
 
 
     /*
-     * Create a fresh shuffle bag.
+     * Fresh randomized sequence.
      */
 
     this._refillMobileShuffleBag();
 
 
     /*
-     * Fill all five slots.
+     * Fill all five animation slots immediately.
      */
 
     for (
@@ -1227,10 +1372,6 @@ export class EmojiWorld {
 
     }
 
-
-    /*
-     * Start the scheduler.
-     */
 
     this._scheduleMobileAnimationCheck(
       generation
@@ -1258,7 +1399,6 @@ export class EmojiWorld {
         this.mobileSchedulerTimer
       );
 
-
       this.mobileSchedulerTimer =
         null;
 
@@ -1275,12 +1415,6 @@ export class EmojiWorld {
      ================================================================ */
 
   _refillMobileShuffleBag() {
-
-    /*
-     * Create indexes:
-     *
-     * 0 ... 23
-     */
 
     const bag =
       [];
@@ -1301,10 +1435,6 @@ export class EmojiWorld {
 
     /*
      * Fisher-Yates shuffle.
-     *
-     * This gives us a proper random
-     * sequence instead of repeatedly
-     * selecting random emojis.
      */
 
     for (
@@ -1346,11 +1476,6 @@ export class EmojiWorld {
 
   _getNextMobileEmoji() {
 
-    /*
-     * Refill when the current randomized
-     * sequence has been completely consumed.
-     */
-
     if (
       this.mobileShuffleBag.length === 0
     ) {
@@ -1359,13 +1484,6 @@ export class EmojiWorld {
 
     }
 
-
-    /*
-     * Find an inactive emoji in the bag.
-     *
-     * This prevents replacing an active emoji
-     * with itself.
-     */
 
     for (
       let i =
@@ -1402,11 +1520,6 @@ export class EmojiWorld {
     }
 
 
-    /*
-     * If all bag entries happen to be active,
-     * search all 24 emojis.
-     */
-
     const available =
       this.emojis.filter(
         emoji =>
@@ -1442,10 +1555,6 @@ export class EmojiWorld {
      ================================================================ */
 
   _activateRandomMobileEmoji() {
-
-    /*
-     * Never exceed five.
-     */
 
     if (
       this.mobileActiveEmojis.size >=
@@ -1493,10 +1602,6 @@ export class EmojiWorld {
     }
 
 
-    /*
-     * If already active, do nothing.
-     */
-
     if (
       emoji.isMobileActive
     ) {
@@ -1521,13 +1626,6 @@ export class EmojiWorld {
     }
 
 
-    /*
-     * Mark active BEFORE assigning src.
-     *
-     * This prevents duplicate activation
-     * if the browser fires events immediately.
-     */
-
     emoji.isMobileActive =
       true;
 
@@ -1536,17 +1634,6 @@ export class EmojiWorld {
       emoji
     );
 
-
-    /*
-     * Random animation duration.
-     *
-     * The actual WebP animation remains
-     * completely unchanged.
-     *
-     * We are only controlling how long
-     * that particular emoji is allowed
-     * to remain active.
-     */
 
     const duration =
       this._getRandomAnimationDuration();
@@ -1558,19 +1645,18 @@ export class EmojiWorld {
 
 
     /*
-     * Start/restart the animated WebP.
-     *
-     * Adding the URL starts the browser's
-     * native WebP animation.
+     * Remove static source first.
+     * Then start the real animated WebP.
      */
+
+    element.removeAttribute(
+      'src'
+    );
+
 
     element.src =
       src;
 
-
-    /*
-     * Ensure it is visible.
-     */
 
     element.style.visibility =
       'visible';
@@ -1578,30 +1664,6 @@ export class EmojiWorld {
 
     element.style.opacity =
       '1';
-
-
-    /*
-     * Restart animation cleanly.
-     *
-     * Setting src again after removing it
-     * causes the browser to begin from the
-     * beginning of the WebP animation.
-     */
-
-    try {
-
-      element.currentTime =
-        0;
-
-    } catch {
-
-      /*
-       * HTMLImageElement does not expose
-       * currentTime. This is intentionally
-       * ignored.
-       */
-
-    }
 
   }
 
@@ -1611,14 +1673,6 @@ export class EmojiWorld {
      ================================================================ */
 
   _getRandomAnimationDuration() {
-
-    /*
-     * Random duration:
-     *
-     * 2.5s → 5.5s
-     *
-     * This keeps the scene organic.
-     */
 
     const minimum =
       2500;
@@ -1658,10 +1712,6 @@ export class EmojiWorld {
     }
 
 
-    /*
-     * Already inactive.
-     */
-
     if (
       !emoji.isMobileActive
     ) {
@@ -1674,10 +1724,6 @@ export class EmojiWorld {
     const element =
       emoji.element;
 
-
-    /*
-     * Remove from active set first.
-     */
 
     emoji.isMobileActive =
       false;
@@ -1693,11 +1739,7 @@ export class EmojiWorld {
 
 
     /*
-     * IMPORTANT:
-     *
-     * Removing the src stops the browser
-     * from maintaining an animated WebP
-     * stream for this emoji.
+     * Stop the animated WebP.
      */
 
     element.removeAttribute(
@@ -1706,12 +1748,13 @@ export class EmojiWorld {
 
 
     /*
-     * Do NOT hide the emoji permanently.
+     * IMPORTANT FIX:
      *
-     * We keep its position/platform.
+     * Never hide an inactive emoji.
      *
-     * If a static preview has already been
-     * generated, use it.
+     * If a static frame exists, show it.
+     * Otherwise keep the element visible
+     * until its static frame is ready.
      */
 
     if (
@@ -1721,25 +1764,11 @@ export class EmojiWorld {
       element.src =
         emoji.staticURL;
 
-
-      element.style.visibility =
-        'visible';
-
-    } else {
-
-      /*
-       * Until its first animation has
-       * produced a static frame, leave
-       * the element transparent.
-       *
-       * The scheduler will activate it
-       * later and start its real WebP.
-       */
-
-      element.style.visibility =
-        'hidden';
-
     }
+
+
+    element.style.visibility =
+      'visible';
 
 
     element.style.opacity =
@@ -1749,21 +1778,12 @@ export class EmojiWorld {
 
 
   /* ================================================================
-     CREATE STATIC FRAME
+     CREATE STATIC FRAME FROM CURRENT FRAME
      ================================================================ */
 
   _captureStaticFrame(
     emoji
   ) {
-
-    /*
-     * This creates a lightweight still
-     * image from the currently displayed
-     * WebP frame.
-     *
-     * It is called only when an emoji
-     * finishes its first active cycle.
-     */
 
     if (
       !emoji ||
@@ -1806,26 +1826,18 @@ export class EmojiWorld {
         element.naturalHeight;
 
 
-      /*
-       * Avoid creating unnecessarily
-       * large static textures.
-       */
-
       const maxSize =
         256;
 
 
       const scale =
         Math.min(
-
           1,
-
           maxSize /
           Math.max(
             width,
             height
           )
-
         );
 
 
@@ -1861,23 +1873,13 @@ export class EmojiWorld {
 
 
       context.drawImage(
-
         element,
-
         0,
-
         0,
-
         canvas.width,
-
         canvas.height
-
       );
 
-
-      /*
-       * WebP static preview.
-       */
 
       emoji.staticURL =
         canvas.toDataURL(
@@ -1890,13 +1892,12 @@ export class EmojiWorld {
         true;
 
 
-    } catch (error) {
+      this.mobileStaticFrameReady.add(
+        emoji.index
+      );
 
-      /*
-       * Static frame creation is only
-       * an optimization. Never let it
-       * break the animation.
-       */
+
+    } catch (error) {
 
       console.warn(
         '[Emoji World] Static frame capture skipped:',
@@ -1935,15 +1936,8 @@ export class EmojiWorld {
     }
 
 
-    /*
-     * Check frequently enough to replace
-     * completed emojis without creating
-     * a constant interval loop.
-     */
-
     this.mobileSchedulerTimer =
       setTimeout(
-
         () => {
 
           this._updateMobileAnimationScheduler(
@@ -1951,9 +1945,7 @@ export class EmojiWorld {
           );
 
         },
-
         250
-
       );
 
   }
@@ -1978,9 +1970,8 @@ export class EmojiWorld {
 
 
     /*
-     * Do not modify animation slots
-     * while the shake/physics sequence
-     * is running.
+     * Never touch animation slots while
+     * the shake movie is running.
      */
 
     if (
@@ -2001,16 +1992,12 @@ export class EmojiWorld {
       performance.now();
 
 
-    /*
-     * Find expired active emojis.
-     */
-
     const expired =
       [];
 
 
     this.mobileActiveEmojis.forEach(
-      (emoji) => {
+      emoji => {
 
         if (
           emoji.animationEndsAt <=
@@ -2028,7 +2015,8 @@ export class EmojiWorld {
 
 
     /*
-     * Deactivate expired emojis.
+     * Deactivate expired animations.
+     * The emoji remains visible as a static frame.
      */
 
     for (
@@ -2036,8 +2024,9 @@ export class EmojiWorld {
     ) {
 
       /*
-       * Capture a still frame before
-       * stopping the animated WebP.
+       * Capture the currently displayed
+       * frame if a static frame doesn't
+       * already exist.
        */
 
       this._captureStaticFrame(
@@ -2058,7 +2047,7 @@ export class EmojiWorld {
 
     while (
       this.mobileActiveEmojis.size <
-        this.mobileAnimationLimit
+      this.mobileAnimationLimit
     ) {
 
       const before =
@@ -2067,11 +2056,6 @@ export class EmojiWorld {
 
       this._activateRandomMobileEmoji();
 
-
-      /*
-       * Safety against an unexpected
-       * infinite loop.
-       */
 
       if (
         this.mobileActiveEmojis.size ===
@@ -2085,10 +2069,6 @@ export class EmojiWorld {
     }
 
 
-    /*
-     * Continue scheduling.
-     */
-
     this._scheduleMobileAnimationCheck(
       generation
     );
@@ -2096,6 +2076,326 @@ export class EmojiWorld {
   }
 
 
+  /* ================================================================
+     SCENE SETUP
+     ================================================================ */
+
+  _setupScene() {
+
+    this.cubesContainer =
+      new PIXI.Container();
+
+
+    this.cubesContainer.sortableChildren =
+      true;
+
+
+    this.app.stage.addChild(
+      this.cubesContainer
+    );
+
+
+    this.titleContainer =
+      new PIXI.Container();
+
+
+    this.app.stage.addChild(
+      this.titleContainer
+    );
+
+
+    /*
+     * Physics is shared by all 24 emojis,
+     * but bodies remain inactive until shake.
+     */
+
+    this.physics =
+      new Physics({
+
+        width:
+          this.width,
+
+        height:
+          this.height,
+
+        groundLevel:
+          this.height * 0.85,
+
+        gravity:
+          0.65,
+
+        bounce:
+          0.28
+
+      });
+
+
+    /*
+     * Create emojis after physics exists
+     * so every emoji receives its body.
+     */
+
+    this._createEmojisAndCubes();
+
+
+    this._createTitle();
+
+
+    console.log(
+      '[Emoji World] ✓ Scene created'
+    );
+
+  }
+
+
+  /* ================================================================
+     CREATE EMOJIS + GLASS PLATFORMS
+     ================================================================ */
+
+  _createEmojisAndCubes() {
+
+    this.cubes =
+      [];
+
+
+    this._createEmojis();
+
+
+    const layout =
+      this._getGridLayout();
+
+
+    const {
+      cols,
+      spacing,
+      startX,
+      startY,
+      emojiSize,
+      cubeSize
+    } =
+      layout;
+
+
+    for (
+      let i = 0;
+      i < this.emojis.length;
+      i++
+    ) {
+
+      const emoji =
+        this.emojis[i];
+
+
+      if (!emoji) {
+
+        continue;
+
+      }
+
+
+      const col =
+        i % cols;
+
+
+      const row =
+        Math.floor(
+          i / cols
+        );
+
+
+      const x =
+        startX +
+        col * spacing;
+
+
+      const y =
+        startY +
+        row * spacing;
+
+
+      emoji.x =
+        x;
+
+      emoji.y =
+        y;
+
+      emoji.originalX =
+        x;
+
+      emoji.originalY =
+        y;
+
+      emoji.targetX =
+        x;
+
+      emoji.targetY =
+        y;
+
+      emoji.size =
+        emojiSize;
+
+
+      if (
+        emoji.element
+      ) {
+
+        element.style.left =
+        '0px';
+
+        element.style.top =
+        '0px';
+
+        emoji.element.style.width =
+          `${emojiSize}px`;
+
+        emoji.element.style.height =
+          `${emojiSize}px`;
+
+      }
+
+
+      /*
+       * Create glass platform.
+       */
+
+      const cube =
+        this._createGlassPlatform(
+          x,
+          y,
+          cubeSize
+        );
+
+
+      cube.zIndex =
+        1;
+
+
+      this.cubesContainer.addChild(
+        cube
+      );
+
+
+      this.cubes.push(
+        cube
+      );
+
+    }
+
+
+    console.log(
+      `[Emoji World] ✓ ${this.emojis.length} emoji platforms created`
+    );
+
+  }
+
+
+  /* ================================================================
+     GLASS PLATFORM
+     ================================================================ */
+
+  _createGlassPlatform(
+    x,
+    y,
+    size
+  ) {
+
+    const group =
+      new PIXI.Container();
+
+
+    const shadow =
+      new PIXI.Graphics();
+
+
+    shadow
+      .ellipse(
+        0,
+        size * 0.42,
+        size * 0.40,
+        size * 0.075
+      )
+      .fill({
+        color:
+          0x000000,
+        alpha:
+          0.12
+      });
+
+
+    const glass =
+      new PIXI.Graphics();
+
+
+    glass
+      .roundRect(
+        -size / 2,
+        -size * 0.15,
+        size,
+        size * 0.34,
+        14
+      )
+      .fill({
+        color:
+          0xf7fbff,
+        alpha:
+          0.72
+      })
+      .stroke({
+        color:
+          0xcbdbe8,
+        alpha:
+          0.75,
+        width:
+          1.5
+      });
+
+
+    const highlight =
+      new PIXI.Graphics();
+
+
+    highlight
+      .roundRect(
+        -size * 0.38,
+        -size * 0.08,
+        size * 0.50,
+        size * 0.07,
+        8
+      )
+      .fill({
+        color:
+          0xffffff,
+        alpha:
+          0.68
+      });
+
+
+    group.addChild(
+      shadow
+    );
+
+    group.addChild(
+      glass
+    );
+
+    group.addChild(
+      highlight
+    );
+
+
+    group.position.set(
+      x,
+      y
+    );
+
+
+    group.alpha =
+      0.95;
+
+
+    return group;
+
+  }
   /* ================================================================
      SCENE SETUP
      ================================================================ */
@@ -2307,14 +2607,14 @@ export class EmojiWorld {
   }
 
 
-  /* ================================================================
-     CREATE EMOJIS + GLASS PLATFORMS
-     ================================================================ */
+/* ================================================================
+   CREATE EMOJIS + GLASS PLATFORMS
+   ================================================================ */
 
   _createEmojisAndCubes() {
 
     /*
-     * Clear previous platform objects.
+     * Clear previous platform references.
      */
 
     this.cubes =
@@ -2322,15 +2622,40 @@ export class EmojiWorld {
 
 
     /*
-     * The actual animated emoji DOM
-     * elements are created by _createEmojis().
+     * Remove any old Pixi glass cubes
+     * if this method is ever called again.
+     *
+     * This prevents duplicate platforms.
+     */
+
+    if (
+      this.cubesContainer
+    ) {
+
+      this.cubesContainer.removeChildren();
+
+    }
+
+
+    /*
+     * Create the 24 native WebP emoji
+     * elements.
+     *
+     * _createEmojis() handles:
+     *
+     * - WebP loading
+     * - mobile static-frame handling
+     * - 5-animation scheduler
+     * - DOM element creation
      */
 
     this._createEmojis();
 
 
     /*
-     * Get authoritative grid layout.
+     * Get the SINGLE authoritative grid layout.
+     *
+     * Do not calculate another grid here.
      */
 
     const layout =
@@ -2349,10 +2674,8 @@ export class EmojiWorld {
 
 
     /*
-     * Update every emoji's position.
-     *
-     * The native WebP element remains
-     * responsible for its animation.
+     * Position all 24 emojis and their
+     * corresponding glass platforms.
      */
 
     for (
@@ -2365,32 +2688,48 @@ export class EmojiWorld {
         this.emojis[i];
 
 
-      if (!emoji) {
+      if (
+        !emoji
+      ) {
 
         continue;
 
       }
 
 
+      /*
+       * Grid coordinates.
+       */
+
       const col =
-        i % cols;
+        i %
+        cols;
 
 
       const row =
         Math.floor(
-          i / cols
+          i /
+          cols
         );
 
 
       const x =
         startX +
-        col * spacing;
+        col *
+        spacing;
 
 
       const y =
         startY +
-        row * spacing;
+        row *
+        spacing;
 
+
+      /*
+       * ------------------------------------------------------------
+       * HOME / ORIGINAL POSITION
+       * ------------------------------------------------------------
+       */
 
       emoji.x =
         x;
@@ -2421,40 +2760,130 @@ export class EmojiWorld {
 
 
       /*
-       * Update native WebP element.
+       * Reset interaction offsets.
+       */
+
+      emoji.cursorOffsetX =
+        0;
+
+
+      emoji.cursorOffsetY =
+        0;
+
+
+      emoji.rotation =
+        0;
+
+
+      emoji.scale =
+        1;
+
+
+      /*
+       * ------------------------------------------------------------
+       * NATIVE WEBP ELEMENT
+       * ------------------------------------------------------------
+       *
+       * IMPORTANT:
+       *
+       * Do NOT put x/y into left/top.
+       *
+       * _applyEmojiTransform() is the ONLY place that
+       * controls the emoji's actual position.
+       *
+       * Otherwise:
+       *
+       *     left: x
+       *     +
+       *     translate3d(x, y)
+       *
+       * would position the emoji twice.
        */
 
       if (
         emoji.element
       ) {
 
+        const element =
+          emoji.element;
+
+
         /*
-         * Position is transform-only.
-         * Do not write x/y into left/top because
-         * _applyEmojiTransform() already applies
-         * the position with translate3d().
+         * Keep the element absolutely positioned
+         * inside the full-screen emoji layer.
          */
 
-        emoji.element.style.left =
+        element.style.position =
+          'absolute';
+
+
+        /*
+         * IMPORTANT:
+         *
+         * Base position is always 0,0.
+         *
+         * Actual position comes from:
+         *
+         * _applyEmojiTransform()
+         */
+
+        element.style.left =
           '0px';
 
 
-        emoji.element.style.top =
+        element.style.top =
           '0px';
 
 
-        emoji.element.style.width =
+        /*
+         * Set visual size.
+         */
+
+        element.style.width =
           `${emojiSize}px`;
 
 
-        emoji.element.style.height =
+        element.style.height =
           `${emojiSize}px`;
+
+
+        /*
+         * Keep WebP aspect ratio.
+         */
+
+        element.style.objectFit =
+          'contain';
+
+
+        /*
+         * GPU-friendly rendering.
+         */
+
+        element.style.willChange =
+          'transform';
+
+
+        /*
+         * Make sure emoji is visible.
+         */
+
+        element.style.visibility =
+          'visible';
+
+
+        element.style.opacity =
+          '1';
 
       }
 
 
       /*
-       * Create glass platform.
+       * ------------------------------------------------------------
+       * GLASS PLATFORM
+       * ------------------------------------------------------------
+       *
+       * The platform uses the exact same x/y
+       * coordinates as the emoji home position.
        */
 
       const cube =
@@ -2471,6 +2900,10 @@ export class EmojiWorld {
         );
 
 
+      /*
+       * Preserve correct visual ordering.
+       */
+
       cube.zIndex =
         i;
 
@@ -2479,6 +2912,10 @@ export class EmojiWorld {
         cube
       );
 
+
+      /*
+       * Store platform data.
+       */
 
       this.cubes.push({
 
@@ -2495,8 +2932,9 @@ export class EmojiWorld {
 
 
       /*
-       * Keep physics body synchronized
-       * with the home position.
+       * ------------------------------------------------------------
+       * PHYSICS HOME POSITION
+       * ------------------------------------------------------------
        */
 
       if (
@@ -2510,13 +2948,53 @@ export class EmojiWorld {
         emoji.physicsBody.y =
           y;
 
+
+        emoji.physicsBody.vx =
+          0;
+
+
+        emoji.physicsBody.vy =
+          0;
+
+
+        emoji.physicsBody.angularVelocity =
+          0;
+
+
+        /*
+         * Start in a resting state.
+         */
+
+        emoji.physicsBody.isActive =
+          false;
+
+
+        emoji.physicsBody.isResting =
+          true;
+
       }
+
+
+      /*
+       * ------------------------------------------------------------
+       * APPLY INITIAL TRANSFORM
+       * ------------------------------------------------------------
+       *
+       * This positions the WebP at exactly
+       * the same x/y as the glass cube.
+       */
+
+      this._applyEmojiTransform(
+        emoji
+      );
 
     }
 
 
     /*
-     * Put platforms behind emojis.
+     * ------------------------------------------------------------
+     * LAYER ORDER
+     * ------------------------------------------------------------
      */
 
     this.cubesContainer.zIndex =
@@ -2525,6 +3003,30 @@ export class EmojiWorld {
 
     this.titleContainer.zIndex =
       100;
+
+
+    /*
+     * Make sure the title stays above
+     * the glass/emoji scene.
+     */
+
+    if (
+      this.title
+    ) {
+
+      this.title.zIndex =
+        100;
+
+    }
+
+
+    /*
+     * Final diagnostic.
+     */
+
+    console.log(
+      `[Emoji World] ✓ Grid created: ${cols} columns × ${Math.ceil(this.emojis.length / cols)} rows`
+    );
 
   }
 
@@ -2708,7 +3210,6 @@ export class EmojiWorld {
         this.mouse.x =
           event.clientX;
 
-
         this.mouse.y =
           event.clientY;
 
@@ -2744,7 +3245,6 @@ export class EmojiWorld {
 
           this.mouse.x =
             touch.clientX;
-
 
           this.mouse.y =
             touch.clientY;
@@ -2788,7 +3288,6 @@ export class EmojiWorld {
           this.mouse.x =
             touch.clientX;
 
-
           this.mouse.y =
             touch.clientY;
 
@@ -2829,8 +3328,7 @@ export class EmojiWorld {
 
     /*
      * Desktop click can also request
-     * motion permission on supported
-     * browsers.
+     * motion permission.
      */
 
     window.addEventListener(
@@ -2926,9 +3424,12 @@ export class EmojiWorld {
     try {
 
       if (
+
         this.gyro &&
+
         typeof this.gyro.requestPermission ===
           'function'
+
       ) {
 
         await this.gyro.requestPermission();
@@ -2940,12 +3441,14 @@ export class EmojiWorld {
         '📱 Motion sensors enabled'
       );
 
-
     } catch (error) {
 
       console.warn(
+
         '[Emoji World] Motion permission unavailable:',
+
         error
+
       );
 
     }
@@ -2998,10 +3501,6 @@ export class EmojiWorld {
 
     /*
      * Very small movement.
-     *
-     * The gyro should make the scene
-     * feel physical, not move emojis
-     * around the screen.
      */
 
     const tiltX =
@@ -3013,7 +3512,8 @@ export class EmojiWorld {
 
           10,
 
-          tilt.x * 10
+          tilt.x *
+          10
 
         )
 
@@ -3029,39 +3529,42 @@ export class EmojiWorld {
 
           6,
 
-          tilt.y * 6
+          tilt.y *
+          6
 
         )
 
       );
 
 
-    this.emojis.forEach(
-      (emoji) => {
+    for (
+      const emoji of this.emojis
+    ) {
 
-        if (
-          !emoji ||
-          emoji.isFlying
-        ) {
+      if (
+        !emoji ||
+        emoji.isFlying
+      ) {
 
-          return;
-
-        }
-
-
-        emoji.targetX =
-          emoji.originalX +
-          tiltX;
-
-
-        emoji.targetY =
-          emoji.originalY +
-          tiltY;
+        continue;
 
       }
-    );
+
+
+      emoji.targetX =
+        emoji.originalX +
+        tiltX;
+
+
+      emoji.targetY =
+        emoji.originalY +
+        tiltY;
+
+    }
 
   }
+
+
   /* ================================================================
      SHAKE DETECTED
      ================================================================ */
@@ -3112,8 +3615,8 @@ export class EmojiWorld {
 
 
     /*
-     * Keep the falling sequence long
-     * enough to be visually noticeable.
+     * Keep the falling sequence
+     * visually noticeable.
      */
 
     this.shakeRecoveryTime =
@@ -3142,7 +3645,8 @@ export class EmojiWorld {
 
 
       /*
-       * Keep currently displayed WebP visible.
+       * Keep every emoji visible during
+       * the physical fall.
        */
 
       if (
@@ -3151,6 +3655,9 @@ export class EmojiWorld {
 
         emoji.element.style.visibility =
           'visible';
+
+        emoji.element.style.opacity =
+          '1';
 
       }
 
@@ -3202,8 +3709,7 @@ export class EmojiWorld {
 
 
       /*
-       * Small initial upward impulse
-       * followed by gravity.
+       * Initial upward impulse.
        */
 
       body.vy =
@@ -3251,10 +3757,12 @@ export class EmojiWorld {
 
 
     /*
-     * Capture current physics positions.
+     * Capture current physics positions
+     * before disabling physics.
      */
 
     this.emojis.forEach(
+
       (emoji, index) => {
 
         if (!emoji) {
@@ -3281,7 +3789,8 @@ export class EmojiWorld {
          */
 
         emoji.recoveryDelay =
-          index * 25;
+          index *
+          25;
 
 
         if (body) {
@@ -3333,6 +3842,7 @@ export class EmojiWorld {
         }
 
       }
+
     );
 
   }
@@ -3357,8 +3867,7 @@ export class EmojiWorld {
 
 
     /*
-     * Pixi's ticker is the only world
-     * update loop.
+     * Pixi ticker is the only world update loop.
      */
 
     this.app.ticker.add(
@@ -3385,9 +3894,12 @@ export class EmojiWorld {
 
       const dtMs =
         Math.min(
+
           ticker.deltaMS ||
           16.67,
+
           50
+
         );
 
 
@@ -3395,8 +3907,12 @@ export class EmojiWorld {
         Math.min(
 
           Math.max(
-            dtMs / 16.67,
+
+            dtMs /
+            16.67,
+
             0.1
+
           ),
 
           2
@@ -3417,7 +3933,8 @@ export class EmojiWorld {
 
 
         if (
-          this.shakeRecoveryTime <= 0
+          this.shakeRecoveryTime <=
+          0
         ) {
 
           this._returnEmojis();
@@ -3468,8 +3985,11 @@ export class EmojiWorld {
             ) {
 
               this._updateFlyingBackAnimation(
+
                 emoji,
+
                 dtMs
+
               );
 
             } else {
@@ -3483,8 +4003,11 @@ export class EmojiWorld {
           } else {
 
             this._updateIdleAnimation(
+
               emoji,
+
               dt
+
             );
 
           }
@@ -3492,8 +4015,11 @@ export class EmojiWorld {
         } catch (error) {
 
           console.error(
+
             '[Emoji World] Emoji frame error:',
+
             error
+
           );
 
         }
@@ -3503,8 +4029,11 @@ export class EmojiWorld {
     } catch (error) {
 
       console.error(
+
         '[Emoji World] Frame update error:',
+
         error
+
       );
 
     }
@@ -3534,6 +4063,10 @@ export class EmojiWorld {
     const config =
       emoji.config;
 
+
+    /*
+     * Advance individual personality timer.
+     */
 
     emoji.idleTime +=
       config.idleSpeed *
@@ -3892,10 +4425,6 @@ export class EmojiWorld {
       scale;
 
 
-    /*
-     * Update native WebP.
-     */
-
     this._applyEmojiTransform(
       emoji
     );
@@ -3934,6 +4463,11 @@ export class EmojiWorld {
       emoji.element;
 
 
+    /*
+     * Movement happens through transform
+     * to avoid continuous layout work.
+     */
+
     const x =
       emoji.x;
 
@@ -3950,13 +4484,6 @@ export class EmojiWorld {
       emoji.scale ||
       1;
 
-
-    /*
-     * Transform-only movement.
-     *
-     * This avoids continuously changing
-     * left/top and forcing layout.
-     */
 
     element.style.transform =
       `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%) rotate(${rotation}rad) scale(${scale})`;
@@ -3988,9 +4515,8 @@ export class EmojiWorld {
 
 
     /*
-     * Do not calculate cursor interaction
-     * while an idle mobile device has no
-     * active touch.
+     * On mobile, don't perform cursor
+     * calculations while the screen is idle.
      */
 
     if (
@@ -4026,7 +4552,6 @@ export class EmojiWorld {
         emoji
       );
 
-
       return;
 
     }
@@ -4043,123 +4568,105 @@ export class EmojiWorld {
 
 
     const distance =
-      Math.hypot(
-        dx,
-        dy
+      Math.sqrt(
+        dx * dx +
+        dy * dy
       );
 
 
-    /*
-     * Small interaction range.
-     */
-
-    const range =
-      window.innerWidth < 700
-        ? 95
-        : 145;
-
-
-    let targetX =
-      0;
-
-
-    let targetY =
-      0;
+    const influenceRadius =
+      isTouchDevice
+        ? 150
+        : 190;
 
 
     if (
-      distance > 0 &&
-      distance < range
+      distance <
+      influenceRadius
     ) {
 
-      const proximity =
+      const strength =
         1 -
-        distance / range;
-
-
-      /*
-       * Maximum displacement = 6px.
-       */
-
-      const push =
-        Math.min(
-
-          proximity *
-          proximity *
-          6,
-
-          6
-
+        (
+          distance /
+          influenceRadius
         );
 
 
-      targetX =
-        -(
-          dx /
-          distance
-        ) *
-        push;
+      const safeDistance =
+        Math.max(
+          distance,
+          0.001
+        );
 
 
-      targetY =
-        -(
-          dy /
-          distance
+      const directionX =
+        -dx /
+        safeDistance;
+
+
+      const directionY =
+        -dy /
+        safeDistance;
+
+
+      const maxOffset =
+        isTouchDevice
+          ? 12
+          : 18;
+
+
+      const targetOffsetX =
+        directionX *
+        strength *
+        maxOffset;
+
+
+      const targetOffsetY =
+        directionY *
+        strength *
+        maxOffset;
+
+
+      emoji.cursorOffsetX +=
+        (
+          targetOffsetX -
+          emoji.cursorOffsetX
         ) *
-        push;
+        0.12;
+
+
+      emoji.cursorOffsetY +=
+        (
+          targetOffsetY -
+          emoji.cursorOffsetY
+        ) *
+        0.12;
+
+    } else {
+
+      emoji.cursorOffsetX +=
+        (
+          0 -
+          emoji.cursorOffsetX
+        ) *
+        0.10;
+
+
+      emoji.cursorOffsetY +=
+        (
+          0 -
+          emoji.cursorOffsetY
+        ) *
+        0.10;
 
     }
 
 
     /*
-     * Smooth movement.
+     * Cursor offsets are applied on top
+     * of the current idle position.
      */
-
-    emoji.cursorOffsetX +=
-      (
-        targetX -
-        emoji.cursorOffsetX
-      ) *
-      0.18;
-
-
-    emoji.cursorOffsetY +=
-      (
-        targetY -
-        emoji.cursorOffsetY
-      ) *
-      0.18;
-
-
-    /*
-     * Hard safety limit.
-     */
-
-    emoji.cursorOffsetX =
-      Math.max(
-
-        -6,
-
-        Math.min(
-          6,
-          emoji.cursorOffsetX
-        )
-
-      );
-
-
-    emoji.cursorOffsetY =
-      Math.max(
-
-        -6,
-
-        Math.min(
-          6,
-          emoji.cursorOffsetY
-        )
-
-      );
-
 
     emoji.x +=
       emoji.cursorOffsetX;
@@ -4174,8 +4681,6 @@ export class EmojiWorld {
     );
 
   }
-
-
   /* ================================================================
      FALLING PHYSICS
      ================================================================ */
@@ -4224,7 +4729,8 @@ export class EmojiWorld {
 
 
     /*
-     * Keep emoji inside visible area.
+     * Keep the emoji inside the visible
+     * horizontal screen area.
      */
 
     const margin =
@@ -4271,6 +4777,11 @@ export class EmojiWorld {
 
     }
 
+
+    /*
+     * Apply the position to the native
+     * WebP element.
+     */
 
     this._applyEmojiTransform(
       emoji
@@ -4334,6 +4845,10 @@ export class EmojiWorld {
       emoji.flyProgress;
 
 
+    /*
+     * Smooth easing.
+     */
+
     const eased =
       this._easeOutCubic(
         progress
@@ -4358,6 +4873,9 @@ export class EmojiWorld {
 
     /*
      * Curved flight path.
+     *
+     * Emoji rises slightly while
+     * travelling toward its platform.
      */
 
     const arc =
@@ -4387,6 +4905,10 @@ export class EmojiWorld {
       arc;
 
 
+    /*
+     * Rotate back to normal.
+     */
+
     emoji.rotation =
       emoji.returnStartRotation *
       (
@@ -4395,17 +4917,17 @@ export class EmojiWorld {
       );
 
 
-    const scale =
+    /*
+     * Small flying scale effect.
+     */
+
+    emoji.scale =
       1 +
       Math.sin(
         progress *
         Math.PI
       ) *
       0.08;
-
-
-    emoji.scale =
-      scale;
 
 
     this._applyEmojiTransform(
@@ -4495,6 +5017,33 @@ export class EmojiWorld {
       }
 
 
+      /*
+       * Make sure inactive mobile emojis
+       * return to their lightweight static
+       * frame.
+       */
+
+      if (
+        this.isMobileOrTablet &&
+        !emoji.isMobileActive &&
+        emoji.staticURL &&
+        emoji.element
+      ) {
+
+        emoji.element.src =
+          emoji.staticURL;
+
+
+        emoji.element.style.visibility =
+          'visible';
+
+
+        emoji.element.style.opacity =
+          '1';
+
+      }
+
+
       this._applyEmojiTransform(
         emoji
       );
@@ -4526,7 +5075,8 @@ export class EmojiWorld {
 
 
         /*
-         * Resume mobile scheduler.
+         * Resume the mobile animation
+         * scheduler after the shake movie.
          */
 
         if (
@@ -4563,361 +5113,210 @@ export class EmojiWorld {
   }
 
 
-  /* ================================================================
-     APPLY GRID LAYOUT TO EXISTING EMOJIS
-     ================================================================ */
+/* ================================================================
+   RESIZE
+   ================================================================ */
 
-  _updateGridLayout() {
+//   _onWindowResize() {
 
-    if (
-      !this.emojis ||
-      this.emojis.length === 0
-    ) {
+//     if (
+//       !this.app ||
+//       !this.app.renderer
+//     ) {
 
-      return;
+//       return;
 
-    }
-
-
-    const layout =
-      this._getGridLayout();
+//     }
 
 
-    const {
-      cols,
-      spacing,
-      startX,
-      startY,
-      emojiSize,
-      cubeSize
-    } =
-      layout;
+//     /*
+//      * Update viewport dimensions.
+//      */
 
+//     this.width =
+//       window.innerWidth;
+
+
+//     this.height =
+//       window.innerHeight;
+
+
+//     /*
+//      * Re-evaluate device category.
+//      *
+//      * This is important when a tablet/phone
+//      * changes orientation.
+//      */
+
+//     const previousMode =
+//       this.isMobileOrTablet;
+
+
+//     this.isMobileOrTablet =
+//       this._detectMobileOrTablet();
+
+
+//     /*
+//      * Resize Pixi renderer.
+//      *
+//      * Do NOT rebuild the emoji grid here.
+//      *
+//      * The grid is created and positioned by
+//      * _createEmojisAndCubes().
+//      */
+
+//     this.app.renderer.resize(
+//       this.width,
+//       this.height
+//     );
+
+
+//     /*
+//      * Update title position and size.
+//      */
+
+//     if (
+//       this.title
+//     ) {
+
+//       this.title.x =
+//         this.width / 2;
+
+
+//       this.title.y =
+//         this._getTitleY();
+
+
+//       this.title.style.fontSize =
+//         this._getTitleSize();
+
+//     }
+
+
+//     /*
+//      * Update physics world dimensions.
+//      */
+
+//     if (
+//       this.physics
+//     ) {
+
+//       this.physics.width =
+//         this.width;
+
+
+//       this.physics.height =
+//         this.height;
+
+
+//       this.physics.groundLevel =
+//         this.height *
+//         0.90;
+
+//     }
+
+
+//     /*
+//      * If the device category changed,
+//      * update the animation scheduler.
+//      *
+//      * Desktop:
+//      *   24 animated WebPs
+//      *
+//      * Mobile/tablet:
+//      *   maximum 5 animated WebPs
+//      */
+
+//     if (
+//       previousMode !==
+//       this.isMobileOrTablet
+//     ) {
+
+//       if (
+//         this.isMobileOrTablet
+//       ) {
+
+//         this._enableMobileAnimationMode();
+
+//       } else {
+
+//         this._enableDesktopAnimationMode();
+
+//       }
+
+//     }
+
+
+//     /*
+//      * IMPORTANT:
+//      *
+//      * Do NOT call:
+//      *
+//      *   _repositionEmojisAndCubes()
+//      *
+//      * here.
+//      *
+//      * The emoji grid has a single authoritative
+//      * layout calculation inside
+//      * _createEmojisAndCubes().
+//      *
+//      * Repositioning the DOM emojis separately
+//      * from the Pixi platforms causes the emoji
+//      * and platform coordinates to become
+//      * misaligned.
+//      *
+//      * During a shake, physics must also remain
+//      * in control of emoji positions.
+//      */
+
+//   }
+
+
+/* ================================================================
+   REPOSITION EMOJIS + CUBES
+   ================================================================ */
+
+  _repositionEmojisAndCubes() {
 
     /*
-     * Rebuild only Pixi glass platforms.
+     * INTENTIONALLY DISABLED.
      *
-     * Native WebP <img> elements are reused.
-     */
-
-    if (
-      this.cubesContainer
-    ) {
-
-      const oldChildren =
-        this.cubesContainer.removeChildren();
-
-
-      for (
-        const child of oldChildren
-      ) {
-
-        if (
-          child &&
-          typeof child.destroy ===
-            'function'
-        ) {
-
-          child.destroy({
-            children:
-              true
-          });
-
-        }
-
-      }
-
-    }
-
-
-    this.cubes =
-      [];
-
-
-    for (
-      let i = 0;
-      i < this.emojis.length;
-      i++
-    ) {
-
-      const emoji =
-        this.emojis[i];
-
-
-      if (!emoji) {
-
-        continue;
-
-      }
-
-
-      const col =
-        i % cols;
-
-
-      const row =
-        Math.floor(
-          i / cols
-        );
-
-
-      const x =
-        startX +
-        col * spacing;
-
-
-      const y =
-        startY +
-        row * spacing;
-
-
-      emoji.x =
-        x;
-
-
-      emoji.y =
-        y;
-
-
-      emoji.originalX =
-        x;
-
-
-      emoji.originalY =
-        y;
-
-
-      emoji.targetX =
-        x;
-
-
-      emoji.targetY =
-        y;
-
-
-      emoji.size =
-        emojiSize;
-
-
-      if (
-        emoji.element
-      ) {
-
-        emoji.element.style.left =
-          '0px';
-
-
-        emoji.element.style.top =
-          '0px';
-
-
-        emoji.element.style.width =
-          `${emojiSize}px`;
-
-
-        emoji.element.style.height =
-          `${emojiSize}px`;
-
-      }
-
-
-      this._applyEmojiTransform(
-        emoji
-      );
-
-
-      const cube =
-        this._createGlassCube(
-
-          x,
-
-          y +
-          emojiSize *
-          0.43,
-
-          cubeSize
-
-        );
-
-
-      cube.zIndex =
-        i;
-
-
-      this.cubesContainer.addChild(
-        cube
-      );
-
-
-      this.cubes.push({
-
-        sprite:
-          cube,
-
-        x:
-          x,
-
-        y:
-          y
-
-      });
-
-
-      if (
-        emoji.physicsBody
-      ) {
-
-        emoji.physicsBody.x =
-          x;
-
-
-        emoji.physicsBody.y =
-          y;
-
-      }
-
-    }
-
-
-    this.cubesContainer.zIndex =
-      1;
-
-
-    if (
-      this.titleContainer
-    ) {
-
-      this.titleContainer.zIndex =
-        100;
-
-    }
-
-  }
-
-
-  /* ================================================================
-     RESIZE
-     ================================================================ */
-
-  _onWindowResize() {
-
-    if (
-      !this.app ||
-      !this.app.renderer
-    ) {
-
-      return;
-
-    }
-
-
-    this.width =
-      window.innerWidth;
-
-
-    this.height =
-      window.innerHeight;
-
-
-    /*
-     * Re-evaluate device category.
-     */
-
-    const previousMode =
-      this.isMobileOrTablet;
-
-
-    this.isMobileOrTablet =
-      this._detectMobileOrTablet();
-
-
-    /*
-     * Resize Pixi renderer.
-     */
-
-    this.app.renderer.resize(
-      this.width,
-      this.height
-    );
-
-
-    /*
-     * Update title.
-     */
-
-    if (
-      this.title
-    ) {
-
-      this.title.x =
-        this.width / 2;
-
-
-      this.title.y =
-        this._getTitleY();
-
-
-      this.title.style.fontSize =
-        this._getTitleSize();
-
-    }
-
-
-    /*
-     * Update physics world.
-     */
-
-    if (
-      this.physics
-    ) {
-
-      this.physics.width =
-        this.width;
-
-
-      this.physics.height =
-        this.height;
-
-
-      this.physics.groundLevel =
-        this.height *
-        0.90;
-
-    }
-
-
-    /*
-     * Recalculate existing grid.
+     * The emoji/grid layout is controlled exclusively by:
      *
-     * DO NOT recreate WebP elements.
+     *     _createEmojisAndCubes()
+     *
+     * This method previously caused the native WebP emoji
+     * positions and Pixi glass-cube positions to become
+     * desynchronized.
+     *
+     * It also interfered with the mobile animation scheduler
+     * and could overwrite positions while the shake/physics
+     * sequence was running.
+     *
+     * DO NOT reposition emojis here.
+     *
+     * The only systems allowed to change emoji positions are:
+     *
+     * 1. _createEmojisAndCubes()
+     *      → initial/home positions
+     *
+     * 2. _updateIdleAnimation()
+     *      → normal idle movement
+     *
+     * 3. _addMouseProximityEffect()
+     *      → cursor interaction
+     *
+     * 4. _updateFallingAnimation()
+     *      → shake physics
+     *
+     * 5. _updateFlyingBackAnimation()
+     *      → return-to-cube animation
+     *
+     * Keeping a single position source prevents the
+     * emoji/platform alignment from breaking.
      */
 
-    this._updateGridLayout();
-
-
-    /*
-     * If device category changed,
-     * update scheduler.
-     */
-
-    if (
-      previousMode !==
-      this.isMobileOrTablet
-    ) {
-
-      if (
-        this.isMobileOrTablet
-      ) {
-
-        this._enableMobileAnimationMode();
-
-      } else {
-
-        this._enableDesktopAnimationMode();
-
-      }
-
-    }
+    return;
 
   }
 
@@ -4937,11 +5336,19 @@ export class EmojiWorld {
       true;
 
 
+    /*
+     * Stop previous scheduler.
+     */
+
     this._stopMobileAnimationScheduler();
 
 
     /*
      * Remove active WebP sources.
+     *
+     * IMPORTANT:
+     * Never hide emojis if there is no
+     * static frame yet.
      */
 
     for (
@@ -4971,17 +5378,13 @@ export class EmojiWorld {
       );
 
 
-      /*
-       * Stop maintaining animated WebP.
-       */
-
       emoji.element.removeAttribute(
         'src'
       );
 
 
       /*
-       * Keep static preview if available.
+       * Show static frame when available.
        */
 
       if (
@@ -4991,25 +5394,38 @@ export class EmojiWorld {
         emoji.element.src =
           emoji.staticURL;
 
-
-        emoji.element.style.visibility =
-          'visible';
-
-      } else {
-
-        emoji.element.style.visibility =
-          'hidden';
-
       }
+
+
+      /*
+       * NEVER hide an emoji simply
+       * because its static frame hasn't
+       * finished preparing yet.
+       */
+
+      emoji.element.style.visibility =
+        'visible';
+
+
+      emoji.element.style.opacity =
+        '1';
 
     }
 
 
     /*
-     * Start a new randomized sequence.
+     * Start fresh random sequence.
      */
 
     this._startMobileAnimationScheduler();
+
+
+    /*
+     * Continue preparing any frames
+     * that are still missing.
+     */
+
+    this._prepareMobileStaticFrames();
 
   }
 
@@ -5092,6 +5508,10 @@ export class EmojiWorld {
     }
 
 
+    /*
+     * Clear active mobile slots.
+     */
+
     this.mobileActiveEmojis.clear();
 
   }
@@ -5113,6 +5533,13 @@ export class EmojiWorld {
      */
 
     this._stopMobileAnimationScheduler();
+
+
+    /*
+     * Invalidate static-frame preparation.
+     */
+
+    this.mobileStaticFrameGeneration++;
 
 
     /*
@@ -5169,6 +5596,10 @@ export class EmojiWorld {
     }
 
 
+    /*
+     * Clear arrays.
+     */
+
     this.emojis =
       [];
 
@@ -5180,6 +5611,19 @@ export class EmojiWorld {
     this.mobileActiveEmojis.clear();
 
 
+    this.mobileShuffleBag =
+      [];
+
+
+    this.mobileStaticFramePromises.clear();
+
+
+    this.mobileStaticFrameReady.clear();
+
+
+    this.mobileStaticFrameLoading.clear();
+
+
     /*
      * Destroy Pixi application.
      */
@@ -5189,8 +5633,11 @@ export class EmojiWorld {
     ) {
 
       this.app.destroy(
+
         true,
+
         {
+
           children:
             true,
 
@@ -5201,6 +5648,7 @@ export class EmojiWorld {
             false
 
         }
+
       );
 
     }
