@@ -72,7 +72,7 @@ export class EmojiWorld {
       this._detectMobileOrTablet();
 
     this.mobileAnimationLimit =
-      5;
+      10;
 
     this.mobileActiveEmojis =
       new Set();
@@ -1091,9 +1091,9 @@ export class EmojiWorld {
   }
 
 
-  /* ================================================================
-     PREPARE ONE MOBILE STATIC FRAME
-     ================================================================ */
+/* ================================================================
+   PREPARE ONE MOBILE STATIC FRAME
+   ================================================================ */
 
   async _prepareOneMobileStaticFrame(
     emoji
@@ -1169,33 +1169,71 @@ export class EmojiWorld {
 
 
       /*
-       * Decode the default frame of the
-       * animated WebP.
+       * ------------------------------------------------------------
+       * IMPORTANT QUALITY FIX
+       * ------------------------------------------------------------
+       *
+       * Do NOT resize the frame down to emoji.size.
+       *
+       * The emoji is displayed using CSS at approximately
+       * 50–100px, but the source WebP is 512px.
+       *
+       * Keep the static frame at high resolution so the browser
+       * has enough pixels when rendering the transformed image.
        */
 
       const bitmap =
         await createImageBitmap(
-          blob,
-          {
-            resizeWidth:
-              Math.max(
-                1,
-                Math.round(
-                  emoji.size
-                )
-              ),
+          blob
+        );
 
-            resizeHeight:
-              Math.max(
-                1,
-                Math.round(
-                  emoji.size
-                )
-              ),
 
-            resizeQuality:
-              'low'
-          }
+      const sourceWidth =
+        bitmap.width ||
+        512;
+
+
+      const sourceHeight =
+        bitmap.height ||
+        512;
+
+
+      /*
+       * Keep the original resolution, but never exceed 512px.
+       */
+
+      const maxSize =
+        512;
+
+
+      const scale =
+        Math.min(
+          1,
+          maxSize /
+          Math.max(
+            sourceWidth,
+            sourceHeight
+          )
+        );
+
+
+      const canvasWidth =
+        Math.max(
+          1,
+          Math.round(
+            sourceWidth *
+            scale
+          )
+        );
+
+
+      const canvasHeight =
+        Math.max(
+          1,
+          Math.round(
+            sourceHeight *
+            scale
+          )
         );
 
 
@@ -1206,21 +1244,11 @@ export class EmojiWorld {
 
 
       canvas.width =
-        Math.max(
-          1,
-          Math.round(
-            emoji.size
-          )
-        );
+        canvasWidth;
 
 
       canvas.height =
-        Math.max(
-          1,
-          Math.round(
-            emoji.size
-          )
-        );
+        canvasHeight;
 
 
       const context =
@@ -1228,9 +1256,6 @@ export class EmojiWorld {
           '2d',
           {
             alpha:
-              true,
-
-            desynchronized:
               true
           }
         );
@@ -1245,6 +1270,18 @@ export class EmojiWorld {
         return;
 
       }
+
+
+      /*
+       * High-quality image scaling.
+       */
+
+      context.imageSmoothingEnabled =
+        true;
+
+
+      context.imageSmoothingQuality =
+        'high';
 
 
       context.clearRect(
@@ -1267,10 +1304,13 @@ export class EmojiWorld {
       bitmap.close();
 
 
+      /*
+       * Store a high-resolution PNG static frame.
+       */
+
       emoji.staticURL =
         canvas.toDataURL(
-          'image/webp',
-          0.82
+          'image/png'
         );
 
 
@@ -1284,20 +1324,23 @@ export class EmojiWorld {
 
 
       /*
-       * If it is currently inactive,
-       * immediately display the static frame.
+       * Immediately replace the inactive WebP
+       * with the high-resolution static image.
        */
 
       if (
         !emoji.isMobileActive &&
-        !emoji.isFlying
+        !emoji.isFlying &&
+        emoji.element
       ) {
 
         emoji.element.src =
           emoji.staticURL;
 
+
         emoji.element.style.visibility =
           'visible';
+
 
         emoji.element.style.opacity =
           '1';
@@ -1694,9 +1737,9 @@ export class EmojiWorld {
   }
 
 
-  /* ================================================================
-     DEACTIVATE MOBILE EMOJI
-     ================================================================ */
+/* ================================================================
+   DEACTIVATE MOBILE EMOJI
+   ================================================================ */
 
   _deactivateMobileEmoji(
     emoji
@@ -1712,6 +1755,10 @@ export class EmojiWorld {
     }
 
 
+    /*
+     * Already inactive.
+     */
+
     if (
       !emoji.isMobileActive
     ) {
@@ -1725,6 +1772,10 @@ export class EmojiWorld {
       emoji.element;
 
 
+    /*
+     * Remove from the active animation set.
+     */
+
     emoji.isMobileActive =
       false;
 
@@ -1734,12 +1785,21 @@ export class EmojiWorld {
     );
 
 
+    /*
+     * Clear the animation timer.
+     */
+
     emoji.animationEndsAt =
       0;
 
 
     /*
-     * Stop the animated WebP.
+     * ------------------------------------------------------------
+     * STOP THE ANIMATED WEBP
+     * ------------------------------------------------------------
+     *
+     * Removing the animated WebP source prevents this emoji from
+     * continuing to consume animation/decode resources on mobile.
      */
 
     element.removeAttribute(
@@ -1748,13 +1808,19 @@ export class EmojiWorld {
 
 
     /*
-     * IMPORTANT FIX:
+     * ------------------------------------------------------------
+     * USE PREPARED HIGH-QUALITY STATIC FRAME
+     * ------------------------------------------------------------
      *
-     * Never hide an inactive emoji.
+     * IMPORTANT:
      *
-     * If a static frame exists, show it.
-     * Otherwise keep the element visible
-     * until its static frame is ready.
+     * Do NOT capture another frame here.
+     *
+     * The static frame is prepared separately by the mobile
+     * static-frame preparation system.
+     *
+     * This avoids creating a new low-quality frame every time
+     * an animation slot expires.
      */
 
     if (
@@ -1764,15 +1830,77 @@ export class EmojiWorld {
       element.src =
         emoji.staticURL;
 
+
+      element.style.visibility =
+        'visible';
+
+
+      element.style.opacity =
+        '1';
+
+    } else {
+
+      /*
+       * Static frame is not ready yet.
+       *
+       * Keep the element visible rather than hiding the emoji.
+       *
+       * The static-frame preparation system will replace the
+       * source once the high-quality frame becomes available.
+       */
+
+      element.style.visibility =
+        'visible';
+
+
+      element.style.opacity =
+        '1';
+
     }
 
 
-    element.style.visibility =
-      'visible';
+    /*
+     * Keep the element rendered normally.
+     */
+
+    element.style.display =
+      'block';
 
 
-    element.style.opacity =
-      '1';
+    /*
+     * Make sure the browser does not apply any unwanted
+     * image filtering from this function.
+     *
+     * The actual image quality is controlled by the source
+     * generated by the static-frame preparation system.
+     */
+
+    element.style.filter =
+      'none';
+
+
+    /*
+     * ------------------------------------------------------------
+     * POSITIONING
+     * ------------------------------------------------------------
+     *
+     * Do NOT modify any emoji coordinates here.
+     *
+     * The scheduler only controls whether the WebP is actively
+     * playing. Positioning remains controlled by EmojiWorld.
+     */
+
+    /*
+     * Do not modify:
+     *
+     * - emoji.x
+     * - emoji.y
+     * - emoji.rotation
+     * - emoji.scale
+     * - emoji.targetX
+     * - emoji.targetY
+     */
+
 
   }
 
@@ -1827,7 +1955,7 @@ export class EmojiWorld {
 
 
       const maxSize =
-        256;
+        512;
 
 
       const scale =
@@ -1883,8 +2011,7 @@ export class EmojiWorld {
 
       emoji.staticURL =
         canvas.toDataURL(
-          'image/webp',
-          0.82
+          'image/png'
         );
 
 
@@ -2028,11 +2155,7 @@ export class EmojiWorld {
        * frame if a static frame doesn't
        * already exist.
        */
-
-      this._captureStaticFrame(
-        emoji
-      );
-
+      
 
       this._deactivateMobileEmoji(
         emoji
