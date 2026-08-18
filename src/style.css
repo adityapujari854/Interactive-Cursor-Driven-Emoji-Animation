@@ -1,0 +1,98 @@
+/* ===================================================
+   GLOBAL STYLES
+   =================================================== */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: linear-gradient(135deg, #0a0e27 0%, #16213e 50%, #0f3460 100%);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  touch-action: none;
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+#pixi-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* ===================================================
+   TITLE OVERLAY
+   =================================================== */
+
+.title {
+  position: absolute;
+  top: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  text-align: center;
+  pointer-events: none;
+}
+
+.title h1 {
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 300;
+  letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.95);
+  text-transform: uppercase;
+  margin: 0;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));
+}
+
+/* ===================================================
+   DEBUG INFO (optional)
+   =================================================== */
+
+.debug-info {
+  position: fixed;
+  bottom: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #0f0;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  z-index: 2000;
+  pointer-events: none;
+  max-width: 250px;
+}
+
+/* ===================================================
+   RESPONSIVE
+   =================================================== */
+
+@media (max-width: 768px) {
+  .title h1 {
+    font-size: 2rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .title h1 {
+    font-size: 1.5rem;
+    top: 20px;
+    letter-spacing: 1px;
+  }
+}
