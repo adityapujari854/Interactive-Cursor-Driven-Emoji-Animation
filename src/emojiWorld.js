@@ -3565,9 +3565,9 @@ export class EmojiWorld {
   }
 
 
-  /* ================================================================
-     SHAKE DETECTED
-     ================================================================ */
+/* ================================================================
+   SHAKE DETECTED
+   ================================================================ */
 
   _onShakeDetected() {
 
@@ -3592,9 +3592,8 @@ export class EmojiWorld {
 
 
     /*
-     * Pause mobile random animation
-     * selection while the shake sequence
-     * is running.
+     * Pause the mobile 5-animation scheduler
+     * while the shake movie is running.
      */
 
     if (
@@ -3615,8 +3614,8 @@ export class EmojiWorld {
 
 
     /*
-     * Keep the falling sequence
-     * visually noticeable.
+     * Keep the falling sequence long enough
+     * to be clearly visible.
      */
 
     this.shakeRecoveryTime =
@@ -3624,29 +3623,35 @@ export class EmojiWorld {
 
 
     /*
-     * Every emoji participates in the
-     * shake movie regardless of the
-     * normal 5-animation mobile limit.
+     * Every emoji participates in the shake,
+     * regardless of the normal mobile limit
+     * of 5 animated WebPs.
      */
 
     for (
       const emoji of this.emojis
     ) {
 
-      if (!emoji) {
+      if (
+        !emoji
+      ) {
 
         continue;
 
       }
 
 
+      /*
+       * Mark emoji as part of the
+       * physical shake movie.
+       */
+
       emoji.isFlying =
         true;
 
 
       /*
-       * Keep every emoji visible during
-       * the physical fall.
+       * Keep emoji visible.
        */
 
       if (
@@ -3666,16 +3671,65 @@ export class EmojiWorld {
         emoji.physicsBody;
 
 
-      if (!body) {
+      if (
+        !body
+      ) {
 
         continue;
 
       }
 
 
+      /*
+       * ============================================================
+       * CRITICAL FIX
+       * ============================================================
+       *
+       * The physics engine skips bodies when:
+       *
+       *     body.sleeping === true
+       *
+       * After the first shake, settled emojis can become sleeping.
+       *
+       * Therefore every new shake MUST wake every body.
+       */
+
+      if (
+        this.physics &&
+        typeof this.physics.wakeBody ===
+        'function'
+      ) {
+
+        this.physics.wakeBody(
+          body
+        );
+
+      }
+
+
+      /*
+       * Explicitly reset all physics state.
+       */
+
       body.isActive =
         true;
 
+
+      body.sleeping =
+        false;
+
+
+      body.grounded =
+        false;
+
+
+      /*
+       * These properties may exist in
+       * older versions of the physics system.
+       *
+       * Reset them safely without relying
+       * on them for the actual wake-up.
+       */
 
       body.isResting =
         false;
@@ -3684,6 +3738,11 @@ export class EmojiWorld {
       body.restTimer =
         0;
 
+
+      /*
+       * Start physics from the emoji's
+       * current visual position.
+       */
 
       body.x =
         emoji.x;
@@ -3698,30 +3757,69 @@ export class EmojiWorld {
 
 
       /*
-       * Controlled horizontal movement.
+       * Clear previous motion completely.
+       */
+
+      body.vx =
+        0;
+
+
+      body.vy =
+        0;
+
+
+      body.angularVelocity =
+        0;
+
+
+      /*
+       * Random horizontal movement.
        */
 
       body.vx =
         (
           Math.random() -
           0.5
-        ) * 5;
+        ) *
+        5;
 
 
       /*
        * Initial upward impulse.
+       *
+       * Gravity then pulls the emoji
+       * downward and it falls to the floor.
        */
 
       body.vy =
         -6 -
-        Math.random() * 3;
+        Math.random() *
+        3;
 
+
+      /*
+       * Random rotation.
+       */
 
       body.angularVelocity =
         (
           Math.random() -
           0.5
-        ) * 0.35;
+        ) *
+        0.35;
+
+
+      /*
+       * Make sure the physics engine
+       * cannot consider this body settled.
+       */
+
+      body.sleeping =
+        false;
+
+
+      body.grounded =
+        false;
 
     }
 
@@ -3944,19 +4042,19 @@ export class EmojiWorld {
       }
 
 
-      /* ------------------------------------------------------------
-         PHYSICS
-         ------------------------------------------------------------ */
+        /* ------------------------------------------------------------
+        PHYSICS
+        ------------------------------------------------------------ */
 
-      if (
+        if (
         this.physics
-      ) {
+        ) {
 
         this.physics.update(
-          dtMs
+            dt
         );
 
-      }
+        }
 
 
       /* ------------------------------------------------------------
