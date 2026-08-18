@@ -61,6 +61,11 @@ export class EmojiWorld {
     this.cubesContainer = null;
     this.titleContainer = null;
 
+
+    /* ============================================================
+       MOBILE / TABLET ANIMATION LAYER
+       ============================================================ */
+
     /*
      * Native animated WebP layer.
      *
@@ -136,7 +141,6 @@ export class EmojiWorld {
        ============================================================ */
 
     this.emojis = [];
-
     this.cubes = [];
 
 
@@ -390,18 +394,14 @@ export class EmojiWorld {
       canvas:
         this.canvas,
 
-
       width:
         this.width,
-
 
       height:
         this.height,
 
-
       backgroundAlpha:
         0,
-
 
       /*
        * Antialiasing is unnecessary for
@@ -413,18 +413,14 @@ export class EmojiWorld {
       antialias:
         false,
 
-
       autoDensity:
         true,
-
 
       resolution:
         this._getOptimalResolution(),
 
-
       preference:
         'webgl',
-
 
       powerPreference:
         'high-performance'
@@ -650,6 +646,7 @@ export class EmojiWorld {
      */
 
     const isSmallScreen =
+      this.isMobileOrTablet ||
       this.width < 700;
 
 
@@ -787,20 +784,35 @@ export class EmojiWorld {
     return {
 
       cols,
+
       rows,
+
       sidePadding,
+
       top,
+
       bottom,
+
       availableWidth,
+
       availableHeight,
+
       xSpacing,
+
       ySpacing,
+
       spacing,
+
       gridWidth,
+
       gridHeight,
+
       startX,
+
       startY,
+
       emojiSize,
+
       cubeSize
 
     };
@@ -938,12 +950,22 @@ export class EmojiWorld {
         'absolute';
 
 
+      /*
+       * Position is controlled exclusively by
+       * _applyEmojiTransform().
+       *
+       * Keeping left/top at 0 prevents the
+       * x/y coordinates from being applied
+       * twice (once by left/top and again by
+       * translate3d).
+       */
+
       element.style.left =
-        `${x}px`;
+        '0px';
 
 
       element.style.top =
-        `${y}px`;
+        '0px';
 
 
       element.style.width =
@@ -1130,6 +1152,16 @@ export class EmojiWorld {
         emoji
       );
 
+
+      /*
+       * Apply the real position immediately.
+       * The ticker will continue updating it.
+       */
+
+      this._applyEmojiTransform(
+        emoji
+      );
+
     }
 
 
@@ -1138,8 +1170,6 @@ export class EmojiWorld {
     );
 
   }
-
-
   /* ================================================================
      MOBILE ANIMATION SCHEDULER
      ================================================================ */
@@ -1560,7 +1590,8 @@ export class EmojiWorld {
 
     try {
 
-      element.currentTime = 0;
+      element.currentTime =
+        0;
 
     } catch {
 
@@ -1577,7 +1608,7 @@ export class EmojiWorld {
 
   /* ================================================================
      RANDOM ANIMATION DURATION
-     * ================================================================ */
+     ================================================================ */
 
   _getRandomAnimationDuration() {
 
@@ -1611,7 +1642,7 @@ export class EmojiWorld {
 
   /* ================================================================
      DEACTIVATE MOBILE EMOJI
-     * ================================================================ */
+     ================================================================ */
 
   _deactivateMobileEmoji(
     emoji
@@ -1689,6 +1720,7 @@ export class EmojiWorld {
 
       element.src =
         emoji.staticURL;
+
 
       element.style.visibility =
         'visible';
@@ -2062,7 +2094,9 @@ export class EmojiWorld {
     );
 
   }
-    /* ================================================================
+
+
+  /* ================================================================
      SCENE SETUP
      ================================================================ */
 
@@ -2394,12 +2428,19 @@ export class EmojiWorld {
         emoji.element
       ) {
 
+        /*
+         * Position is transform-only.
+         * Do not write x/y into left/top because
+         * _applyEmojiTransform() already applies
+         * the position with translate3d().
+         */
+
         emoji.element.style.left =
-          `${x}px`;
+          '0px';
 
 
         emoji.element.style.top =
-          `${y}px`;
+          '0px';
 
 
         emoji.element.style.width =
@@ -2899,6 +2940,7 @@ export class EmojiWorld {
         '📱 Motion sensors enabled'
       );
 
+
     } catch (error) {
 
       console.warn(
@@ -2909,7 +2951,9 @@ export class EmojiWorld {
     }
 
   }
-    /* ================================================================
+
+
+  /* ================================================================
      GYROSCOPE TILT
      ================================================================ */
 
@@ -2962,52 +3006,62 @@ export class EmojiWorld {
 
     const tiltX =
       Math.max(
+
         -10,
+
         Math.min(
+
           10,
+
           tilt.x * 10
+
         )
+
       );
 
 
     const tiltY =
       Math.max(
+
         -6,
+
         Math.min(
+
           6,
+
           tilt.y * 6
+
         )
+
       );
 
 
-    for (
-      const emoji of this.emojis
-    ) {
+    this.emojis.forEach(
+      (emoji) => {
 
-      if (
-        !emoji ||
-        emoji.isFlying
-      ) {
+        if (
+          !emoji ||
+          emoji.isFlying
+        ) {
 
-        continue;
+          return;
+
+        }
+
+
+        emoji.targetX =
+          emoji.originalX +
+          tiltX;
+
+
+        emoji.targetY =
+          emoji.originalY +
+          tiltY;
 
       }
-
-
-      emoji.targetX =
-        emoji.originalX +
-        tiltX;
-
-
-      emoji.targetY =
-        emoji.originalY +
-        tiltY;
-
-    }
+    );
 
   }
-
-
   /* ================================================================
      SHAKE DETECTED
      ================================================================ */
@@ -3088,11 +3142,7 @@ export class EmojiWorld {
 
 
       /*
-       * Make the currently animated WebP
-       * continue being visible during the
-       * physical fall.
-       *
-       * We do NOT change the WebP source.
+       * Keep currently displayed WebP visible.
        */
 
       if (
@@ -3201,12 +3251,10 @@ export class EmojiWorld {
 
 
     /*
-     * Capture the current physics
-     * positions before disabling physics.
+     * Capture current physics positions.
      */
 
     this.emojis.forEach(
-
       (emoji, index) => {
 
         if (!emoji) {
@@ -3252,9 +3300,6 @@ export class EmojiWorld {
 
           /*
            * Stop physics.
-           *
-           * From here the emoji follows
-           * the cinematic return path.
            */
 
           body.isActive =
@@ -3288,7 +3333,6 @@ export class EmojiWorld {
         }
 
       }
-
     );
 
   }
@@ -3313,10 +3357,8 @@ export class EmojiWorld {
 
 
     /*
-     * Do not create a second requestAnimationFrame
-     * loop.
-     *
-     * Pixi's ticker is the only world update loop.
+     * Pixi's ticker is the only world
+     * update loop.
      */
 
     this.app.ticker.add(
@@ -3343,12 +3385,9 @@ export class EmojiWorld {
 
       const dtMs =
         Math.min(
-
           ticker.deltaMS ||
           16.67,
-
           50
-
         );
 
 
@@ -3496,11 +3535,6 @@ export class EmojiWorld {
       emoji.config;
 
 
-    /*
-     * Advance the individual
-     * personality timer.
-     */
-
     emoji.idleTime +=
       config.idleSpeed *
       dt;
@@ -3545,7 +3579,6 @@ export class EmojiWorld {
     switch (
       config.idleType
     ) {
-
 
       case 'bounce':
 
@@ -3825,10 +3858,6 @@ export class EmojiWorld {
       !this.isRecovering
     ) {
 
-      /*
-       * Smoothly follow the gyro target.
-       */
-
       idleX +=
         (
           emoji.targetX -
@@ -3847,10 +3876,6 @@ export class EmojiWorld {
     }
 
 
-    /*
-     * Store final idle position.
-     */
-
     emoji.x =
       idleX;
 
@@ -3868,7 +3893,7 @@ export class EmojiWorld {
 
 
     /*
-     * Update the native WebP element.
+     * Update native WebP.
      */
 
     this._applyEmojiTransform(
@@ -3909,13 +3934,6 @@ export class EmojiWorld {
       emoji.element;
 
 
-    /*
-     * All movement happens through transform.
-     *
-     * This avoids continuously changing
-     * left/top and forcing layout.
-     */
-
     const x =
       emoji.x;
 
@@ -3932,6 +3950,13 @@ export class EmojiWorld {
       emoji.scale ||
       1;
 
+
+    /*
+     * Transform-only movement.
+     *
+     * This avoids continuously changing
+     * left/top and forcing layout.
+     */
 
     element.style.transform =
       `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%) rotate(${rotation}rad) scale(${scale})`;
@@ -3963,8 +3988,9 @@ export class EmojiWorld {
 
 
     /*
-     * On mobile, do not perform cursor
-     * calculations while the screen is idle.
+     * Do not calculate cursor interaction
+     * while an idle mobile device has no
+     * active touch.
      */
 
     if (
@@ -4024,7 +4050,7 @@ export class EmojiWorld {
 
 
     /*
-     * Keep the interaction range small.
+     * Small interaction range.
      */
 
     const range =
@@ -4052,8 +4078,7 @@ export class EmojiWorld {
 
 
       /*
-       * Maximum cursor displacement
-       * is deliberately tiny.
+       * Maximum displacement = 6px.
        */
 
       const push =
@@ -4087,7 +4112,7 @@ export class EmojiWorld {
 
 
     /*
-     * Smoothly approach target.
+     * Smooth movement.
      */
 
     emoji.cursorOffsetX +=
@@ -4149,7 +4174,9 @@ export class EmojiWorld {
     );
 
   }
-    /* ================================================================
+
+
+  /* ================================================================
      FALLING PHYSICS
      ================================================================ */
 
@@ -4197,8 +4224,7 @@ export class EmojiWorld {
 
 
     /*
-     * Keep the emoji inside the visible
-     * horizontal screen area.
+     * Keep emoji inside visible area.
      */
 
     const margin =
@@ -4246,11 +4272,6 @@ export class EmojiWorld {
     }
 
 
-    /*
-     * Apply the position to the native
-     * WebP element.
-     */
-
     this._applyEmojiTransform(
       emoji
     );
@@ -4278,9 +4299,6 @@ export class EmojiWorld {
 
     /*
      * Staggered return.
-     *
-     * This gives the "movie" effect where
-     * emojis don't all fly back together.
      */
 
     if (
@@ -4316,10 +4334,6 @@ export class EmojiWorld {
       emoji.flyProgress;
 
 
-    /*
-     * Smooth easing.
-     */
-
     const eased =
       this._easeOutCubic(
         progress
@@ -4344,9 +4358,6 @@ export class EmojiWorld {
 
     /*
      * Curved flight path.
-     *
-     * Emoji rises slightly while
-     * travelling toward its platform.
      */
 
     const arc =
@@ -4376,10 +4387,6 @@ export class EmojiWorld {
       arc;
 
 
-    /*
-     * Rotate back to normal.
-     */
-
     emoji.rotation =
       emoji.returnStartRotation *
       (
@@ -4387,10 +4394,6 @@ export class EmojiWorld {
         eased
       );
 
-
-    /*
-     * Small flying scale effect.
-     */
 
     const scale =
       1 +
@@ -4523,8 +4526,7 @@ export class EmojiWorld {
 
 
         /*
-         * Resume the mobile animation
-         * scheduler after the shake movie.
+         * Resume mobile scheduler.
          */
 
         if (
@@ -4562,6 +4564,238 @@ export class EmojiWorld {
 
 
   /* ================================================================
+     APPLY GRID LAYOUT TO EXISTING EMOJIS
+     ================================================================ */
+
+  _updateGridLayout() {
+
+    if (
+      !this.emojis ||
+      this.emojis.length === 0
+    ) {
+
+      return;
+
+    }
+
+
+    const layout =
+      this._getGridLayout();
+
+
+    const {
+      cols,
+      spacing,
+      startX,
+      startY,
+      emojiSize,
+      cubeSize
+    } =
+      layout;
+
+
+    /*
+     * Rebuild only Pixi glass platforms.
+     *
+     * Native WebP <img> elements are reused.
+     */
+
+    if (
+      this.cubesContainer
+    ) {
+
+      const oldChildren =
+        this.cubesContainer.removeChildren();
+
+
+      for (
+        const child of oldChildren
+      ) {
+
+        if (
+          child &&
+          typeof child.destroy ===
+            'function'
+        ) {
+
+          child.destroy({
+            children:
+              true
+          });
+
+        }
+
+      }
+
+    }
+
+
+    this.cubes =
+      [];
+
+
+    for (
+      let i = 0;
+      i < this.emojis.length;
+      i++
+    ) {
+
+      const emoji =
+        this.emojis[i];
+
+
+      if (!emoji) {
+
+        continue;
+
+      }
+
+
+      const col =
+        i % cols;
+
+
+      const row =
+        Math.floor(
+          i / cols
+        );
+
+
+      const x =
+        startX +
+        col * spacing;
+
+
+      const y =
+        startY +
+        row * spacing;
+
+
+      emoji.x =
+        x;
+
+
+      emoji.y =
+        y;
+
+
+      emoji.originalX =
+        x;
+
+
+      emoji.originalY =
+        y;
+
+
+      emoji.targetX =
+        x;
+
+
+      emoji.targetY =
+        y;
+
+
+      emoji.size =
+        emojiSize;
+
+
+      if (
+        emoji.element
+      ) {
+
+        emoji.element.style.left =
+          '0px';
+
+
+        emoji.element.style.top =
+          '0px';
+
+
+        emoji.element.style.width =
+          `${emojiSize}px`;
+
+
+        emoji.element.style.height =
+          `${emojiSize}px`;
+
+      }
+
+
+      this._applyEmojiTransform(
+        emoji
+      );
+
+
+      const cube =
+        this._createGlassCube(
+
+          x,
+
+          y +
+          emojiSize *
+          0.43,
+
+          cubeSize
+
+        );
+
+
+      cube.zIndex =
+        i;
+
+
+      this.cubesContainer.addChild(
+        cube
+      );
+
+
+      this.cubes.push({
+
+        sprite:
+          cube,
+
+        x:
+          x,
+
+        y:
+          y
+
+      });
+
+
+      if (
+        emoji.physicsBody
+      ) {
+
+        emoji.physicsBody.x =
+          x;
+
+
+        emoji.physicsBody.y =
+          y;
+
+      }
+
+    }
+
+
+    this.cubesContainer.zIndex =
+      1;
+
+
+    if (
+      this.titleContainer
+    ) {
+
+      this.titleContainer.zIndex =
+        100;
+
+    }
+
+  }
+
+
+  /* ================================================================
      RESIZE
      ================================================================ */
 
@@ -4587,9 +4821,6 @@ export class EmojiWorld {
 
     /*
      * Re-evaluate device category.
-     *
-     * This matters if the user rotates
-     * a tablet/phone.
      */
 
     const previousMode =
@@ -4605,11 +4836,8 @@ export class EmojiWorld {
      */
 
     this.app.renderer.resize(
-
       this.width,
-
       this.height
-
     );
 
 
@@ -4659,8 +4887,17 @@ export class EmojiWorld {
 
 
     /*
-     * If the device category changed,
-     * update the scheduler.
+     * Recalculate existing grid.
+     *
+     * DO NOT recreate WebP elements.
+     */
+
+    this._updateGridLayout();
+
+
+    /*
+     * If device category changed,
+     * update scheduler.
      */
 
     if (
@@ -4672,17 +4909,9 @@ export class EmojiWorld {
         this.isMobileOrTablet
       ) {
 
-        /*
-         * Switch into mobile mode.
-         */
-
         this._enableMobileAnimationMode();
 
       } else {
-
-        /*
-         * Switch back to desktop mode.
-         */
 
         this._enableDesktopAnimationMode();
 
@@ -4708,15 +4937,11 @@ export class EmojiWorld {
       true;
 
 
-    /*
-     * Stop any previous scheduler.
-     */
-
     this._stopMobileAnimationScheduler();
 
 
     /*
-     * Remove active WebP sources first.
+     * Remove active WebP sources.
      */
 
     for (
@@ -4747,12 +4972,7 @@ export class EmojiWorld {
 
 
       /*
-       * Desktop may have been animating
-       * this WebP.
-       *
-       * We remove the source so the
-       * browser no longer maintains all
-       * 24 animation streams.
+       * Stop maintaining animated WebP.
        */
 
       emoji.element.removeAttribute(
@@ -4761,8 +4981,7 @@ export class EmojiWorld {
 
 
       /*
-       * If a static frame exists,
-       * show it.
+       * Keep static preview if available.
        */
 
       if (
@@ -4787,7 +5006,7 @@ export class EmojiWorld {
 
 
     /*
-     * Start with a new random sequence.
+     * Start a new randomized sequence.
      */
 
     this._startMobileAnimationScheduler();
@@ -4856,8 +5075,7 @@ export class EmojiWorld {
 
 
       /*
-       * Make sure the browser gets the
-       * original animated WebP again.
+       * Restore original animated WebP.
        */
 
       emoji.element.src =
@@ -4873,11 +5091,6 @@ export class EmojiWorld {
 
     }
 
-
-    /*
-     * Clear active mobile slots.
-
-     */
 
     this.mobileActiveEmojis.clear();
 
@@ -4923,11 +5136,8 @@ export class EmojiWorld {
      */
 
     window.removeEventListener(
-
       'resize',
-
       this._resizeHandler
-
     );
 
 
@@ -4958,10 +5168,6 @@ export class EmojiWorld {
 
     }
 
-
-    /*
-     * Clear arrays.
-     */
 
     this.emojis =
       [];
@@ -5024,536 +5230,221 @@ export class EmojiWorld {
     return [
 
       {
-        index:
-          0,
-
-        name:
-          'Happy',
-
-        idleType:
-          'bounce',
-
-        mass:
-          0.9,
-
-        idleSpeed:
-          0.055,
-
-        idleAmplitude:
-          6
-
+        index: 0,
+        name: 'Happy',
+        idleType: 'bounce',
+        mass: 0.9,
+        idleSpeed: 0.055,
+        idleAmplitude: 6
       },
 
-
       {
-        index:
-          1,
-
-        name:
-          'Cool',
-
-        idleType:
-          'tilt',
-
-        mass:
-          1.0,
-
-        idleSpeed:
-          0.050,
-
-        idleAmplitude:
-          7
-
+        index: 1,
+        name: 'Cool',
+        idleType: 'tilt',
+        mass: 1.0,
+        idleSpeed: 0.050,
+        idleAmplitude: 7
       },
 
-
       {
-        index:
-          2,
-
-        name:
-          'Love',
-
-        idleType:
-          'pulse',
-
-        mass:
-          0.8,
-
-        idleSpeed:
-          0.065,
-
-        idleAmplitude:
-          5,
-
-        scaleAmount:
-          0.05
-
+        index: 2,
+        name: 'Love',
+        idleType: 'pulse',
+        mass: 0.8,
+        idleSpeed: 0.065,
+        idleAmplitude: 5,
+        scaleAmount: 0.05
       },
 
-
       {
-        index:
-          3,
-
-        name:
-          'Awestruck',
-
-        idleType:
-          'sway',
-
-        mass:
-          1.0,
-
-        idleSpeed:
-          0.050,
-
-        idleAmplitude:
-          7
-
+        index: 3,
+        name: 'Awestruck',
+        idleType: 'sway',
+        mass: 1.0,
+        idleSpeed: 0.050,
+        idleAmplitude: 7
       },
 
-
       {
-        index:
-          4,
-
-        name:
-          'Thinking',
-
-        idleType:
-          'bob',
-
-        mass:
-          1.05,
-
-        idleSpeed:
-          0.050,
-
-        idleAmplitude:
-          6
-
+        index: 4,
+        name: 'Thinking',
+        idleType: 'bob',
+        mass: 1.05,
+        idleSpeed: 0.050,
+        idleAmplitude: 6
       },
 
-
       {
-        index:
-          5,
-
-        name:
-          'Angry',
-
-        idleType:
-          'vibrate',
-
-        mass:
-          1.2,
-
-        idleSpeed:
-          0.075,
-
-        idleAmplitude:
-          3
-
+        index: 5,
+        name: 'Angry',
+        idleType: 'vibrate',
+        mass: 1.2,
+        idleSpeed: 0.075,
+        idleAmplitude: 3
       },
 
-
       {
-        index:
-          6,
-
-        name:
-          'Party',
-
-        idleType:
-          'spin',
-
-        mass:
-          0.9,
-
-        idleSpeed:
-          0.045,
-
-        idleAmplitude:
-          2,
-
-        spinSpeed:
-          0.010
-
+        index: 6,
+        name: 'Party',
+        idleType: 'spin',
+        mass: 0.9,
+        idleSpeed: 0.045,
+        idleAmplitude: 2,
+        spinSpeed: 0.010
       },
 
-
       {
-        index:
-          7,
-
-        name:
-          'Smirk',
-
-        idleType:
-          'tilt',
-
-        mass:
-          1.0,
-
-        idleSpeed:
-          0.045,
-
-        idleAmplitude:
-          6
-
+        index: 7,
+        name: 'Smirk',
+        idleType: 'tilt',
+        mass: 1.0,
+        idleSpeed: 0.045,
+        idleAmplitude: 6
       },
 
-
       {
-        index:
-          8,
-
-        name:
-          'Sleepy',
-
-        idleType:
-          'drift',
-
-        mass:
-          0.95,
-
-        idleSpeed:
-          0.035,
-
-        idleAmplitude:
-          7
-
+        index: 8,
+        name: 'Sleepy',
+        idleType: 'drift',
+        mass: 0.95,
+        idleSpeed: 0.035,
+        idleAmplitude: 7
       },
 
-
       {
-        index:
-          9,
-
-        name:
-          'Shocked',
-
-        idleType:
-          'bounce',
-
-        mass:
-          1.1,
-
-        idleSpeed:
-          0.065,
-
-        idleAmplitude:
-          8
-
+        index: 9,
+        name: 'Shocked',
+        idleType: 'bounce',
+        mass: 1.1,
+        idleSpeed: 0.065,
+        idleAmplitude: 8
       },
 
-
       {
-        index:
-          10,
-
-        name:
-          'Scared',
-
-        idleType:
-          'tremble',
-
-        mass:
-          0.85,
-
-        idleSpeed:
-          0.070,
-
-        idleAmplitude:
-          3
-
+        index: 10,
+        name: 'Scared',
+        idleType: 'tremble',
+        mass: 0.85,
+        idleSpeed: 0.070,
+        idleAmplitude: 3
       },
 
-
       {
-        index:
-          11,
-
-        name:
-          'Cool 2',
-
-        idleType:
-          'sway',
-
-        mass:
-          1.0,
-
-        idleSpeed:
-          0.045,
-
-        idleAmplitude:
-          6
-
+        index: 11,
+        name: 'Cool 2',
+        idleType: 'sway',
+        mass: 1.0,
+        idleSpeed: 0.045,
+        idleAmplitude: 6
       },
 
-
       {
-        index:
-          12,
-
-        name:
-          'Angel',
-
-        idleType:
-          'float',
-
-        mass:
-          0.8,
-
-        idleSpeed:
-          0.035,
-
-        idleAmplitude:
-          8
-
+        index: 12,
+        name: 'Angel',
+        idleType: 'float',
+        mass: 0.8,
+        idleSpeed: 0.035,
+        idleAmplitude: 8
       },
 
-
       {
-        index:
-          13,
-
-        name:
-          'Sad',
-
-        idleType:
-          'droop',
-
-        mass:
-          1.15,
-
-        idleSpeed:
-          0.040,
-
-        idleAmplitude:
-          5
-
+        index: 13,
+        name: 'Sad',
+        idleType: 'droop',
+        mass: 1.15,
+        idleSpeed: 0.040,
+        idleAmplitude: 5
       },
 
-
       {
-        index:
-          14,
-
-        name:
-          'Nerd',
-
-        idleType:
-          'twitch',
-
-        mass:
-          0.9,
-
-        idleSpeed:
-          0.070,
-
-        idleAmplitude:
-          3
-
+        index: 14,
+        name: 'Nerd',
+        idleType: 'twitch',
+        mass: 0.9,
+        idleSpeed: 0.070,
+        idleAmplitude: 3
       },
 
-
       {
-        index:
-          15,
-
-        name:
-          'Frustrated',
-
-        idleType:
-          'shake',
-
-        mass:
-          1.1,
-
-        idleSpeed:
-          0.060,
-
-        idleAmplitude:
-          4
-
+        index: 15,
+        name: 'Frustrated',
+        idleType: 'shake',
+        mass: 1.1,
+        idleSpeed: 0.060,
+        idleAmplitude: 4
       },
 
-
       {
-        index:
-          16,
-
-        name:
-          'Tongue',
-
-        idleType:
-          'playful',
-
-        mass:
-          0.95,
-
-        idleSpeed:
-          0.060,
-
-        idleAmplitude:
-          7
-
+        index: 16,
+        name: 'Tongue',
+        idleType: 'playful',
+        mass: 0.95,
+        idleSpeed: 0.060,
+        idleAmplitude: 7
       },
 
-
       {
-        index:
-          17,
-
-        name:
-          'Kiss',
-
-        idleType:
-          'bob',
-
-        mass:
-          0.85,
-
-        idleSpeed:
-          0.050,
-
-        idleAmplitude:
-          6
-
+        index: 17,
+        name: 'Kiss',
+        idleType: 'bob',
+        mass: 0.85,
+        idleSpeed: 0.050,
+        idleAmplitude: 6
       },
 
-
       {
-        index:
-          18,
-
-        name:
-          'Cold',
-
-        idleType:
-          'shiver',
-
-        mass:
-          1.05,
-
-        idleSpeed:
-          0.075,
-
-        idleAmplitude:
-          3
-
+        index: 18,
+        name: 'Cold',
+        idleType: 'shiver',
+        mass: 1.05,
+        idleSpeed: 0.075,
+        idleAmplitude: 3
       },
 
-
       {
-        index:
-          19,
-
-        name:
-          'Melting',
-
-        idleType:
-          'droop',
-
-        mass:
-          1.0,
-
-        idleSpeed:
-          0.040,
-
-        idleAmplitude:
-          5
-
+        index: 19,
+        name: 'Melting',
+        idleType: 'droop',
+        mass: 1.0,
+        idleSpeed: 0.040,
+        idleAmplitude: 5
       },
 
-
       {
-        index:
-          20,
-
-        name:
-          'Grinning',
-
-        idleType:
-          'bounce',
-
-        mass:
-          0.9,
-
-        idleSpeed:
-          0.060,
-
-        idleAmplitude:
-          7
-
+        index: 20,
+        name: 'Grinning',
+        idleType: 'bounce',
+        mass: 0.9,
+        idleSpeed: 0.060,
+        idleAmplitude: 7
       },
 
-
       {
-        index:
-          21,
-
-        name:
-          'Winking',
-
-        idleType:
-          'tilt',
-
-        mass:
-          1.0,
-
-        idleSpeed:
-          0.050,
-
-        idleAmplitude:
-          6
-
+        index: 21,
+        name: 'Winking',
+        idleType: 'tilt',
+        mass: 1.0,
+        idleSpeed: 0.050,
+        idleAmplitude: 6
       },
 
-
       {
-        index:
-          22,
-
-        name:
-          'Neutral',
-
-        idleType:
-          'sway',
-
-        mass:
-          1.05,
-
-        idleSpeed:
-          0.038,
-
-        idleAmplitude:
-          5
-
+        index: 22,
+        name: 'Neutral',
+        idleType: 'sway',
+        mass: 1.05,
+        idleSpeed: 0.038,
+        idleAmplitude: 5
       },
 
-
       {
-        index:
-          23,
-
-        name:
-          'Slight Smile',
-
-        idleType:
-          'drift',
-
-        mass:
-          0.92,
-
-        idleSpeed:
-          0.045,
-
-        idleAmplitude:
-          6
-
+        index: 23,
+        name: 'Slight Smile',
+        idleType: 'drift',
+        mass: 0.92,
+        idleSpeed: 0.045,
+        idleAmplitude: 6
       }
 
     ];
