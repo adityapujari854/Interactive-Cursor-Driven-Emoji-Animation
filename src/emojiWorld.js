@@ -80,6 +80,8 @@ export class EmojiWorld {
    * Create PixiJS application
    */
   async _createPixiApp() {
+    console.log('[Emoji World] Creating PixiJS Application...');
+    
     this.app = new PIXI.Application({
       canvas: this.canvas,
       width: this.width,
@@ -91,11 +93,17 @@ export class EmojiWorld {
       sharedTicker: false
     });
 
+    console.log('[Emoji World] PixiJS app created');
+    console.log('[Emoji World] Renderer:', this.app.renderer ? 'initialized' : 'NOT initialized');
+    console.log('[Emoji World] Canvas:', this.app.canvas ? 'attached' : 'NOT attached');
+    
     // Create custom ticker for better control
     this.ticker = new PIXI.Ticker();
     this.ticker.speed = 1;
     this.ticker.start();
 
+    console.log('[Emoji World] Custom ticker started');
+    
     window.addEventListener('resize', () => this._onWindowResize());
   }
 
@@ -112,6 +120,8 @@ export class EmojiWorld {
    * Load emoji assets
    */
   async _loadAssets() {
+    console.log('[Emoji World] Loading 24 emoji textures from /assets/emojis/...');
+    
     const assets = [];
     for (let i = 1; i <= 24; i++) {
       assets.push({
@@ -122,9 +132,9 @@ export class EmojiWorld {
 
     try {
       await PIXI.Assets.load(assets);
+      console.log('[Emoji World] ✓ All 24 emoji textures loaded successfully');
     } catch (error) {
-      console.error('Failed to load emoji assets:', error);
-      console.warn('Attempting to load from public path...');
+      console.warn('[Emoji World] Primary load failed, trying fallback path:', error);
       
       // Fallback: try loading from public
       const fallbackAssets = [];
@@ -134,7 +144,14 @@ export class EmojiWorld {
           src: `/assets/emojis/512 (${i}).webp`
         });
       }
-      await PIXI.Assets.load(fallbackAssets);
+      
+      try {
+        await PIXI.Assets.load(fallbackAssets);
+        console.log('[Emoji World] ✓ All 24 emoji textures loaded from fallback path');
+      } catch (fallbackError) {
+        console.error('[Emoji World] ✗ Failed to load emoji assets from both paths:', fallbackError);
+        throw fallbackError;
+      }
     }
   }
 
@@ -164,6 +181,7 @@ export class EmojiWorld {
 
     // Create emojis and cubes
     this._createEmojisAndCubes();
+    console.log(`[Emoji World] Created ${this.emojis.length} emojis and ${this.cubes.length} glass cubes`);
 
     // Adjust quality based on device
     this._adjustQualitySettings();
@@ -446,40 +464,61 @@ export class EmojiWorld {
    * Update frame
    */
   _updateFrame(delta) {
-    const dt = delta.deltaTime || 1;
+    try {
+      const dt = delta.deltaTime || 1;
 
-    // Update shake timer
-    if (this.isShaking && !this.isRecovering) {
-      this.shakeRecoveryTime -= dt;
-      if (this.shakeRecoveryTime <= 0) {
-        this._returnEmojis();
-      }
-    }
-
-    // Update physics
-    this.physics.update(dt);
-
-    // Update emojis
-    this.emojis.forEach((emoji) => {
-      if (emoji.isFlying) {
-        if (this.isRecovering) {
-          // Flying back animation
-          this._updateFlyingBackAnimation(emoji, dt);
-        } else {
-          // Falling animation
-          this._updateFallingAnimation(emoji, dt);
+      // Update shake timer
+      if (this.isShaking && !this.isRecovering) {
+        this.shakeRecoveryTime -= dt;
+        if (this.shakeRecoveryTime <= 0) {
+          this._returnEmojis();
         }
-      } else {
-        // Idle animation
-        this._updateIdleAnimation(emoji, dt);
       }
-    });
 
-    // Handle window resize
-    if (this.app.renderer.width !== this.width || this.app.renderer.height !== this.height) {
-      this.width = window.innerWidth;
-      this.height = window.innerHeight;
-      this.app.renderer.resize(this.width, this.height);
+      // Update physics
+      if (this.physics) {
+        this.physics.update(dt);
+      }
+
+      // Update emojis with error handling
+      if (this.emojis && Array.isArray(this.emojis)) {
+        this.emojis.forEach((emoji) => {
+          try {
+            if (!emoji) return; // Skip if emoji is null/undefined
+
+            if (emoji.isFlying) {
+              if (this.isRecovering) {
+                // Flying back animation
+                this._updateFlyingBackAnimation(emoji, dt);
+              } else {
+                // Falling animation
+                this._updateFallingAnimation(emoji, dt);
+              }
+            } else {
+              // Idle animation
+              this._updateIdleAnimation(emoji, dt);
+            }
+          } catch (err) {
+            console.error('[Emoji World] Error updating emoji:', err);
+            // Continue to next emoji instead of crashing
+          }
+        });
+      }
+
+      // Handle window resize (with defensive checks)
+      if (this.app && this.app.renderer && this.app.canvas) {
+        const rendererWidth = this.app.canvas.width;
+        const rendererHeight = this.app.canvas.height;
+        
+        if (rendererWidth !== this.width || rendererHeight !== this.height) {
+          this.width = window.innerWidth;
+          this.height = window.innerHeight;
+          this.app.renderer.resize(this.width, this.height);
+        }
+      }
+    } catch (err) {
+      console.error('[Emoji World] Error in update frame:', err);
+      // Continue animation loop even if frame update fails
     }
   }
 
@@ -487,6 +526,11 @@ export class EmojiWorld {
    * Update idle animation
    */
   _updateIdleAnimation(emoji, dt) {
+    // Defensive checks
+    if (!emoji || !emoji.config || !emoji.scale || dt <= 0) {
+      return;
+    }
+
     const config = emoji.config;
     emoji.idleTime += config.idleSpeed * dt;
 
@@ -561,18 +605,42 @@ export class EmojiWorld {
   }
 
   /**
-   * Add mouse proximity effect
+   * Add mouse proximity effect (lightweight sprite-only)
+   * Uses only sprite properties: position, scale, alpha
+   * Does NOT use filters or renderer properties
    */
   _addMouseProximityEffect(emoji) {
-    const dx = this.mouse.x - emoji.x * this.app.renderer.resolution;
-    const dy = this.mouse.y - emoji.y * this.app.renderer.resolution;
+    // Guard: if emoji or required properties don't exist, skip
+    if (!emoji || !this.mouse) return;
+
+    // Use emoji world coordinates directly (no renderer conversion needed)
+    const emojiScreenX = emoji.x;
+    const emojiScreenY = emoji.y;
+    
+    const dx = this.mouse.x - emojiScreenX;
+    const dy = this.mouse.y - emojiScreenY;
     const distance = Math.sqrt(dx * dx + dy * dy);
-    const proximityRange = 200;
+    const proximityRange = 250; // pixels
 
     if (distance < proximityRange && distance > 0) {
-      const force = (1 - distance / proximityRange) * 15;
-      emoji.x += (dx / distance) * force * 0.01;
-      emoji.y += (dy / distance) * force * 0.01;
+      // Normalize distance: 0 (very close) to 1 (at range edge)
+      const proximity = 1 - (distance / proximityRange);
+
+      // Pull emoji slightly toward cursor
+      const pullForce = proximity * 8; // max 8 pixels
+      emoji.x += (dx / distance) * pullForce * 0.02;
+      emoji.y += (dy / distance) * pullForce * 0.02;
+
+      // Slight scale increase when near cursor
+      const targetScale = 0.4 + proximity * 0.08; // 0.4 to 0.48
+      emoji.scale.set(0.4 + (targetScale - 0.4) * 0.1); // lerp with damping
+
+      // Slight brightness increase
+      emoji.alpha = Math.min(1, 0.95 + proximity * 0.1);
+    } else {
+      // Return to normal state when far
+      emoji.scale.set(0.4);
+      emoji.alpha = 0.95;
     }
   }
 
