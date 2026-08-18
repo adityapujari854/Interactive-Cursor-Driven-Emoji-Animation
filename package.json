@@ -12,7 +12,8 @@
     "serve": "npm run build && npm run preview"
   },
   "devDependencies": {
-    "vite": "^8.2.1"
+    "vite": "^8.2.1",
+    "terser": "^5.31.0"
   },
   "dependencies": {
     "pixi.js": "^8.19.0"
