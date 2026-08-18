@@ -1,0 +1,1673 @@
+/* ============================================================
+   INTERACTIVE 3D EMOJI WORLD
+   MOBILE PERFORMANCE OPTIMIZED
+   Target: Snapdragon 888 / Adreno 660 class
+   ============================================================ */
+
+
+/* ============================================================
+   RESET
+   ============================================================ */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+
+html {
+    width: 100%;
+    height: 100%;
+
+    overflow: hidden;
+
+    background: #f7f9fc;
+}
+
+
+body {
+    width: 100%;
+    height: 100%;
+
+    overflow: hidden;
+
+    background: #f7f9fc;
+
+    color: #475569;
+
+    font-family:
+        Inter,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+
+    -webkit-font-smoothing: antialiased;
+
+    text-rendering: optimizeSpeed;
+
+    overscroll-behavior: none;
+
+    touch-action: none;
+}
+
+
+/* ============================================================
+   MAIN SCENE
+   ============================================================ */
+
+.scene {
+
+    --cursor-x: 50vw;
+    --cursor-y: 50vh;
+
+    position: relative;
+
+    width: 100%;
+    height: 100%;
+
+    overflow: hidden;
+
+    isolation: isolate;
+
+    background:
+        radial-gradient(
+            circle at 50% 35%,
+            #ffffff 0%,
+            #fafbfd 48%,
+            #f1f5f9 100%
+        );
+
+    contain: layout paint style;
+
+    transform: translateZ(0);
+
+    -webkit-tap-highlight-color: transparent;
+}
+
+
+/* ============================================================
+   STATIC BACKGROUND GLOW
+   ============================================================
+
+   IMPORTANT:
+   This is intentionally static.
+   Do NOT animate this with the cursor.
+   ============================================================ */
+
+.background-glow {
+
+    position: absolute;
+
+    inset: 0;
+
+    z-index: -2;
+
+    pointer-events: none;
+
+    background:
+        radial-gradient(
+            circle at 50% 40%,
+            rgba(255, 237, 170, 0.14),
+            transparent 48%
+        );
+
+    contain: strict;
+}
+
+
+/* ============================================================
+   HEADER
+   ============================================================ */
+
+.world-header {
+
+    position: absolute;
+
+    top: 24px;
+    right: 28px;
+
+    z-index: 20;
+
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 14px;
+
+    pointer-events: none;
+}
+
+
+.theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+
+    padding: 9px 14px;
+
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 999px;
+
+    background: rgba(255, 255, 255, 0.7);
+    color: #475569;
+
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+
+    cursor: pointer;
+    pointer-events: auto;
+
+    transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.theme-toggle:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 20px rgba(15, 23, 42, 0.12);
+}
+
+.theme-toggle:focus-visible {
+    outline: 2px solid rgba(96, 165, 250, 0.85);
+    outline-offset: 3px;
+}
+
+.theme-toggle-icon {
+    display: inline-grid;
+    place-items: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.82);
+    font-size: 9px;
+}
+
+
+.brand {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 11px;
+}
+
+
+.brand-icon {
+
+    width: 38px;
+    height: 38px;
+
+    display: grid;
+
+    place-items: center;
+
+    border-radius: 50%;
+
+    background: #ffffff;
+
+    border:
+        1px solid
+        rgba(148, 163, 184, 0.16);
+
+    box-shadow:
+        0 5px 14px
+        rgba(15, 23, 42, 0.07);
+
+    font-size: 18px;
+
+    transform: translateZ(0);
+}
+
+
+.brand-text h1 {
+
+    font-size: 16px;
+
+    line-height: 1.1;
+
+    font-weight: 700;
+
+    letter-spacing: -0.02em;
+
+    color: #475569;
+}
+
+
+.brand-text p {
+
+    margin-top: 4px;
+
+    font-size: 8px;
+
+    line-height: 1;
+
+    font-weight: 700;
+
+    letter-spacing: 0.14em;
+
+    color: #94a3b8;
+}
+
+
+/* ============================================================
+   EMOJI WORLD
+   ============================================================ */
+
+.emoji-world {
+
+    position: absolute;
+
+    inset: 0;
+
+    padding:
+        88px
+        38px
+        65px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    contain: layout;
+}
+
+
+/* ============================================================
+   EMOJI GRID
+   ============================================================ */
+
+.emoji-grid {
+
+    width: min(
+        1180px,
+        100%
+    );
+
+    height: 100%;
+
+    display: grid;
+
+    grid-template-columns:
+        repeat(
+            6,
+            minmax(
+                100px,
+                1fr
+            )
+        );
+
+    grid-template-rows:
+        repeat(
+            4,
+            minmax(
+                110px,
+                1fr
+            )
+        );
+
+    column-gap: 18px;
+
+    row-gap: 12px;
+
+    align-items: center;
+
+    justify-items: center;
+
+    contain: layout;
+
+    /*
+     * Prevent browser from unnecessarily
+     * painting outside the grid.
+     */
+    overflow: visible;
+}
+
+
+/* ============================================================
+   EMOJI CARD
+   ============================================================ */
+
+.emoji-card {
+
+    position: relative;
+
+    width: 135px;
+    height: 145px;
+
+    display: flex;
+
+    align-items: flex-end;
+
+    justify-content: center;
+
+    /*
+     * Only transform is updated by JS.
+     */
+    transform:
+        translate3d(
+            var(--push-x, 0px),
+            var(--push-y, 0px),
+            0
+        );
+
+    /*
+     * Keep animation on compositor.
+     */
+    will-change: transform;
+
+    contain: layout style;
+
+    /*
+     * Avoid expensive transitions
+     * fighting requestAnimationFrame.
+     */
+    transition: none;
+}
+
+
+/* ============================================================
+   EMOJI CHARACTER
+   ============================================================ */
+
+.emoji-character {
+
+    position: absolute;
+
+    left: 50%;
+
+    bottom: 37px;
+
+    width: 102px;
+    height: 102px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    transform:
+        translate3d(
+            -50%,
+            var(--breath, 0px),
+            0
+        )
+        rotate(
+            var(--emoji-rotation, 0deg)
+        )
+        scale(
+            var(--emoji-scale, 1)
+        );
+
+    /*
+     * The emoji itself is frequently animated,
+     * so promote only this layer.
+     */
+    will-change: transform;
+
+    contain: layout paint;
+
+    pointer-events: none;
+}
+
+
+/* ============================================================
+   EMOJI IMAGE
+   ============================================================ */
+
+.emoji-visual {
+
+    display: block;
+
+    width: 100%;
+    height: 100%;
+
+    object-fit: contain;
+
+    user-select: none;
+
+    pointer-events: none;
+
+    -webkit-user-drag: none;
+
+    /*
+     * One static shadow only.
+     *
+     * Avoid filter: drop-shadow()
+     * because it can be expensive with
+     * 24 moving images on mobile GPUs.
+     */
+    filter: none;
+
+    transform:
+        translateZ(0);
+
+    backface-visibility: hidden;
+
+    contain: strict;
+}
+
+
+/* ============================================================
+   GLASS PLATFORM
+   ============================================================ */
+
+.glass-platform {
+
+    position: absolute;
+
+    left: 50%;
+
+    bottom: 8px;
+
+    width: 118px;
+    height: 27px;
+
+    transform:
+        translate3d(
+            -50%,
+            0,
+            0
+        )
+        perspective(250px)
+        rotateX(58deg);
+
+    border-radius: 50%;
+
+    /*
+     * Solid translucent-looking gradient
+     * instead of backdrop-filter.
+     */
+    background:
+        linear-gradient(
+            180deg,
+            rgba(255, 255, 255, 0.96),
+            rgba(226, 232, 240, 0.78)
+        );
+
+    border:
+        1px solid
+        rgba(255, 255, 255, 0.95);
+
+    /*
+     * Single low-cost shadow.
+     */
+    box-shadow:
+        0 7px 12px
+        rgba(71, 85, 105, 0.13);
+
+    pointer-events: none;
+
+    will-change: transform;
+
+    contain: paint;
+}
+
+
+/* ============================================================
+   PLATFORM INNER HIGHLIGHT
+   ============================================================ */
+
+.glass-platform::before {
+
+    content: "";
+
+    position: absolute;
+
+    inset: 3px;
+
+    border-radius: 50%;
+
+    background:
+        linear-gradient(
+            180deg,
+            rgba(255, 255, 255, 0.95),
+            rgba(255, 255, 255, 0.25)
+        );
+
+    pointer-events: none;
+}
+
+
+/* ============================================================
+   PLATFORM SHINE
+   ============================================================ */
+
+.glass-platform::after {
+
+    content: "";
+
+    position: absolute;
+
+    left: 20%;
+
+    top: 5px;
+
+    width: 42%;
+
+    height: 3px;
+
+    border-radius: 50%;
+
+    background:
+        rgba(255, 255, 255, 0.9);
+
+    pointer-events: none;
+}
+
+
+/* ============================================================
+   EMOJI CONTACT SHADOW
+   ============================================================ */
+
+.emoji-character::after {
+
+    content: "";
+
+    position: absolute;
+
+    left: 50%;
+
+    bottom: -6px;
+
+    width: 65px;
+    height: 12px;
+
+    transform:
+        translate3d(
+            -50%,
+            0,
+            0
+        );
+
+    border-radius: 50%;
+
+    background:
+        rgba(15, 23, 42, 0.12);
+
+    /*
+     * Very small blur only.
+     */
+    filter:
+        blur(4px);
+
+    opacity: 0.65;
+
+    pointer-events: none;
+}
+
+
+/* ============================================================
+   CURSOR RESPONSE
+   ============================================================ */
+
+.emoji-card.near-cursor
+.emoji-character {
+
+    /*
+     * JS already controls position.
+     * This class only changes a cheap
+     * transform variable.
+     */
+}
+
+
+/* ============================================================
+   CURSOR LIGHT
+   ============================================================ */
+
+.cursor-light {
+
+    position: fixed;
+
+    left: var(--cursor-x);
+
+    top: var(--cursor-y);
+
+    width: 20px;
+    height: 20px;
+
+    transform:
+        translate3d(
+            -50%,
+            -50%,
+            0
+        );
+
+    pointer-events: none;
+
+    z-index: 100;
+
+    will-change:
+        transform;
+
+    contain: strict;
+}
+
+
+/* ============================================================
+   CURSOR CORE
+   ============================================================ */
+
+.cursor-light-core {
+
+    position: absolute;
+
+    left: 50%;
+    top: 50%;
+
+    width: 10px;
+    height: 10px;
+
+    transform:
+        translate3d(
+            -50%,
+            -50%,
+            0
+        );
+
+    border-radius: 50%;
+
+    background: #ffffff;
+
+    border:
+        2px solid
+        rgba(255, 255, 255, 0.95);
+
+    box-shadow:
+        0 0 8px
+        rgba(255, 214, 90, 0.85);
+
+    contain: strict;
+}
+
+
+/* ============================================================
+   CURSOR HALO
+   ============================================================
+
+   Small and static-sized.
+   No large animated blur.
+   ============================================================ */
+
+.cursor-light-halo {
+
+    position: absolute;
+
+    left: 50%;
+    top: 50%;
+
+    width: 48px;
+    height: 48px;
+
+    transform:
+        translate3d(
+            -50%,
+            -50%,
+            0
+        );
+
+    border-radius: 50%;
+
+    background:
+        radial-gradient(
+            circle,
+            rgba(255, 224, 120, 0.22),
+            rgba(255, 224, 120, 0.04) 50%,
+            transparent 72%
+        );
+
+    pointer-events: none;
+
+    contain: strict;
+}
+
+
+/* ============================================================
+   REACTION LAYER
+   ============================================================ */
+
+.reaction-layer {
+
+    position: fixed;
+
+    inset: 0;
+
+    overflow: hidden;
+
+    pointer-events: none;
+
+    z-index: 150;
+
+    contain: strict;
+}
+
+
+/* ============================================================
+   REACTION
+   ============================================================ */
+
+.reaction {
+
+    position: fixed;
+
+    left: var(--reaction-x);
+
+    top: var(--reaction-y);
+
+    font-size: 18px;
+
+    pointer-events: none;
+
+    animation:
+        reactionFloat
+        900ms
+        ease-out
+        forwards;
+
+    /*
+     * Only opacity + transform animate.
+     */
+    will-change:
+        transform,
+        opacity;
+
+    contain: strict;
+}
+
+
+@keyframes reactionFloat {
+
+    0% {
+
+        opacity: 0;
+
+        transform:
+            translate3d(
+                -50%,
+                -50%,
+                0
+            )
+            scale(0.7);
+    }
+
+    20% {
+
+        opacity: 1;
+
+        transform:
+            translate3d(
+                -50%,
+                -50%,
+                0
+            )
+            scale(1);
+    }
+
+    100% {
+
+        opacity: 0;
+
+        transform:
+            translate3d(
+                calc(
+                    -50% +
+                    var(--reaction-dx)
+                ),
+                calc(
+                    -50% +
+                    var(--reaction-dy)
+                ),
+                0
+            )
+            scale(0.85);
+    }
+}
+
+
+/* ============================================================
+   STATUS
+   ============================================================ */
+
+.interaction-status {
+
+    position: absolute;
+
+    left: 50%;
+
+    bottom: 18px;
+
+    transform:
+        translate3d(
+            -50%,
+            0,
+            0
+        );
+
+    z-index: 30;
+
+    padding:
+        8px
+        14px;
+
+    border-radius: 999px;
+
+    /*
+     * No backdrop-filter.
+     */
+    background:
+        rgba(255, 255, 255, 0.94);
+
+    border:
+        1px solid
+        rgba(148, 163, 184, 0.16);
+
+    box-shadow:
+        0 4px 12px
+        rgba(71, 85, 105, 0.07);
+
+    font-size: 11px;
+
+    font-weight: 500;
+
+    color: #64748b;
+
+    white-space: nowrap;
+
+    pointer-events: none;
+}
+
+
+/* ============================================================
+   DISABLE SELECTION
+   ============================================================ */
+
+.emoji-world,
+.emoji-grid,
+.emoji-card,
+.emoji-character,
+.emoji-visual,
+.glass-platform {
+
+    user-select: none;
+
+    -webkit-user-select: none;
+}
+
+
+/* ============================================================
+   DESKTOP
+   ============================================================ */
+
+@media (min-width: 1200px) {
+
+    .emoji-grid {
+
+        width: min(
+            1180px,
+            100%
+        );
+
+        column-gap: 22px;
+
+        row-gap: 15px;
+    }
+
+
+    .emoji-card {
+
+        width: 140px;
+
+        height: 150px;
+    }
+
+
+    .emoji-character {
+
+        width: 105px;
+
+        height: 105px;
+    }
+
+
+    .glass-platform {
+
+        width: 122px;
+    }
+}
+
+
+/* ============================================================
+   SMALL LAPTOP
+   ============================================================ */
+
+@media (
+    min-width: 900px
+) and (
+    max-width: 1199px
+) {
+
+    .emoji-world {
+
+        padding:
+            82px
+            22px
+            60px;
+    }
+
+
+    .emoji-grid {
+
+        column-gap: 8px;
+
+        row-gap: 8px;
+    }
+
+
+    .emoji-card {
+
+        width: 120px;
+
+        height: 135px;
+    }
+
+
+    .emoji-character {
+
+        width: 90px;
+
+        height: 90px;
+
+        bottom: 34px;
+    }
+
+
+    .glass-platform {
+
+        width: 105px;
+
+        height: 24px;
+    }
+
+
+    .world-header {
+
+        top: 20px;
+
+        left: 22px;
+    }
+}
+
+
+/* ============================================================
+   TABLET
+   ============================================================ */
+
+@media (
+    min-width: 600px
+) and (
+    max-width: 899px
+) {
+
+    html,
+    body {
+
+        overflow: auto;
+    }
+
+
+    body {
+
+        touch-action: pan-y;
+    }
+
+
+    .scene {
+
+        min-height: 900px;
+
+        height: auto;
+    }
+
+
+    .emoji-world {
+
+        position: relative;
+
+        inset: auto;
+
+        min-height: 900px;
+
+        padding:
+            100px
+            18px
+            80px;
+    }
+
+
+    .emoji-grid {
+
+        height: auto;
+
+        grid-template-columns:
+            repeat(
+                4,
+                minmax(
+                    95px,
+                    1fr
+                )
+            );
+
+        grid-template-rows:
+            repeat(
+                6,
+                135px
+            );
+
+        gap: 12px;
+    }
+
+
+    .emoji-card {
+
+        width: 112px;
+
+        height: 130px;
+    }
+
+
+    .emoji-character {
+
+        width: 84px;
+
+        height: 84px;
+
+        bottom: 33px;
+    }
+
+
+    .glass-platform {
+
+        width: 100px;
+
+        height: 23px;
+    }
+
+
+    .world-header {
+
+        top: 20px;
+
+        left: 20px;
+    }
+}
+
+
+/* ============================================================
+   MOBILE
+   ============================================================ */
+
+@media (max-width: 599px) {
+
+    html,
+    body {
+
+        width: 100%;
+
+        height: 100%;
+
+        overflow: hidden;
+    }
+
+
+    body {
+
+        touch-action: none;
+    }
+
+
+    .scene {
+
+        width: 100vw;
+
+        height: 100dvh;
+
+        min-height: 0;
+
+        overflow: hidden;
+    }
+
+
+    /* --------------------------------------------------------
+       HEADER
+       -------------------------------------------------------- */
+
+    .world-header {
+
+        top: 14px;
+
+        left: 15px;
+    }
+
+
+    .brand {
+
+        gap: 8px;
+    }
+
+
+    .brand-icon {
+
+        width: 31px;
+
+        height: 31px;
+
+        font-size: 15px;
+    }
+
+
+    .brand-text h1 {
+
+        font-size: 13px;
+    }
+
+
+    .brand-text p {
+
+        font-size: 7px;
+
+        letter-spacing: 0.11em;
+    }
+
+
+    /* --------------------------------------------------------
+       WORLD
+       -------------------------------------------------------- */
+
+    .emoji-world {
+
+        position: absolute;
+
+        inset: 0;
+
+        padding:
+            68px
+            7px
+            45px;
+    }
+
+
+    /* --------------------------------------------------------
+       3 COLUMN MOBILE GRID
+       -------------------------------------------------------- */
+
+    .emoji-grid {
+
+        width: 100%;
+
+        height: 100%;
+
+        grid-template-columns:
+            repeat(
+                3,
+                minmax(
+                    0,
+                    1fr
+                )
+            );
+
+        grid-template-rows:
+            repeat(
+                8,
+                minmax(
+                    70px,
+                    1fr
+                )
+            );
+
+        column-gap: 2px;
+
+        row-gap: 3px;
+
+        align-items: center;
+    }
+
+
+    /* --------------------------------------------------------
+       MOBILE CARD
+       -------------------------------------------------------- */
+
+    .emoji-card {
+
+        width: 100%;
+
+        height: 100%;
+
+        min-width: 0;
+
+        min-height: 70px;
+
+        /*
+         * Important:
+         * only one composited transform layer.
+         */
+        will-change: transform;
+    }
+
+
+    /* --------------------------------------------------------
+       MOBILE EMOJI
+       -------------------------------------------------------- */
+
+    .emoji-character {
+
+        width:
+            clamp(
+                58px,
+                21vw,
+                78px
+            );
+
+        height:
+            clamp(
+                58px,
+                21vw,
+                78px
+            );
+
+        bottom:
+            clamp(
+                24px,
+                6vw,
+                31px
+            );
+    }
+
+
+    /* --------------------------------------------------------
+       MOBILE PLATFORM
+       -------------------------------------------------------- */
+
+    .glass-platform {
+
+        width:
+            clamp(
+                68px,
+                25vw,
+                91px
+            );
+
+        height:
+            clamp(
+                18px,
+                6vw,
+                23px
+            );
+
+        bottom: 5px;
+
+        /*
+         * Reduce shadow complexity.
+         */
+        box-shadow:
+            0 4px 8px
+            rgba(
+                71,
+                85,
+                105,
+                0.11
+            );
+    }
+
+
+    /* --------------------------------------------------------
+       CONTACT SHADOW
+       -------------------------------------------------------- */
+
+    .emoji-character::after {
+
+        width: 48px;
+
+        height: 8px;
+
+        bottom: -4px;
+
+        /*
+         * Remove blur on small screens.
+         */
+        filter: none;
+
+        background:
+            rgba(
+                15,
+                23,
+                42,
+                0.08
+            );
+    }
+
+
+    /* --------------------------------------------------------
+       CURSOR
+       -------------------------------------------------------- */
+
+    .cursor-light {
+
+        width: 16px;
+
+        height: 16px;
+    }
+
+
+    .cursor-light-core {
+
+        width: 8px;
+
+        height: 8px;
+
+        border-width: 1px;
+
+        box-shadow:
+            0 0 6px
+            rgba(
+                255,
+                214,
+                90,
+                0.8
+            );
+    }
+
+
+    .cursor-light-halo {
+
+        width: 36px;
+
+        height: 36px;
+
+        background:
+            radial-gradient(
+                circle,
+                rgba(
+                    255,
+                    224,
+                    120,
+                    0.18
+                ),
+                transparent 70%
+            );
+    }
+
+
+    /* --------------------------------------------------------
+       STATUS
+       -------------------------------------------------------- */
+
+    .interaction-status {
+
+        bottom: 9px;
+
+        max-width:
+            calc(
+                100% - 24px
+            );
+
+        padding:
+            6px
+            11px;
+
+        font-size: 9px;
+
+        overflow: hidden;
+
+        text-overflow: ellipsis;
+    }
+
+
+    /* --------------------------------------------------------
+       REMOVE DESKTOP-ONLY VISUAL COST
+       -------------------------------------------------------- */
+
+    .background-glow {
+
+        background:
+            radial-gradient(
+                circle at 50% 35%,
+                rgba(
+                    255,
+                    237,
+                    170,
+                    0.10
+                ),
+                transparent 52%
+            );
+    }
+}
+
+
+/* ============================================================
+   VERY SMALL PHONES
+   ============================================================ */
+
+@media (max-width: 380px) {
+
+    .emoji-world {
+
+        padding:
+            63px
+            3px
+            42px;
+    }
+
+
+    .emoji-grid {
+
+        column-gap: 0;
+
+        row-gap: 1px;
+    }
+
+
+    .emoji-character {
+
+        width:
+            clamp(
+                52px,
+                20vw,
+                68px
+            );
+
+        height:
+            clamp(
+                52px,
+                20vw,
+                68px
+            );
+
+        bottom: 22px;
+    }
+
+
+    .glass-platform {
+
+        width:
+            clamp(
+                62px,
+                24vw,
+                78px
+            );
+
+        height: 17px;
+    }
+
+
+    .brand-text p {
+
+        display: none;
+    }
+}
+
+
+/* ============================================================
+   LANDSCAPE MOBILE
+   ============================================================ */
+
+@media (
+    max-width: 900px
+) and (
+    orientation: landscape
+) {
+
+    .emoji-world {
+
+        padding:
+            54px
+            15px
+            32px;
+    }
+
+
+    .emoji-grid {
+
+        grid-template-columns:
+            repeat(
+                6,
+                minmax(
+                    0,
+                    1fr
+                )
+            );
+
+        grid-template-rows:
+            repeat(
+                4,
+                minmax(
+                    60px,
+                    1fr
+                )
+            );
+
+        column-gap: 2px;
+
+        row-gap: 2px;
+    }
+
+
+    .emoji-character {
+
+        width: 55px;
+
+        height: 55px;
+
+        bottom: 20px;
+    }
+
+
+    .glass-platform {
+
+        width: 65px;
+
+        height: 17px;
+
+        bottom: 3px;
+    }
+
+
+    .interaction-status {
+
+        display: none;
+    }
+}
+
+
+/* ============================================================
+   REDUCED MOTION
+   ============================================================ */
+
+@media (
+    prefers-reduced-motion: reduce
+) {
+
+    *,
+    *::before,
+    *::after {
+
+        animation-duration:
+            0.01ms !important;
+
+        animation-iteration-count:
+            1 !important;
+
+        transition:
+            none !important;
+    }
+}
+
+
+/* ============================================================
+   LOW POWER / COARSE POINTER DEVICES
+   ============================================================ */
+
+@media (
+    pointer: coarse
+) {
+
+    /*
+     * Touch devices do not need hover
+     * effects or large cursor effects.
+     */
+
+    .emoji-card:hover
+    .emoji-visual {
+
+        transform: none;
+    }
+
+
+    .cursor-light-halo {
+
+        width: 32px;
+
+        height: 32px;
+    }
+}
+
+
+/* ============================================================
+   GPU / COMPOSITING SAFETY
+   ============================================================ */
+
+/*
+ * Do NOT add will-change to the entire grid,
+ * scene, body or all children.
+ *
+ * Only moving elements receive it.
+ */
+
+.emoji-card,
+.emoji-character,
+.cursor-light,
+.reaction {
+
+    backface-visibility: hidden;
+
+    -webkit-backface-visibility: hidden;
+}
+
+
+/* ============================================================
+   FINAL
+   ============================================================ */
+
+img {
+
+    max-width: 100%;
+}

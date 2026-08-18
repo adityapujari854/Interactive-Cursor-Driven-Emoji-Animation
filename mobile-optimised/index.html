@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    >
+
+    <meta
+        name="theme-color"
+        content="#f7fafc"
+    >
+
+    <meta
+        name="description"
+        content="Interactive 3D Emoji World"
+    >
+
+    <title>Interactive 3D Emoji World</title>
+
+    <!-- Performance hints -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+
+    <link
+        rel="preconnect"
+        href="https://fonts.gstatic.com"
+        crossorigin
+    >
+
+    <link
+        rel="stylesheet"
+        href="style.css"
+    >
+
+</head>
+
+
+<body>
+
+<main
+    id="scene"
+    class="scene"
+>
+
+
+    <!-- =====================================================
+         STATIC BACKGROUND
+         ===================================================== -->
+
+    <div
+        id="backgroundGlow"
+        class="background-glow"
+        aria-hidden="true"
+    ></div>
+
+
+    <!-- =====================================================
+         HEADER
+         ===================================================== -->
+
+    <header
+        class="world-header"
+    >
+
+        <button
+            id="animationToggle"
+            class="theme-toggle"
+            type="button"
+            aria-label="Switch to full animation view"
+        >
+            <span class="theme-toggle-icon" aria-hidden="true">✨</span>
+            <span>Reduced animation</span>
+        </button>
+
+        <div
+            class="brand"
+        >
+
+            <div
+                class="brand-icon"
+                aria-hidden="true"
+            >
+                ✨
+            </div>
+
+
+            <div
+                class="brand-text"
+            >
+
+                <h1>
+                    Emoji World
+                </h1>
+
+                <p>
+                    INTERACTIVE 3D CHARACTERS
+                </p>
+
+            </div>
+
+        </div>
+
+    </header>
+
+
+    <!-- =====================================================
+         EMOJI WORLD
+         ===================================================== -->
+
+    <section
+        id="emojiWorld"
+        class="emoji-world"
+        aria-label="Interactive emoji characters"
+    >
+
+        <div
+            id="emojiGrid"
+            class="emoji-grid"
+        >
+
+
+            <!-- =================================================
+                 01
+                 ================================================= -->
+
+            <article
+                class="emoji-card"
+                data-index="0"
+                data-animation="bounce"
+            >
+
+                <div
+                    class="emoji-character"
+                >
+
+                    <img
+                        class="emoji-visual"
+                        src="../assets/emojis/512 (1).webp"
+                        alt="Happy emoji"
+                        width="108"
+                        height="108"
+                        loading="eager"
+                        decoding="async"
+                        draggable="false"
+                    >
+
+                </div>
+
+
+                <div
+                    class="glass-platform"
+                    aria-hidden="true"
+                ></div>
+
+            </article>
+
+
+            <!-- =================================================
+                 02
+                 ================================================= -->
+
+            <article
+                class="emoji-card"
+                data-index="1"
+                data-animation="laugh"
+            >
+
+                <div
+                    class="emoji-character"
+                >
+
+                    <img
+                        class="emoji-visual"
+                        src="../assets/emojis/512 (2).webp"
+                        alt="Laughing emoji"
+                        width="108"
+                        height="108"
+                        loading="eager"
+                        decoding="async"
+                        draggable="false"
+                    >
+
+                </div>
+
+
+                <div
+                    class="glass-platform"
+                    aria-hidden="true"
+                ></div>
+
+            </article>
+
+
+            <!-- =================================================
+                 03
+                 ================================================= -->
+
+            <article
+                class="emoji-card"
+                data-index="2"
+                data-animation="pulse"
+            >
+
+                <div
+                    class="emoji-character"
+                >
+
+                    <img
+                        class="emoji-visual"
+                        src="../assets/emojis/512 (3).webp"
+                        alt="Love emoji"
+                        width="108"
+                        height="108"
+                        loading="eager"
+                        decoding="async"
+                        draggable="false"
+                    >
+
+                </div>
+
+
+                <div
+                    class="glass-platform"
+                    aria-hidden="true"
+                ></div>
+
+            </article>
+
+
+            <!-- =================================================
+                 04
+                 ================================================= -->
+
+            <article
+                class="emoji-card"
+                data-index="3"
+                data-animation="cool"
+            >
+
+                <div
+                    class="emoji-character"
+                >
+
+                    <img
+                        class="emoji-visual"
+                        src="../assets/emojis/512 (4).webp"
+                        alt="Cool emoji"
+                        width="108"
+                        height="108"
+                        loading="eager"
+                        decoding="async"
+                        draggable="false"
+                    >
+
+                </div>
+
+
+                <div
+                    class="glass-platform"
+                    aria-hidden="true"
+                ></div>
+
+            </article>
+
+
+            <!-- =================================================
+                 05
+                 ================================================= -->
+
+            <article
+                class="emoji-card"
+                data-index="4"
+                data-animation="thinking"
+            >
+
+                <div
+                    class="emoji-character"
+                >
+
+                    <img
+                        class="emoji-visual"
+                        src="../assets/emojis/512 (5).webp"
+                        alt="Thinking emoji"
+                        width="108"
+                        height="108"
+                        loading="eager"
+                        decoding="async"
+                        draggable="false"
+                    >
+
+                </div>
+
+
+                <div
+                    class="glass-platform"
+                    aria-hidden="true"
+                ></div>
+
+            </article>
+
+
+            <!-- =================================================
+                 06
+                 ================================================= -->
+
+            <article
+                class="emoji-card"
+                data-index="5"
+                data-animation="angry"
+            >
+
+                <div
+                    class="emoji-character"
+                >
+
+                    <img
+                        class="emoji-visual"
+                        src="../assets/emojis/512 (6).webp"
+                        alt="Angry emoji"
+                        width="108"
+                        height="108"
+                        loading="eager"
+                        decoding="async"
+                        draggable="false"
+                    >
+
+                </div>
+
+
+                <div
+                    class="glass-platform"
+                    aria-hidden="true"
+                ></div>
+
+            </article>
+
+
+            <!-- =================================================
+                 07
+                 ================================================= -->
+
+            <article
+                class="emoji-card"
+                data-index="6"
+                data-animation="party"
+            >
+
+                <div
+                    class="emoji-character"
+                >
+
+                    <img
+                        class="emoji-visual"
+                        src="../assets/emojis/512 (7).webp"
+                        alt="Party emoji"
+                        width="108"
+                        height="108"
+                        loading="eager"
+                        decoding="async"
+                        draggable="false"
+                    >
+
+                </div>
+
+
+                <div
+                    class="glass-platform"
+                    aria-hidden="true"
+                ></div>
+
+            </article>
+
+
+            <!-- =================================================
+                 08
+                 ================================================= -->
+
+            <article
+                class="emoji-card"
+                data-index="7"
+                data-animation="excited"
+            >
+
+                <div
+                    class="emoji-character"
+                >
+
+                    <img
+                        class="emoji-visual"
+                        src="../assets/emojis/512 (8).webp"
+                        alt="Excited emoji"
+                        width="108"
+                        height="108"
+                        loading="eager"
+                        decoding="async"
+                        draggable="false"
+                    >
+
+                </div>
+
+
+                <div
+                    class="glass-platform"
+                    aria-hidden="true"
+                ></div>
+
+            </article>
+
+
+            <!-- =================================================
+                 09
+                 ================================================= -->
+
+            <article
+                class="emoji-card"
+                data-index="8"
+                data-animation="sleepy"
+            >
+
+                <div
+                    class="emoji-character"
+                >
+
+                    <img
+                        class="emoji-visual"
+                        src="../assets/emojis/512 (9).webp"
+                        alt="Sleepy emoji"
+                        width="108"
+                        height="108"
+                        loading="eager"
+                        decoding="async"
+                        draggable="false"
+                    >
+
+                </div>
+
+
+                <div
+                    class="glass-platform"
+                    aria-hidden="true"
+                ></div>
+
+            </article>
+
+
+            <!-- =================================================
+                 10
+                 ================================================= -->
+
+            <article
+                class="emoji-card"
+                data-index="9"
+                data-animation="shock"
+            >
+
+                <div
+                    class="emoji-character"
+                >
+
+                    <img
+                        class="emoji-visual"
+                        src="../assets/emojis/512 (10).webp"
+                        alt="Shocked emoji"
+                        width="108"
+                        height="108"
+                        loading="eager"
+                        decoding="async"
+                        draggable="false"
+                    >
+
+                </div>
+
+
+                <div
+                    class="glass-platform"
+                    aria-hidden="true"
+                ></div>
+
+            </article>
+
+
+            <!-- =================================================
+                 11
+                 ================================================= -->
+
+            <article
+                class="emoji-card"
+                data-index="10"
+                data-animation="smirk"
+            >
+
+                <div
+                    class="emoji-character"
+                >
+
+                    <img
+                        class="emoji-visual"
+                        src="../assets/emojis/512 (11).webp"
+                        alt="Smirking emoji"
+                        width="108"
+                        height="108"
+                        loading="eager"
+                        decoding="async"
+                        draggable="false"
+                    >
+
+                </div>
+
+
+                <div
+                    class="glass-platform"
+                    aria-hidden="true"
+                ></div>
+
+            </article>
+
+
+            <!-- =================================================
+                 12
+                 ================================================= -->
+
+            <article
+                class="emoji-card"
+                data-index="11"
+                data-animation="angel"
+            >
+
+                <div
+                    class="emoji-character"
+                >
+
+                    <img
+                        class="emoji-visual"
+                        src="../assets/emojis/512 (12).webp"
+                        alt="Angel emoji"
+                        width="108"
+                        height="108"
+                        loading="eager"
+                        decoding="async"
+                        draggable="false"
+                    >
+
+                </div>
+
+
+                <div
+                    class="glass-platform"
+                    aria-hidden="true"
+                ></div>
+
+            </article>
+
+
+            <!-- =================================================
+                 13
+                 ================================================= -->
+
+            <article
+                class="emoji-card"
+                data-index="12"
+                data-animation="pleading"
+            >
+
+                <div
+                    class="emoji-character"
+                >
+
+                    <img
+                        class="emoji-visual"
+                        src="../assets/emojis/512 (13).webp"
+                        alt="Pleading emoji"
+                        width="108"
+                        height="108"
+                        loading="eager"
+                        decoding="async"
+                        draggable="false"
+                    >
+
+                </div>
+
+
+                <div
+                    class="glass-platform"
+                    aria-hidden="true"
+                ></div>
+
+            </article>
+
+
+            <!-- =================================================
+                 14
+                 ================================================= -->
+
+            <article
+                class="emoji-card"
+                data-index="13"
+                data-animation="nerd"
+            >
+
+                <div
+                    class="emoji-character"
+                >
+
+                    <img
+                        class="emoji-visual"
+                        src="../assets/emojis/512 (14).webp"
+                        alt="Nerd emoji"
+                        width="108"
+                        height="108"
+                        loading="eager"
+                        decoding="async"
+                        draggable="false"
+                    >
+
+                </div>
+
+
+                <div
+                    class="glass-platform"
+                    aria-hidden="true"
+                ></div>
+
+            </article>
+
+
+            <!-- =================================================
+                 15
+                 ================================================= -->
+
+            <article
+                class="emoji-card"
+                data-index="14"
+                data-animation="frustrated"
+            >
+
+                <div
+                    class="emoji-character"
+                >
+
+                    <img
+                        class="emoji-visual"
+                        src="../assets/emojis/512 (15).webp"
+                        alt="Frustrated emoji"
+                        width="108"
+                        height="108"
+                        loading="lazy"
+                        decoding="async"
+                        draggable="false"
+                    >
+
+                </div>
+
+
+                <div
+                    class="glass-platform"
+                    aria-hidden="true"
+                ></div>
+
+            </article>
+
+
+            <!-- =================================================
+                 16
+                 ================================================= -->
+
+            <article
+                class="emoji-card"
+                data-index="15"
+                data-animation="yummy"
+            >
+
+                <div
+                    class="emoji-character"
+                >
+
+                    <img
+                        class="emoji-visual"
+                        src="../assets/emojis/512 (16).webp"
+                        alt="Yummy emoji"
+                        width="108"
+                        height="108"
+                        loading="lazy"
+                        decoding="async"
+                        draggable="false"
+                    >
+
+                </div>
+
+
+                <div
+                    class="glass-platform"
+                    aria-hidden="true"
+                ></div>
+
+            </article>
+
+
+            <!-- =================================================
+                 17
+                 ================================================= -->
+
+            <article
+                class="emoji-card"
+                data-index="16"
+                data-animation="kiss"
+            >
+
+                <div
+                    class="emoji-character"
+                >
+
+                    <img
+                        class="emoji-visual"
+                        src="../assets/emojis/512 (17).webp"
+                        alt="Kiss emoji"
+                        width="108"
+                        height="108"
+                        loading="lazy"
+                        decoding="async"
+                        draggable="false"
+                    >
+
+                </div>
+
+
+                <div
+                    class="glass-platform"
+                    aria-hidden="true"
+                ></div>
+
+            </article>
+
+
+            <!-- =================================================
+                 18
+                 ================================================= -->
+
+            <article
+                class="emoji-card"
+                data-index="17"
+                data-animation="cold"
+            >
+
+                <div
+                    class="emoji-character"
+                >
+
+                    <img
+                        class="emoji-visual"
+                        src="../assets/emojis/512 (18).webp"
+                        alt="Cold emoji"
+                        width="108"
+                        height="108"
+                        loading="lazy"
+                        decoding="async"
+                        draggable="false"
+                    >
+
+                </div>
+
+
+                <div
+                    class="glass-platform"
+                    aria-hidden="true"
+                ></div>
+
+            </article>
+
+
+            <!-- =================================================
+                 19
+                 ================================================= -->
+
+            <article
+                class="emoji-card"
+                data-index="18"
+                data-animation="melt"
+            >
+
+                <div
+                    class="emoji-character"
+                >
+
+                    <img
+                        class="emoji-visual"
+                        src="../assets/emojis/512 (19).webp"
+                        alt="Melting emoji"
+                        width="108"
+                        height="108"
+                        loading="lazy"
+                        decoding="async"
+                        draggable="false"
+                    >
+
+                </div>
+
+
+                <div
+                    class="glass-platform"
+                    aria-hidden="true"
+                ></div>
+
+            </article>
+
+
+            <!-- =================================================
+                 20
+                 ================================================= -->
+
+            <article
+                class="emoji-card"
+                data-index="19"
+                data-animation="grin"
+            >
+
+                <div
+                    class="emoji-character"
+                >
+
+                    <img
+                        class="emoji-visual"
+                        src="../assets/emojis/512 (20).webp"
+                        alt="Grinning emoji"
+                        width="108"
+                        height="108"
+                        loading="lazy"
+                        decoding="async"
+                        draggable="false"
+                    >
+
+                </div>
+
+
+                <div
+                    class="glass-platform"
+                    aria-hidden="true"
+                ></div>
+
+            </article>
+
+
+            <!-- =================================================
+                 21
+                 ================================================= -->
+
+            <article
+                class="emoji-card"
+                data-index="20"
+                data-animation="wink"
+            >
+
+                <div
+                    class="emoji-character"
+                >
+
+                    <img
+                        class="emoji-visual"
+                        src="../assets/emojis/512 (21).webp"
+                        alt="Winking emoji"
+                        width="108"
+                        height="108"
+                        loading="lazy"
+                        decoding="async"
+                        draggable="false"
+                    >
+
+                </div>
+
+
+                <div
+                    class="glass-platform"
+                    aria-hidden="true"
+                ></div>
+
+            </article>
+
+
+            <!-- =================================================
+                 22
+                 ================================================= -->
+
+            <article
+                class="emoji-card"
+                data-index="21"
+                data-animation="neutral"
+            >
+
+                <div
+                    class="emoji-character"
+                >
+
+                    <img
+                        class="emoji-visual"
+                        src="../assets/emojis/512 (22).webp"
+                        alt="Neutral emoji"
+                        width="108"
+                        height="108"
+                        loading="lazy"
+                        decoding="async"
+                        draggable="false"
+                    >
+
+                </div>
+
+
+                <div
+                    class="glass-platform"
+                    aria-hidden="true"
+                ></div>
+
+            </article>
+
+
+            <!-- =================================================
+                 23
+                 ================================================= -->
+
+            <article
+                class="emoji-card"
+                data-index="22"
+                data-animation="smile"
+            >
+
+                <div
+                    class="emoji-character"
+                >
+
+                    <img
+                        class="emoji-visual"
+                        src="../assets/emojis/512 (23).webp"
+                        alt="Smiling emoji"
+                        width="108"
+                        height="108"
+                        loading="lazy"
+                        decoding="async"
+                        draggable="false"
+                    >
+
+                </div>
+
+
+                <div
+                    class="glass-platform"
+                    aria-hidden="true"
+                ></div>
+
+            </article>
+
+
+            <!-- =================================================
+                 24
+                 ================================================= -->
+
+            <article
+                class="emoji-card"
+                data-index="23"
+                data-animation="upset"
+            >
+
+                <div
+                    class="emoji-character"
+                >
+
+                    <img
+                        class="emoji-visual"
+                        src="../assets/emojis/512 (24).webp"
+                        alt="Upset emoji"
+                        width="108"
+                        height="108"
+                        loading="lazy"
+                        decoding="async"
+                        draggable="false"
+                    >
+
+                </div>
+
+
+                <div
+                    class="glass-platform"
+                    aria-hidden="true"
+                ></div>
+
+            </article>
+
+
+        </div>
+
+    </section>
+
+
+    <!-- =====================================================
+         CURSOR LIGHT
+         ===================================================== -->
+
+    <div
+        id="cursorLight"
+        class="cursor-light"
+        aria-hidden="true"
+    >
+
+        <div
+            class="cursor-light-halo"
+        ></div>
+
+        <div
+            class="cursor-light-core"
+        ></div>
+
+    </div>
+
+
+    <!-- =====================================================
+         REACTION LAYER
+         ===================================================== -->
+
+    <div
+        id="reactionLayer"
+        class="reaction-layer"
+        aria-hidden="true"
+    ></div>
+
+
+    <!-- =====================================================
+         BOTTOM STATUS
+         ===================================================== -->
+
+    <div
+        id="interactionStatus"
+        class="interaction-status"
+    >
+        Move your cursor around the emojis
+    </div>
+
+
+</main>
+
+
+<!-- =========================================================
+     JAVASCRIPT
+     ========================================================= -->
+
+<script
+    src="script.js"
+    defer
+></script>
+
+<script>
+    (() => {
+        const toggle = document.getElementById("animationToggle");
+
+        if (!toggle) {
+            return;
+        }
+
+        const targetPath = window.location.pathname.includes("/mobile-optimised/")
+            ? "../index.html"
+            : "mobile-optimised/index.html";
+
+        toggle.addEventListener("click", () => {
+            window.location.href = targetPath;
+        });
+    })();
+</script>
+
+
+</body>
+</html>

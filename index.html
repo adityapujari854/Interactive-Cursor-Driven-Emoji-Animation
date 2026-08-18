@@ -56,6 +56,16 @@
 
         <header class="world-header">
 
+            <button
+                id="animationToggle"
+                class="theme-toggle"
+                type="button"
+                aria-label="Switch to reduced animation view"
+            >
+                <span class="theme-toggle-icon" aria-hidden="true">✨</span>
+                <span>Reduced animation</span>
+            </button>
+
             <div class="brand">
 
                 <div
@@ -922,26 +932,6 @@
         </div>
 
 
-        <div
-            id="modeIndicator"
-            class="mode-indicator"
-        >
-
-            <span
-                id="modeIndicatorIcon"
-                class="mode-indicator-icon"
-            >
-                ✨
-            </span>
-
-            <span
-                id="modeIndicatorText"
-                class="mode-indicator-text"
-            >
-                Interactive Emoji World
-            </span>
-
-        </div>
 
     </main>
 
@@ -954,6 +944,24 @@
         src="script.js"
         defer
     ></script>
+
+    <script>
+        (() => {
+            const toggle = document.getElementById("animationToggle");
+
+            if (!toggle) {
+                return;
+            }
+
+            const targetPath = window.location.pathname.includes("/mobile-optimised/")
+                ? "../index.html"
+                : "mobile-optimised/index.html";
+
+            toggle.addEventListener("click", () => {
+                window.location.href = targetPath;
+            });
+        })();
+    </script>
 
 </body>
 </html>
