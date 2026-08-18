@@ -52,11 +52,28 @@ export class EmojiWorld {
    * Initialize the scene
    */
   async _init() {
-    await this._createPixiApp();
-    await this._loadAssets();
-    this._setupScene();
-    this._setupEventListeners();
-    this._startAnimationLoop();
+    try {
+      console.log('Initializing Emoji World...');
+      await this._createPixiApp();
+      console.log('PixiJS app created');
+      
+      await this._loadAssets();
+      console.log('Assets loaded');
+      
+      this._setupScene();
+      console.log('Scene setup complete');
+      
+      this._setupEventListeners();
+      console.log('Event listeners attached');
+      
+      this._startAnimationLoop();
+      console.log('Animation loop started');
+      
+      console.log('✨ Emoji World initialized successfully!');
+    } catch (error) {
+      console.error('Failed to initialize Emoji World:', error);
+      throw error;
+    }
   }
 
   /**
@@ -613,17 +630,17 @@ export class EmojiWorld {
 
     switch (perfInfo.tier) {
       case 'high':
-        this.app.renderer.context.antialias = true;
+        // Keep default high quality
         break;
       case 'medium':
-        this.app.renderer.context.antialias = false;
         this.emojisContainer.filters = [];
         break;
       case 'low':
-        this.app.renderer.context.antialias = false;
         this.app.ticker.speed = 0.75; // Reduce frame rate
         break;
     }
+    
+    console.log(`Quality tier: ${perfInfo.tier} (${perfInfo.device})`);
   }
 
   /**
