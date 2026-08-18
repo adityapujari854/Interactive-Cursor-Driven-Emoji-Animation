@@ -1,211 +1,764 @@
 /**
- * Lightweight 2D physics engine for 24 emojis
- * Handles gravity, velocity, collision, and bounce
+ * Lightweight 2D Physics Engine
+ * --------------------------------
+ * Used only when the user shakes the device.
+ *
+ * Features:
+ * - Gravity
+ * - Velocity
+ * - Friction
+ * - Bounce
+ * - Wall collision
+ * - Ground collision
+ * - Emoji-to-emoji collision
+ * - Resting detection
+ *
+ * Designed for 24 emoji objects and mobile performance.
  */
 
 export class Physics {
   constructor(options = {}) {
-    this.gravity = options.gravity || 0.5;
-    this.friction = options.friction || 0.98;
-    this.bounce = options.bounce || 0.6;
-    this.width = options.width || 1024;
-    this.height = options.height || 1024;
-    this.groundLevel = options.groundLevel || this.height * 0.85;
+    this.gravity =
+      options.gravity !== undefined
+        ? options.gravity
+        : 0.62;
+
+    this.friction =
+      options.friction !== undefined
+        ? options.friction
+        : 0.985;
+
+    this.bounce =
+      options.bounce !== undefined
+        ? options.bounce
+        : 0.55;
+
+    this.width =
+      options.width || 1024;
+
+    this.height =
+      options.height || 768;
+
+    this.groundLevel =
+      options.groundLevel ||
+      this.height * 0.9;
+
+    /*
+     * All physics bodies.
+     */
     this.bodies = [];
+
+    /*
+     * Reusable active-body array.
+     *
+     * Avoids creating a new filtered array
+     * every animation frame.
+     */
+    this.activeBodies = [];
+
+    /*
+     * Maximum physics step.
+     *
+     * Prevents huge jumps if the browser
+     * temporarily freezes.
+     */
+    this.maxDelta = 2.5;
   }
 
   /**
-   * Create a physics body for an emoji
+   * Create a physics body.
    */
   createBody(options = {}) {
     const body = {
-      x: options.x || 0,
-      y: options.y || 0,
-      vx: options.vx !== undefined ? options.vx : (Math.random() - 0.5) * 4,
-      vy: options.vy !== undefined ? options.vy : -15 - Math.random() * 8,
-      mass: options.mass || 1 + Math.random() * 0.5,
-      rotation: options.rotation !== undefined ? options.rotation : Math.random() * Math.PI * 2,
-      angularVelocity: options.angularVelocity || (Math.random() - 0.5) * 0.3,
-      radius: options.radius || 30,
-      isActive: true,
-      restTimer: 0,
-      isResting: false
+      x:
+        options.x !== undefined
+          ? options.x
+          : 0,
+
+      y:
+        options.y !== undefined
+          ? options.y
+          : 0,
+
+      vx:
+        options.vx !== undefined
+          ? options.vx
+          : (Math.random() - 0.5) * 3,
+
+      vy:
+        options.vy !== undefined
+          ? options.vy
+          : 0,
+
+      mass:
+        options.mass !== undefined
+          ? options.mass
+          : 1,
+
+      radius:
+        options.radius !== undefined
+          ? options.radius
+          : 30,
+
+      rotation:
+        options.rotation !== undefined
+          ? options.rotation
+          : 0,
+
+      angularVelocity:
+        options.angularVelocity !== undefined
+          ? options.angularVelocity
+          : 0,
+
+      /*
+       * IMPORTANT:
+       *
+       * Physics bodies are inactive by default.
+       *
+       * They become active only after
+       * the device shake.
+       */
+      isActive:
+        options.isActive !== undefined
+          ? options.isActive
+          : false,
+
+      isResting: false,
+
+      restTimer: 0
     };
+
     this.bodies.push(body);
+
     return body;
   }
 
   /**
-   * Update physics simulation
+   * Update physics.
+   *
+   * deltaTime is expected in milliseconds.
    */
-  update(deltaTime = 1) {
-    const dt = Math.min(deltaTime / 16.67, 1); // Normalize to 60 FPS
+  update(deltaTime = 16.67) {
+    if (
+      !this.bodies.length
+    ) {
+      return;
+    }
 
-    for (let body of this.bodies) {
-      if (!body.isActive) continue;
+    /*
+     * Convert milliseconds into
+     * approximately 60 FPS frame units.
+     */
+    let dt =
+      deltaTime / 16.67;
 
-      // Apply gravity
-      body.vy += this.gravity * dt;
+    /*
+     * Prevent giant physics jumps.
+     */
+    dt =
+      Math.min(
+        Math.max(dt, 0),
+        this.maxDelta
+      );
 
-      // Apply friction
-      body.vx *= this.friction;
-      body.vy *= this.friction * 0.99; // Slightly more friction in Y
+    /*
+     * Build reusable active body list.
+     */
+    this.activeBodies.length = 0;
 
-      // Update position
-      body.x += body.vx * dt;
-      body.y += body.vy * dt;
+    for (
+      let i = 0;
+      i < this.bodies.length;
+      i++
+    ) {
+      const body =
+        this.bodies[i];
 
-      // Update rotation
-      body.rotation += body.angularVelocity * dt;
-
-      // Boundary collisions
-      this._handleBoundaryCollision(body);
-
-      // Ground collision
-      this._handleGroundCollision(body);
-
-      // Check if settling
-      if (Math.abs(body.vx) < 0.1 && Math.abs(body.vy) < 0.1 && body.y >= this.groundLevel - body.radius) {
-        body.restTimer++;
-        if (body.restTimer > 30) {
-          body.isResting = true;
-          body.vx = 0;
-          body.vy = 0;
-          body.angularVelocity = 0;
-        }
-      } else {
-        body.restTimer = 0;
-        body.isResting = false;
+      if (
+        body &&
+        body.isActive
+      ) {
+        this.activeBodies.push(
+          body
+        );
       }
     }
 
-    // Simple emoji-to-emoji collision (broad phase only)
-    this._handleEmojiCollisions();
+    /*
+     * Nothing is currently falling.
+     */
+    if (
+      this.activeBodies.length === 0
+    ) {
+      return;
+    }
+
+    /*
+     * -------------------------
+     * Individual body physics
+     * -------------------------
+     */
+    for (
+      let i = 0;
+      i < this.activeBodies.length;
+      i++
+    ) {
+      const body =
+        this.activeBodies[i];
+
+      /*
+       * Gravity.
+       */
+      body.vy +=
+        this.gravity * dt;
+
+      /*
+       * Horizontal friction.
+       */
+      body.vx *=
+        Math.pow(
+          this.friction,
+          dt
+        );
+
+      /*
+       * Slightly stronger vertical damping.
+       */
+      body.vy *=
+        Math.pow(
+          0.995,
+          dt
+        );
+
+      /*
+       * Position.
+       */
+      body.x +=
+        body.vx * dt;
+
+      body.y +=
+        body.vy * dt;
+
+      /*
+       * Rotation.
+       */
+      body.rotation +=
+        body.angularVelocity * dt;
+
+      /*
+       * Angular damping.
+       */
+      body.angularVelocity *=
+        Math.pow(
+          0.985,
+          dt
+        );
+
+      /*
+       * Walls.
+       */
+      this._handleBoundaryCollision(
+        body
+      );
+
+      /*
+       * Ground.
+       */
+      this._handleGroundCollision(
+        body
+      );
+
+      /*
+       * Rest detection.
+       */
+      this._updateRestState(
+        body,
+        dt
+      );
+    }
+
+    /*
+     * Emoji-to-emoji collisions.
+     *
+     * 24 bodies = only 276 possible pairs,
+     * which is inexpensive.
+     */
+    if (
+      this.activeBodies.length > 1
+    ) {
+      this._handleEmojiCollisions();
+    }
   }
 
   /**
-   * Boundary collision (walls)
+   * Update whether a body has settled.
    */
-  _handleBoundaryCollision(body) {
-    const padding = body.radius;
+  _updateRestState(
+    body,
+    dt
+  ) {
+    const nearGround =
+      body.y +
+        body.radius >=
+      this.groundLevel - 1;
 
-    // Left wall
-    if (body.x - padding < 0) {
-      body.x = padding;
-      body.vx *= -this.bounce;
-    }
+    const slow =
+      Math.abs(body.vx) < 0.12 &&
+      Math.abs(body.vy) < 0.12 &&
+      Math.abs(
+        body.angularVelocity
+      ) < 0.01;
 
-    // Right wall
-    if (body.x + padding > this.width) {
-      body.x = this.width - padding;
-      body.vx *= -this.bounce;
-    }
+    if (
+      nearGround &&
+      slow
+    ) {
+      body.restTimer += dt;
 
-    // Top wall
-    if (body.y - padding < 0) {
-      body.y = padding;
-      body.vy *= -this.bounce * 0.5;
-    }
+      /*
+       * Around half a second at 60 FPS.
+       */
+      if (
+        body.restTimer > 30
+      ) {
+        body.isResting = true;
 
-    // Bottom wall (ground)
-    if (body.y + padding > this.groundLevel) {
-      body.y = this.groundLevel - padding;
-      body.vy *= -this.bounce;
-      body.angularVelocity *= 0.9;
+        body.vx = 0;
+        body.vy = 0;
+
+        body.angularVelocity = 0;
+      }
+    } else {
+      body.restTimer = 0;
+
+      body.isResting = false;
     }
   }
 
   /**
-   * Ground settling
+   * Wall collision.
    */
-  _handleGroundCollision(body) {
-    if (body.y + body.radius >= this.groundLevel) {
-      body.y = this.groundLevel - body.radius;
-      if (Math.abs(body.vy) < 0.5) {
+  _handleBoundaryCollision(
+    body
+  ) {
+    const radius =
+      body.radius;
+
+    /*
+     * Left.
+     */
+    if (
+      body.x - radius < 0
+    ) {
+      body.x = radius;
+
+      body.vx =
+        Math.abs(body.vx) *
+        this.bounce;
+    }
+
+    /*
+     * Right.
+     */
+    if (
+      body.x + radius >
+      this.width
+    ) {
+      body.x =
+        this.width - radius;
+
+      body.vx =
+        -Math.abs(body.vx) *
+        this.bounce;
+    }
+
+    /*
+     * Top.
+     */
+    if (
+      body.y - radius < 0
+    ) {
+      body.y = radius;
+
+      /*
+       * Don't make emojis bounce
+       * aggressively from the ceiling.
+       */
+      body.vy =
+        Math.abs(body.vy) *
+        0.25;
+    }
+  }
+
+  /**
+   * Ground collision.
+   */
+  _handleGroundCollision(
+    body
+  ) {
+    const ground =
+      this.groundLevel;
+
+    const bottom =
+      body.y +
+      body.radius;
+
+    if (
+      bottom >= ground
+    ) {
+      body.y =
+        ground -
+        body.radius;
+
+      /*
+       * Very small velocity:
+       * stop instead of endlessly bouncing.
+       */
+      if (
+        Math.abs(body.vy) < 1
+      ) {
         body.vy = 0;
       } else {
-        body.vy *= -this.bounce;
+        body.vy *=
+          -this.bounce;
       }
+
+      /*
+       * Ground friction.
+       */
+      body.vx *= 0.92;
+
+      /*
+       * Reduce rotation on impact.
+       */
+      body.angularVelocity *=
+        0.88;
     }
   }
 
   /**
-   * Simple emoji-to-emoji collision
-   * Uses distance-based broad phase
+   * Emoji-to-emoji collision.
    */
   _handleEmojiCollisions() {
-    const activeBodies = this.bodies.filter(b => b.isActive);
-    
-    for (let i = 0; i < activeBodies.length; i++) {
-      for (let j = i + 1; j < activeBodies.length; j++) {
-        const b1 = activeBodies[i];
-        const b2 = activeBodies[j];
+    const bodies =
+      this.activeBodies;
 
-        const dx = b2.x - b1.x;
-        const dy = b2.y - b1.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        const minDistance = b1.radius + b2.radius;
+    const count =
+      bodies.length;
 
-        if (distance < minDistance) {
-          this._resolveCollision(b1, b2, dx, dy, distance);
+    for (
+      let i = 0;
+      i < count;
+      i++
+    ) {
+      const bodyA =
+        bodies[i];
+
+      for (
+        let j = i + 1;
+        j < count;
+        j++
+      ) {
+        const bodyB =
+          bodies[j];
+
+        const dx =
+          bodyB.x -
+          bodyA.x;
+
+        const dy =
+          bodyB.y -
+          bodyA.y;
+
+        const distanceSquared =
+          dx * dx +
+          dy * dy;
+
+        const minDistance =
+          bodyA.radius +
+          bodyB.radius;
+
+        /*
+         * Avoid sqrt when bodies
+         * are obviously far apart.
+         */
+        if (
+          distanceSquared >=
+          minDistance *
+            minDistance
+        ) {
+          continue;
         }
+
+        /*
+         * Prevent division by zero.
+         */
+        if (
+          distanceSquared < 0.0001
+        ) {
+          bodyB.x += 0.1;
+
+          continue;
+        }
+
+        const distance =
+          Math.sqrt(
+            distanceSquared
+          );
+
+        this._resolveCollision(
+          bodyA,
+          bodyB,
+          dx,
+          dy,
+          distance
+        );
       }
     }
   }
 
   /**
-   * Resolve collision between two bodies
+   * Resolve two circular body collisions.
    */
-  _resolveCollision(b1, b2, dx, dy, distance) {
-    if (distance === 0) return;
+  _resolveCollision(
+    bodyA,
+    bodyB,
+    dx,
+    dy,
+    distance
+  ) {
+    if (
+      distance <= 0
+    ) {
+      return;
+    }
 
-    // Normalize direction
-    const nx = dx / distance;
-    const ny = dy / distance;
+    const nx =
+      dx / distance;
 
-    // Separate bodies
-    const overlap = (b1.radius + b2.radius - distance) / 2;
-    b1.x -= nx * overlap;
-    b1.y -= ny * overlap;
-    b2.x += nx * overlap;
-    b2.y += ny * overlap;
+    const ny =
+      dy / distance;
 
-    // Relative velocity
-    const dvx = b2.vx - b1.vx;
-    const dvy = b2.vy - b1.vy;
-    const dvDot = dvx * nx + dvy * ny;
+    const minDistance =
+      bodyA.radius +
+      bodyB.radius;
 
-    // Only collide if moving toward each other
-    if (dvDot >= 0) return;
+    const overlap =
+      minDistance -
+      distance;
 
-    // Restitution (bounce)
-    const restitution = 0.4;
-    const impulse = -(1 + restitution) * dvDot / (1 / b1.mass + 1 / b2.mass);
+    /*
+     * Separate the bodies.
+     *
+     * Split correction according to mass.
+     */
+    const totalMass =
+      bodyA.mass +
+      bodyB.mass;
 
-    b1.vx -= (impulse / b1.mass) * nx;
-    b1.vy -= (impulse / b1.mass) * ny;
-    b2.vx += (impulse / b2.mass) * nx;
-    b2.vy += (impulse / b2.mass) * ny;
+    const correctionA =
+      overlap *
+      (bodyB.mass /
+        totalMass);
 
-    // Add some angular velocity from collision
-    b1.angularVelocity -= (impulse / b1.mass) * 0.01;
-    b2.angularVelocity += (impulse / b2.mass) * 0.01;
+    const correctionB =
+      overlap *
+      (bodyA.mass /
+        totalMass);
+
+    bodyA.x -=
+      nx * correctionA;
+
+    bodyA.y -=
+      ny * correctionA;
+
+    bodyB.x +=
+      nx * correctionB;
+
+    bodyB.y +=
+      ny * correctionB;
+
+    /*
+     * Relative velocity.
+     */
+    const relativeVelocityX =
+      bodyB.vx -
+      bodyA.vx;
+
+    const relativeVelocityY =
+      bodyB.vy -
+      bodyA.vy;
+
+    const velocityAlongNormal =
+      relativeVelocityX * nx +
+      relativeVelocityY * ny;
+
+    /*
+     * Already moving apart.
+     */
+    if (
+      velocityAlongNormal > 0
+    ) {
+      return;
+    }
+
+    /*
+     * Low restitution makes the
+     * emojis feel soft instead of
+     * bouncing like rubber balls.
+     */
+    const restitution =
+      0.32;
+
+    const impulse =
+      -(
+        1 + restitution
+      ) *
+      velocityAlongNormal /
+      (
+        1 / bodyA.mass +
+        1 / bodyB.mass
+      );
+
+    /*
+     * Apply impulse.
+     */
+    bodyA.vx -=
+      (
+        impulse /
+        bodyA.mass
+      ) * nx;
+
+    bodyA.vy -=
+      (
+        impulse /
+        bodyA.mass
+      ) * ny;
+
+    bodyB.vx +=
+      (
+        impulse /
+        bodyB.mass
+      ) * nx;
+
+    bodyB.vy +=
+      (
+        impulse /
+        bodyB.mass
+      ) * ny;
+
+    /*
+     * Small rotational reaction.
+     */
+    const rotationImpulse =
+      impulse * 0.008;
+
+    bodyA.angularVelocity -=
+      rotationImpulse /
+      bodyA.mass;
+
+    bodyB.angularVelocity +=
+      rotationImpulse /
+      bodyB.mass;
   }
 
   /**
-   * Reset all bodies
+   * Activate all bodies.
+   *
+   * Used by shake animation.
+   */
+  activateAll() {
+    for (
+      let i = 0;
+      i < this.bodies.length;
+      i++
+    ) {
+      const body =
+        this.bodies[i];
+
+      body.isActive = true;
+      body.isResting = false;
+      body.restTimer = 0;
+    }
+  }
+
+  /**
+   * Deactivate all bodies.
+   *
+   * Used when emojis fly back
+   * to their glass cubes.
+   */
+  deactivateAll() {
+    for (
+      let i = 0;
+      i < this.bodies.length;
+      i++
+    ) {
+      const body =
+        this.bodies[i];
+
+      body.isActive = false;
+
+      body.vx = 0;
+      body.vy = 0;
+
+      body.angularVelocity = 0;
+
+      body.isResting = true;
+
+      body.restTimer = 0;
+    }
+
+    this.activeBodies.length = 0;
+  }
+
+  /**
+   * Reset physics.
    */
   reset() {
-    this.bodies.forEach(body => {
+    for (
+      let i = 0;
+      i < this.bodies.length;
+      i++
+    ) {
+      const body =
+        this.bodies[i];
+
       body.isActive = false;
+
       body.isResting = true;
-    });
+
+      body.restTimer = 0;
+
+      body.vx = 0;
+      body.vy = 0;
+
+      body.angularVelocity = 0;
+    }
+
+    this.activeBodies.length = 0;
   }
 
   /**
-   * Get all active bodies
+   * Get active bodies.
    */
   getActiveBodies() {
-    return this.bodies.filter(b => b.isActive);
+    return this.activeBodies;
+  }
+
+  /**
+   * Update world dimensions.
+   */
+  resize(
+    width,
+    height,
+    groundLevel = height * 0.9
+  ) {
+    this.width = width;
+
+    this.height = height;
+
+    this.groundLevel =
+      groundLevel;
   }
 }

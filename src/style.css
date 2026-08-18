@@ -1,98 +1,803 @@
-/* ===================================================
-   GLOBAL STYLES
-   =================================================== */
+/* ============================================================
+   THE EMOJIS
+   Global / PixiJS / Mobile Optimized Styles
+   ============================================================ */
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+/* ============================================================
+   RESET
+   ============================================================ */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
 }
 
-html, body {
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  background: linear-gradient(135deg, #0a0e27 0%, #16213e 50%, #0f3460 100%);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+
+/* ============================================================
+   ROOT
+   ============================================================ */
+
+:root {
+    --page-bg: #ffffff;
+    --text-primary: #171717;
+    --text-secondary: #777777;
+
+    --safe-top: env(
+        safe-area-inset-top,
+        0px
+    );
+
+    --safe-right: env(
+        safe-area-inset-right,
+        0px
+    );
+
+    --safe-bottom: env(
+        safe-area-inset-bottom,
+        0px
+    );
+
+    --safe-left: env(
+        safe-area-inset-left,
+        0px
+    );
 }
+
+
+/* ============================================================
+   HTML / BODY
+   ============================================================ */
+
+html {
+    width: 100%;
+    height: 100%;
+
+    background: var(--page-bg);
+
+    overflow: hidden;
+
+    /*
+     * Prevent browser zooming / overscroll
+     * during interaction.
+     */
+    touch-action: none;
+
+    /*
+     * Prevent text selection while interacting
+     * with the emoji world.
+     */
+    -webkit-user-select: none;
+    user-select: none;
+
+    /*
+     * Prevent tap highlight on mobile.
+     */
+    -webkit-tap-highlight-color: transparent;
+}
+
 
 body {
-  touch-action: none;
+    width: 100%;
+    height: 100%;
+
+    margin: 0;
+
+    overflow: hidden;
+
+    background: #ffffff;
+
+    color: var(--text-primary);
+
+    font-family:
+        Inter,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        Helvetica,
+        Arial,
+        sans-serif;
+
+    /*
+     * Important for mobile browsers.
+     */
+    touch-action: none;
+
+    overscroll-behavior: none;
+
+    /*
+     * Reduce unnecessary browser rendering work.
+     */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+
+    /*
+     * Prevent browser text/image dragging.
+     */
+    -webkit-user-drag: none;
 }
+
+
+/* ============================================================
+   MAIN APP
+   ============================================================ */
 
 #app {
-  width: 100%;
-  height: 100%;
-  position: relative;
+    position: fixed;
+
+    inset: 0;
+
+    width: 100%;
+    height: 100%;
+
+    overflow: hidden;
+
+    background:
+        radial-gradient(
+            circle at 50% 20%,
+            rgba(255, 255, 255, 1) 0%,
+            rgba(250, 250, 250, 1) 55%,
+            rgba(245, 245, 245, 1) 100%
+        );
+
+    /*
+     * Establish stacking context.
+     */
+    isolation: isolate;
+
+    /*
+     * Avoid unnecessary layout work.
+     */
+    contain: layout paint size;
 }
 
-#pixi-canvas {
-  display: block;
-  width: 100%;
-  height: 100%;
+
+/* ============================================================
+   PIXI CANVAS
+   ============================================================ */
+
+#pixi-canvas,
+#app > canvas {
+    position: absolute;
+
+    inset: 0;
+
+    display: block;
+
+    width: 100% !important;
+    height: 100% !important;
+
+    /*
+     * Canvas should never trigger scrolling.
+     */
+    touch-action: none;
+
+    /*
+     * Prevent selection/dragging.
+     */
+    user-select: none;
+    -webkit-user-select: none;
+
+    -webkit-user-drag: none;
+
+    /*
+     * Keep canvas behind HTML overlays.
+     */
+    z-index: 1;
+
+    /*
+     * GPU compositing hint.
+     */
+    transform: translateZ(0);
+
+    /*
+     * Do not use expensive CSS filters here.
+     * PixiJS handles the visual rendering.
+     */
+    filter: none;
+
+    /*
+     * Avoid image interpolation artifacts.
+     */
+    image-rendering: auto;
 }
 
-/* ===================================================
-   TITLE OVERLAY
-   =================================================== */
+
+/* ============================================================
+   THE EMOJIS — TITLE
+   ============================================================ */
 
 .title {
-  position: absolute;
-  top: 40px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 1000;
-  text-align: center;
-  pointer-events: none;
+    position: fixed;
+
+    top: calc(
+        18px + var(--safe-top)
+    );
+
+    left: 50%;
+
+    transform:
+        translate3d(
+            -50%,
+            0,
+            0
+        );
+
+    z-index: 100;
+
+    width: max-content;
+
+    text-align: center;
+
+    pointer-events: none;
+
+    /*
+     * Keep title isolated from canvas rendering.
+     */
+    contain: layout paint;
+
+    /*
+     * GPU compositing.
+     */
+    will-change: transform;
 }
+
 
 .title h1 {
-  font-size: clamp(2rem, 5vw, 3.5rem);
-  font-weight: 300;
-  letter-spacing: 2px;
-  color: rgba(255, 255, 255, 0.95);
-  text-transform: uppercase;
-  margin: 0;
-  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));
+    margin: 0;
+
+    color: #151515;
+
+    font-size:
+        clamp(
+            1.65rem,
+            4vw,
+            2.7rem
+        );
+
+    font-weight: 700;
+
+    line-height: 1;
+
+    letter-spacing: -0.035em;
+
+    /*
+     * Do NOT use heavy blur/drop-shadow.
+     * It costs more on mobile GPUs.
+     */
+    text-shadow:
+        0 2px 8px
+        rgba(
+            0,
+            0,
+            0,
+            0.08
+        );
+
+    white-space: nowrap;
 }
 
-/* ===================================================
-   DEBUG INFO (optional)
-   =================================================== */
+
+/* Optional subtitle */
+
+.title p {
+    margin-top: 7px;
+
+    color:
+        rgba(
+            50,
+            50,
+            50,
+            0.55
+        );
+
+    font-size:
+        clamp(
+            0.62rem,
+            1.5vw,
+            0.78rem
+        );
+
+    font-weight: 500;
+
+    letter-spacing:
+        0.14em;
+
+    text-transform: uppercase;
+
+    white-space: nowrap;
+}
+
+
+/* ============================================================
+   GLASS / UI ELEMENTS
+   ============================================================ */
+
+.glass-panel {
+    position: absolute;
+
+    background:
+        rgba(
+            255,
+            255,
+            255,
+            0.72
+        );
+
+    border:
+        1px solid
+        rgba(
+            255,
+            255,
+            255,
+            0.9
+        );
+
+    border-radius: 999px;
+
+    box-shadow:
+        0 8px 25px
+        rgba(
+            0,
+            0,
+            0,
+            0.06
+        );
+
+    /*
+     * Avoid backdrop-filter by default.
+     *
+     * backdrop-filter can be expensive on
+     * Snapdragon-class mobile GPUs.
+     */
+}
+
+
+/* ============================================================
+   DEBUG INFORMATION
+   ============================================================ */
 
 .debug-info {
-  position: fixed;
-  bottom: 10px;
-  right: 10px;
-  background: rgba(0, 0, 0, 0.7);
-  color: #0f0;
-  font-family: 'Courier New', monospace;
-  font-size: 12px;
-  padding: 8px 12px;
-  border-radius: 4px;
-  z-index: 2000;
-  pointer-events: none;
-  max-width: 250px;
+    position: fixed;
+
+    right:
+        calc(
+            10px +
+            var(--safe-right)
+        );
+
+    bottom:
+        calc(
+            10px +
+            var(--safe-bottom)
+        );
+
+    z-index: 1000;
+
+    max-width: 260px;
+
+    padding:
+        7px 10px;
+
+    border-radius: 8px;
+
+    background:
+        rgba(
+            20,
+            20,
+            20,
+            0.82
+        );
+
+    color: #ffffff;
+
+    font-family:
+        ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        Monaco,
+        Consolas,
+        "Liberation Mono",
+        monospace;
+
+    font-size: 11px;
+
+    line-height: 1.4;
+
+    pointer-events: none;
+
+    opacity: 0.75;
 }
 
-/* ===================================================
-   RESPONSIVE
-   =================================================== */
+
+/* ============================================================
+   INITIALIZATION ERROR
+   ============================================================ */
+
+#emoji-error {
+    position: fixed !important;
+
+    inset: 0 !important;
+
+    z-index: 99999 !important;
+
+    display: grid !important;
+
+    place-items: center !important;
+
+    padding:
+        24px;
+
+    background:
+        #ffffff !important;
+
+    color:
+        #171717 !important;
+
+    pointer-events: none !important;
+}
+
+
+.emoji-error-content {
+    max-width: 320px;
+
+    text-align: center;
+
+    font-family:
+        Inter,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+}
+
+
+.emoji-error-content strong {
+    display: block;
+
+    margin-bottom: 8px;
+
+    font-size: 18px;
+
+    font-weight: 700;
+}
+
+
+.emoji-error-content span {
+    display: block;
+
+    color:
+        rgba(
+            0,
+            0,
+            0,
+            0.55
+        );
+
+    font-size: 14px;
+}
+
+
+/* ============================================================
+   LOADING STATE
+   ============================================================ */
+
+.loading-screen {
+    position: fixed;
+
+    inset: 0;
+
+    z-index: 9999;
+
+    display: grid;
+
+    place-items: center;
+
+    background: #ffffff;
+
+    pointer-events: none;
+
+    opacity: 1;
+
+    transition:
+        opacity
+        250ms
+        ease;
+}
+
+
+.loading-screen.hidden {
+    opacity: 0;
+}
+
+
+.loading-content {
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: center;
+
+    gap: 10px;
+
+    text-align: center;
+}
+
+
+.loading-title {
+    color: #171717;
+
+    font-size: 20px;
+
+    font-weight: 700;
+}
+
+
+.loading-text {
+    color:
+        rgba(
+            0,
+            0,
+            0,
+            0.45
+        );
+
+    font-size: 13px;
+}
+
+
+/* ============================================================
+   MOBILE
+   ============================================================ */
 
 @media (max-width: 768px) {
-  .title h1 {
-    font-size: 2rem;
-  }
+
+    #app {
+        /*
+         * Keep a very simple background on mobile.
+         * Avoid expensive layered gradients.
+         */
+        background: #ffffff;
+    }
+
+
+    .title {
+        top: calc(
+            14px +
+            var(--safe-top)
+        );
+    }
+
+
+    .title h1 {
+        font-size:
+            clamp(
+                1.45rem,
+                7vw,
+                2rem
+            );
+
+        letter-spacing:
+            -0.03em;
+    }
+
+
+    .title p {
+        margin-top: 5px;
+
+        font-size: 9px;
+
+        letter-spacing:
+            0.11em;
+    }
+
+
+    /*
+     * Remove unnecessary shadows on smaller
+     * screens.
+     */
+    .glass-panel {
+        box-shadow:
+            0 5px 16px
+            rgba(
+                0,
+                0,
+                0,
+                0.05
+            );
+    }
 }
 
+
+/* ============================================================
+   SMALL PHONES
+   ============================================================ */
+
 @media (max-width: 480px) {
-  .title h1 {
-    font-size: 1.5rem;
-    top: 20px;
-    letter-spacing: 1px;
-  }
+
+    .title {
+        top: calc(
+            11px +
+            var(--safe-top)
+        );
+    }
+
+
+    .title h1 {
+        font-size:
+            clamp(
+                1.35rem,
+                7.5vw,
+                1.7rem
+            );
+    }
+
+
+    .title p {
+        display: none;
+    }
+
+
+    .debug-info {
+        display: none;
+    }
 }
+
+
+/* ============================================================
+   VERY SMALL PHONES
+   ============================================================ */
+
+@media (max-width: 360px) {
+
+    .title {
+        top: calc(
+            9px +
+            var(--safe-top)
+        );
+    }
+
+
+    .title h1 {
+        font-size: 1.3rem;
+    }
+}
+
+
+/* ============================================================
+   LANDSCAPE MOBILE
+   ============================================================ */
+
+@media (
+    max-width: 900px
+) and (
+    orientation: landscape
+) {
+
+    .title {
+        top: calc(
+            8px +
+            var(--safe-top)
+        );
+    }
+
+
+    .title h1 {
+        font-size:
+            clamp(
+                1.15rem,
+                4vw,
+                1.7rem
+            );
+    }
+
+
+    .title p {
+        display: none;
+    }
+}
+
+
+/* ============================================================
+   REDUCED MOTION
+   ============================================================ */
+
+@media (
+    prefers-reduced-motion: reduce
+) {
+
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+    }
+
+
+    .loading-screen {
+        transition: none;
+    }
+}
+
+
+/* ============================================================
+   POINTER DEVICES
+   ============================================================ */
+
+@media (
+    pointer: coarse
+) {
+
+    /*
+     * Mobile/touch devices.
+     *
+     * Keep interaction entirely inside
+     * the Pixi canvas.
+     */
+    html,
+    body,
+    #app,
+    #pixi-canvas,
+    #app > canvas {
+        touch-action: none;
+    }
+}
+
+
+/* ============================================================
+   HIGH DPI / RETINA
+   ============================================================ */
+
+/*
+ * Do NOT scale the CSS canvas based on DPR.
+ *
+ * PixiJS controls the internal rendering
+ * resolution. This prevents accidentally
+ * creating an enormous canvas on phones.
+ */
+
+
+/* ============================================================
+   ACCESSIBILITY
+   ============================================================ */
+
+button,
+a,
+input,
+textarea,
+select {
+    font: inherit;
+}
+
+
+/* ============================================================
+   IMAGE PROTECTION
+   ============================================================ */
+
+img,
+canvas {
+    -webkit-user-drag: none;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+
+/* ============================================================
+   PERFORMANCE
+   ============================================================ */
+
+/*
+ * Avoid global will-change.
+ *
+ * will-change on many elements can consume
+ * significant GPU memory on mobile.
+ *
+ * PixiJS objects are handled by WebGL instead.
+ */
+
+
+/* ============================================================
+   END
+   ============================================================ */
