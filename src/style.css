@@ -1,6 +1,6 @@
 /* ============================================================
    THE EMOJIS
-   Global / PixiJS / Mobile Optimized Styles
+   PixiJS / WebGL / Mobile Optimized
    ============================================================ */
 
 /* ============================================================
@@ -21,9 +21,8 @@
    ============================================================ */
 
 :root {
-    --page-bg: #ffffff;
-    --text-primary: #171717;
-    --text-secondary: #777777;
+    --background: #ffffff;
+    --text: #111111;
 
     --safe-top: env(
         safe-area-inset-top,
@@ -48,48 +47,47 @@
 
 
 /* ============================================================
-   HTML / BODY
+   HTML
    ============================================================ */
 
 html {
     width: 100%;
     height: 100%;
 
-    background: var(--page-bg);
+    margin: 0;
+    padding: 0;
 
     overflow: hidden;
 
-    /*
-     * Prevent browser zooming / overscroll
-     * during interaction.
-     */
+    background: var(--background);
+
     touch-action: none;
 
-    /*
-     * Prevent text selection while interacting
-     * with the emoji world.
-     */
+    overscroll-behavior: none;
+
     -webkit-user-select: none;
     user-select: none;
 
-    /*
-     * Prevent tap highlight on mobile.
-     */
     -webkit-tap-highlight-color: transparent;
 }
 
+
+/* ============================================================
+   BODY
+   ============================================================ */
 
 body {
     width: 100%;
     height: 100%;
 
     margin: 0;
+    padding: 0;
 
     overflow: hidden;
 
-    background: #ffffff;
+    background: var(--background);
 
-    color: var(--text-primary);
+    color: var(--text);
 
     font-family:
         Inter,
@@ -101,22 +99,16 @@ body {
         Arial,
         sans-serif;
 
-    /*
-     * Important for mobile browsers.
-     */
     touch-action: none;
 
     overscroll-behavior: none;
 
-    /*
-     * Reduce unnecessary browser rendering work.
-     */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 
-    /*
-     * Prevent browser text/image dragging.
-     */
+    -webkit-user-select: none;
+    user-select: none;
+
     -webkit-user-drag: none;
 }
 
@@ -135,23 +127,18 @@ body {
 
     overflow: hidden;
 
-    background:
-        radial-gradient(
-            circle at 50% 20%,
-            rgba(255, 255, 255, 1) 0%,
-            rgba(250, 250, 250, 1) 55%,
-            rgba(245, 245, 245, 1) 100%
-        );
+    background: #ffffff;
 
     /*
-     * Establish stacking context.
+     * Isolate PixiJS from the rest of the page.
      */
     isolation: isolate;
 
     /*
-     * Avoid unnecessary layout work.
+     * Prevent browser layout work outside
+     * the canvas.
      */
-    contain: layout paint size;
+    contain: strict;
 }
 
 
@@ -170,52 +157,103 @@ body {
     width: 100% !important;
     height: 100% !important;
 
+    min-width: 100%;
+    min-height: 100%;
+
+    max-width: none;
+    max-height: none;
+
+    margin: 0;
+    padding: 0;
+
+    border: 0;
+
+    outline: none;
+
     /*
-     * Canvas should never trigger scrolling.
+     * Critical for mobile.
      */
     touch-action: none;
 
     /*
-     * Prevent selection/dragging.
+     * Prevent browser dragging.
      */
     user-select: none;
+
     -webkit-user-select: none;
 
     -webkit-user-drag: none;
 
     /*
-     * Keep canvas behind HTML overlays.
+     * Canvas is the actual application.
      */
     z-index: 1;
 
     /*
-     * GPU compositing hint.
+     * Promote canvas to compositor layer.
      */
-    transform: translateZ(0);
+    transform: translate3d(
+        0,
+        0,
+        0
+    );
 
     /*
-     * Do not use expensive CSS filters here.
-     * PixiJS handles the visual rendering.
+     * DO NOT add CSS filters.
      */
     filter: none;
 
     /*
-     * Avoid image interpolation artifacts.
+     * Let PixiJS control image quality.
      */
     image-rendering: auto;
 }
 
 
 /* ============================================================
-   THE EMOJIS — TITLE
+   REMOVE OLD HTML EMOJI LAYERS
    ============================================================ */
+
+/*
+ * The current application renders emojis entirely
+ * through PixiJS.
+ *
+ * If any old HTML emoji elements remain in index.html,
+ * don't allow them to create extra rendering work.
+ */
+
+.emoji,
+.emoji-card,
+.emoji-item,
+.emoji-container,
+.emoji-grid,
+.emoji-world,
+.emoji-platform,
+.glass-cube {
+    pointer-events: none;
+}
+
+
+/* ============================================================
+   HTML TITLE
+   ============================================================ */
+
+/*
+ * The current EmojiWorld creates "The Emojis"
+ * using PIXI.Text.
+ *
+ * This class is kept only for compatibility with
+ * older HTML markup.
+ */
 
 .title {
     position: fixed;
 
-    top: calc(
-        18px + var(--safe-top)
-    );
+    top:
+        calc(
+            14px +
+            var(--safe-top)
+        );
 
     left: 50%;
 
@@ -228,33 +266,31 @@ body {
 
     z-index: 100;
 
+    pointer-events: none;
+
     width: max-content;
 
     text-align: center;
 
-    pointer-events: none;
-
-    /*
-     * Keep title isolated from canvas rendering.
-     */
     contain: layout paint;
 
-    /*
-     * GPU compositing.
-     */
-    will-change: transform;
+    color: #111111;
 }
 
+
+/* ============================================================
+   OLD HTML TITLE
+   ============================================================ */
 
 .title h1 {
     margin: 0;
 
-    color: #151515;
+    color: #111111;
 
     font-size:
         clamp(
-            1.65rem,
-            4vw,
+            1.5rem,
+            5vw,
             2.7rem
         );
 
@@ -264,47 +300,40 @@ body {
 
     letter-spacing: -0.035em;
 
-    /*
-     * Do NOT use heavy blur/drop-shadow.
-     * It costs more on mobile GPUs.
-     */
     text-shadow:
         0 2px 8px
         rgba(
             0,
             0,
             0,
-            0.08
+            0.07
         );
 
     white-space: nowrap;
 }
 
 
-/* Optional subtitle */
-
 .title p {
-    margin-top: 7px;
+    margin-top: 6px;
 
     color:
         rgba(
-            50,
-            50,
-            50,
-            0.55
+            30,
+            30,
+            30,
+            0.48
         );
 
     font-size:
         clamp(
-            0.62rem,
+            0.6rem,
             1.5vw,
             0.78rem
         );
 
     font-weight: 500;
 
-    letter-spacing:
-        0.14em;
+    letter-spacing: 0.12em;
 
     text-transform: uppercase;
 
@@ -313,111 +342,82 @@ body {
 
 
 /* ============================================================
-   GLASS / UI ELEMENTS
+   LOADING SCREEN
    ============================================================ */
 
-.glass-panel {
-    position: absolute;
-
-    background:
-        rgba(
-            255,
-            255,
-            255,
-            0.72
-        );
-
-    border:
-        1px solid
-        rgba(
-            255,
-            255,
-            255,
-            0.9
-        );
-
-    border-radius: 999px;
-
-    box-shadow:
-        0 8px 25px
-        rgba(
-            0,
-            0,
-            0,
-            0.06
-        );
-
-    /*
-     * Avoid backdrop-filter by default.
-     *
-     * backdrop-filter can be expensive on
-     * Snapdragon-class mobile GPUs.
-     */
-}
-
-
-/* ============================================================
-   DEBUG INFORMATION
-   ============================================================ */
-
-.debug-info {
+.loading-screen {
     position: fixed;
 
-    right:
-        calc(
-            10px +
-            var(--safe-right)
-        );
+    inset: 0;
 
-    bottom:
-        calc(
-            10px +
-            var(--safe-bottom)
-        );
+    z-index: 9999;
 
-    z-index: 1000;
+    display: grid;
 
-    max-width: 260px;
+    place-items: center;
 
-    padding:
-        7px 10px;
+    width: 100%;
+    height: 100%;
 
-    border-radius: 8px;
-
-    background:
-        rgba(
-            20,
-            20,
-            20,
-            0.82
-        );
-
-    color: #ffffff;
-
-    font-family:
-        ui-monospace,
-        SFMono-Regular,
-        Menlo,
-        Monaco,
-        Consolas,
-        "Liberation Mono",
-        monospace;
-
-    font-size: 11px;
-
-    line-height: 1.4;
+    background: #ffffff;
 
     pointer-events: none;
 
-    opacity: 0.75;
+    opacity: 1;
+
+    transition:
+        opacity
+        220ms
+        ease;
+}
+
+
+.loading-screen.hidden {
+    opacity: 0;
+}
+
+
+.loading-content {
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: center;
+
+    gap: 8px;
+
+    text-align: center;
+}
+
+
+.loading-title {
+    color: #111111;
+
+    font-size: 20px;
+
+    font-weight: 700;
+}
+
+
+.loading-text {
+    color:
+        rgba(
+            0,
+            0,
+            0,
+            0.45
+        );
+
+    font-size: 13px;
 }
 
 
 /* ============================================================
-   INITIALIZATION ERROR
+   ERROR SCREEN
    ============================================================ */
 
-#emoji-error {
+#emoji-error,
+#emoji-init-error {
     position: fixed !important;
 
     inset: 0 !important;
@@ -428,21 +428,21 @@ body {
 
     place-items: center !important;
 
-    padding:
-        24px;
+    width: 100% !important;
+    height: 100% !important;
 
-    background:
-        #ffffff !important;
+    padding: 24px;
 
-    color:
-        #171717 !important;
+    background: #ffffff !important;
+
+    color: #111111 !important;
 
     pointer-events: none !important;
 }
 
 
 .emoji-error-content {
-    max-width: 320px;
+    max-width: 340px;
 
     text-align: center;
 
@@ -478,74 +478,109 @@ body {
         );
 
     font-size: 14px;
+
+    line-height: 1.5;
 }
 
 
 /* ============================================================
-   LOADING STATE
+   DEBUG PANEL
    ============================================================ */
 
-.loading-screen {
+.debug-info {
     position: fixed;
 
-    inset: 0;
+    right:
+        calc(
+            10px +
+            var(--safe-right)
+        );
 
-    z-index: 9999;
+    bottom:
+        calc(
+            10px +
+            var(--safe-bottom)
+        );
 
-    display: grid;
+    z-index: 1000;
 
-    place-items: center;
+    max-width: 260px;
 
-    background: #ffffff;
+    padding:
+        7px 10px;
+
+    border-radius: 8px;
+
+    background:
+        rgba(
+            15,
+            15,
+            15,
+            0.82
+        );
+
+    color: #ffffff;
+
+    font-family:
+        ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        Monaco,
+        Consolas,
+        monospace;
+
+    font-size: 11px;
+
+    line-height: 1.4;
 
     pointer-events: none;
 
-    opacity: 1;
-
-    transition:
-        opacity
-        250ms
-        ease;
+    opacity: 0.75;
 }
 
 
-.loading-screen.hidden {
-    opacity: 0;
-}
+/* ============================================================
+   GLASS UI
+   ============================================================ */
 
+/*
+ * Kept only for any external UI controls.
+ *
+ * PixiJS glass emoji platforms are NOT affected by this.
+ */
 
-.loading-content {
-    display: flex;
+.glass-panel {
+    position: absolute;
 
-    flex-direction: column;
+    background:
+        rgba(
+            255,
+            255,
+            255,
+            0.78
+        );
 
-    align-items: center;
+    border:
+        1px solid
+        rgba(
+            255,
+            255,
+            255,
+            0.9
+        );
 
-    gap: 10px;
+    border-radius: 999px;
 
-    text-align: center;
-}
-
-
-.loading-title {
-    color: #171717;
-
-    font-size: 20px;
-
-    font-weight: 700;
-}
-
-
-.loading-text {
-    color:
+    box-shadow:
+        0 6px 20px
         rgba(
             0,
             0,
             0,
-            0.45
+            0.05
         );
 
-    font-size: 13px;
+    pointer-events: none;
 }
 
 
@@ -556,58 +591,41 @@ body {
 @media (max-width: 768px) {
 
     #app {
-        /*
-         * Keep a very simple background on mobile.
-         * Avoid expensive layered gradients.
-         */
         background: #ffffff;
     }
 
+    #pixi-canvas,
+    #app > canvas {
+        width: 100% !important;
+        height: 100% !important;
 
-    .title {
-        top: calc(
-            14px +
-            var(--safe-top)
-        );
+        transform:
+            translate3d(
+                0,
+                0,
+                0
+            );
     }
 
+    .title {
+        top:
+            calc(
+                12px +
+                var(--safe-top)
+            );
+    }
 
     .title h1 {
         font-size:
             clamp(
-                1.45rem,
+                1.4rem,
                 7vw,
                 2rem
             );
-
-        letter-spacing:
-            -0.03em;
     }
-
 
     .title p {
-        margin-top: 5px;
-
         font-size: 9px;
-
-        letter-spacing:
-            0.11em;
-    }
-
-
-    /*
-     * Remove unnecessary shadows on smaller
-     * screens.
-     */
-    .glass-panel {
-        box-shadow:
-            0 5px 16px
-            rgba(
-                0,
-                0,
-                0,
-                0.05
-            );
     }
 }
 
@@ -619,27 +637,25 @@ body {
 @media (max-width: 480px) {
 
     .title {
-        top: calc(
-            11px +
-            var(--safe-top)
-        );
+        top:
+            calc(
+                10px +
+                var(--safe-top)
+            );
     }
-
 
     .title h1 {
         font-size:
             clamp(
-                1.35rem,
+                1.3rem,
                 7.5vw,
                 1.7rem
             );
     }
 
-
     .title p {
         display: none;
     }
-
 
     .debug-info {
         display: none;
@@ -654,15 +670,15 @@ body {
 @media (max-width: 360px) {
 
     .title {
-        top: calc(
-            9px +
-            var(--safe-top)
-        );
+        top:
+            calc(
+                8px +
+                var(--safe-top)
+            );
     }
 
-
     .title h1 {
-        font-size: 1.3rem;
+        font-size: 1.25rem;
     }
 }
 
@@ -678,22 +694,21 @@ body {
 ) {
 
     .title {
-        top: calc(
-            8px +
-            var(--safe-top)
-        );
+        top:
+            calc(
+                7px +
+                var(--safe-top)
+            );
     }
-
 
     .title h1 {
         font-size:
             clamp(
-                1.15rem,
+                1.1rem,
                 4vw,
                 1.7rem
             );
     }
-
 
     .title p {
         display: none;
@@ -709,13 +724,6 @@ body {
     prefers-reduced-motion: reduce
 ) {
 
-    *,
-    *::before,
-    *::after {
-        scroll-behavior: auto !important;
-    }
-
-
     .loading-screen {
         transition: none;
     }
@@ -723,19 +731,13 @@ body {
 
 
 /* ============================================================
-   POINTER DEVICES
+   TOUCH DEVICES
    ============================================================ */
 
 @media (
     pointer: coarse
 ) {
 
-    /*
-     * Mobile/touch devices.
-     *
-     * Keep interaction entirely inside
-     * the Pixi canvas.
-     */
     html,
     body,
     #app,
@@ -747,40 +749,29 @@ body {
 
 
 /* ============================================================
-   HIGH DPI / RETINA
-   ============================================================ */
-
-/*
- * Do NOT scale the CSS canvas based on DPR.
- *
- * PixiJS controls the internal rendering
- * resolution. This prevents accidentally
- * creating an enormous canvas on phones.
- */
-
-
-/* ============================================================
-   ACCESSIBILITY
-   ============================================================ */
-
-button,
-a,
-input,
-textarea,
-select {
-    font: inherit;
-}
-
-
-/* ============================================================
-   IMAGE PROTECTION
+   IMAGE / CANVAS PROTECTION
    ============================================================ */
 
 img,
 canvas {
     -webkit-user-drag: none;
+
     user-select: none;
+
     -webkit-user-select: none;
+}
+
+
+/* ============================================================
+   BUTTON / FORM NORMALIZATION
+   ============================================================ */
+
+button,
+input,
+textarea,
+select,
+a {
+    font: inherit;
 }
 
 
@@ -789,12 +780,18 @@ canvas {
    ============================================================ */
 
 /*
- * Avoid global will-change.
+ * IMPORTANT:
  *
- * will-change on many elements can consume
- * significant GPU memory on mobile.
+ * Do NOT use:
  *
- * PixiJS objects are handled by WebGL instead.
+ * will-change: transform;
+ *
+ * on all emoji elements.
+ *
+ * PixiJS already handles the GPU scene.
+ *
+ * Doing this in CSS would only apply to HTML elements
+ * and could increase memory usage on mobile.
  */
 
 

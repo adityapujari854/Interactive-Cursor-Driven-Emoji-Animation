@@ -1,27 +1,35 @@
 /**
- * ============================================================
+ * ================================================================
  * THE EMOJIS
- * Main PixiJS 8 World
- * ============================================================
+ * EmojiWorld - PixiJS + Native Animated WebP
+ * ================================================================
  *
- * Features:
- * - PixiJS 8 / WebGL
- * - 24 WebP emoji characters
- * - Responsive desktop/mobile grid
- * - Glass platform under every emoji
- * - Individual idle animations
- * - Cursor proximity interaction
- * - Mobile gyroscope tilt
- * - Mobile shake detection
- * - Physics fall
- * - Smooth fly-back animation
- * - Mobile performance optimizations
+ * IMPORTANT:
+ * The emoji characters are rendered using native HTML <img>
+ * elements instead of PIXI.Sprite.
  *
- * Assets:
- * /public/assets/emojis/512 (1).webp
- * ...
- * /public/assets/emojis/512 (24).webp
- * ============================================================
+ * Why?
+ * Animated WebP is decoded and animated by the browser itself.
+ * Pixi texture loading can display the WebP but may capture only
+ * the first frame depending on the browser/loader path.
+ *
+ * PixiJS:
+ *   - glass platforms
+ *   - title
+ *   - scene
+ *
+ * Native DOM:
+ *   - animated WebP emojis
+ *
+ * Interaction:
+ *   - mouse
+ *   - touch
+ *   - gyroscope tilt
+ *   - device shake
+ *   - physics falling
+ *   - return-to-home animation
+ *
+ * ================================================================
  */
 
 import * as PIXI from 'pixi.js';
@@ -31,3047 +39,2622 @@ import { GyroHandler } from './gyro.js';
 
 export class EmojiWorld {
 
-    /* ========================================================
-       CONSTRUCTOR
-       ======================================================== */
+  constructor(canvasElement, options = {}) {
 
-    constructor(canvasElement, options = {}) {
+    this.canvas = canvasElement;
+    this.options = options;
 
-        this.canvas =
-            canvasElement;
+    this.width = window.innerWidth;
+    this.height = window.innerHeight;
 
-        this.options =
-            options;
+    this.app = null;
+    this.physics = null;
+    this.gyro = new GyroHandler();
 
-        this.width =
-            window.innerWidth;
+    this.cubesContainer = null;
+    this.titleContainer = null;
 
-        this.height =
-            window.innerHeight;
+    // Native animated WebP layer
+    this.emojiLayer = null;
 
-        /* ----------------------------------------------------
-           PixiJS
-        ---------------------------------------------------- */
+    this.emojis = [];
+    this.cubes = [];
 
-        this.app = null;
+    this.emojiConfigs = this._getEmojiConfigs();
 
-        this.ready =
-            this._init();
+    this.mouse = {
+      x: this.width / 2,
+      y: this.height / 2
+    };
 
-        /* ----------------------------------------------------
-           Containers
-        ---------------------------------------------------- */
+    this.touchActive = false;
 
-        this.backgroundContainer =
-            null;
+    this.isShaking = false;
+    this.isRecovering = false;
 
-        this.cubesContainer =
-            null;
+    this.shakeRecoveryTime = 0;
 
-        this.emojisContainer =
-            null;
+    this._permissionRequested = false;
 
-        this.titleContainer =
-            null;
+    this._resizeHandler = () => {
+      this._onWindowResize();
+    };
 
-        /* ----------------------------------------------------
-           Objects
-        ---------------------------------------------------- */
+    this._boundUpdateFrame = this._updateFrame.bind(this);
 
-        this.emojis = [];
+    // main.js waits for this
+    this.ready = this._init();
+  }
 
-        this.cubes = [];
 
-        /* ----------------------------------------------------
-           Physics
-        ---------------------------------------------------- */
+  /* ================================================================
+     INITIALIZATION
+     ================================================================ */
 
-        this.physics =
-            null;
+  async _init() {
 
-        /* ----------------------------------------------------
-           Gyroscope
-        ---------------------------------------------------- */
+    try {
 
-        this.gyro =
-            new GyroHandler();
+      console.log('🎮 Initializing The Emojis...');
 
-        this.permissionRequested =
-            false;
+      await this._createPixiApp();
 
-        /* ----------------------------------------------------
-           Cursor
-        ---------------------------------------------------- */
+      this._createEmojiDOMLayer();
 
-        this.pointer = {
-            x: this.width / 2,
-            y: this.height / 2,
+      this._setupScene();
 
-            active: false
-        };
+      this._setupEventListeners();
 
-        /* ----------------------------------------------------
-           Animation
-        ---------------------------------------------------- */
+      this._startAnimationLoop();
 
-        this.elapsed =
-            0;
+      console.log('✨ The Emojis initialized successfully!');
 
-        this.isShaking =
-            false;
+      return this;
 
-        this.isRecovering =
-            false;
+    } catch (error) {
 
-        this.returnTimer =
-            0;
+      console.error(
+        '❌ Failed to initialize Emoji World:',
+        error
+      );
 
-        /* ----------------------------------------------------
-           Responsive
-        ---------------------------------------------------- */
+      throw error;
+    }
+  }
 
-        this.resizeHandler =
-            () => this._onResize();
 
-        /* ----------------------------------------------------
-           Performance
-        ---------------------------------------------------- */
+  /* ================================================================
+     PIXI APPLICATION
+     ================================================================ */
 
-        this.isMobile =
-            this._isMobile();
+  async _createPixiApp() {
 
-        this.isPageVisible =
-            true;
+    console.log(
+      '[Emoji World] Creating PixiJS 8 application...'
+    );
 
-        this.frameCounter =
-            0;
+    this.app = new PIXI.Application();
 
-        /* ----------------------------------------------------
-           Config
-        ---------------------------------------------------- */
+    await this.app.init({
 
-        this.emojiConfigs =
-            this._getEmojiConfigs();
+      canvas: this.canvas,
+
+      width: this.width,
+      height: this.height,
+
+      backgroundAlpha: 0,
+
+      antialias: false,
+
+      autoDensity: true,
+
+      resolution: this._getOptimalResolution(),
+
+      preference: 'webgl',
+
+      powerPreference: 'high-performance'
+    });
+
+    if (
+      !this.app.canvas ||
+      !this.app.renderer ||
+      !this.app.stage
+    ) {
+
+      throw new Error(
+        'PixiJS application did not initialize correctly.'
+      );
     }
 
+    this.app.canvas.style.display = 'block';
 
-    /* ========================================================
-       INITIALIZATION
-       ======================================================== */
+    this.app.canvas.style.width = '100%';
 
-    async _init() {
+    this.app.canvas.style.height = '100%';
 
-        try {
+    this.app.canvas.style.position = 'fixed';
 
-            console.log(
-                '[Emoji World] Initializing...'
-            );
+    this.app.canvas.style.inset = '0';
 
-            await this._createPixiApp();
+    this.app.canvas.style.zIndex = '1';
 
-            console.log(
-                '[Emoji World] ✓ PixiJS initialized'
-            );
+    this.app.canvas.style.pointerEvents = 'none';
 
-            await this._loadAssets();
+    window.addEventListener(
+      'resize',
+      this._resizeHandler,
+      { passive: true }
+    );
 
-            console.log(
-                '[Emoji World] ✓ 24 emoji assets loaded'
-            );
+    console.log(
+      '[Emoji World] ✓ PixiJS renderer initialized'
+    );
+  }
 
-            this._setupScene();
 
-            console.log(
-                '[Emoji World] ✓ Scene created'
-            );
+  _getOptimalResolution() {
 
-            this._setupPointerEvents();
+    /*
+     * Mobile GPU optimization.
+     *
+     * Snapdragon 888:
+     * avoid rendering huge 3x/4x DPR canvases.
+     */
 
-            this._setupGyro();
+    const dpr =
+      window.devicePixelRatio || 1;
 
-            this._startAnimationLoop();
+    const isMobile =
+      window.innerWidth < 800 ||
+      navigator.maxTouchPoints > 0;
 
-            console.log(
-                '[Emoji World] ✓ Animation started'
-            );
+    if (isMobile) {
 
-            console.log(
-                '✨ The Emojis is ready!'
-            );
+      return Math.min(dpr, 1.5);
+    }
 
-            return this;
+    return Math.min(dpr, 2);
+  }
 
-        } catch (error) {
 
-            console.error(
-                '[Emoji World] Initialization failed:',
-                error
-            );
+  /* ================================================================
+     NATIVE EMOJI LAYER
+     ================================================================ */
 
-            throw error;
+  _createEmojiDOMLayer() {
+
+    /*
+     * This layer sits directly above the Pixi canvas.
+     *
+     * pointer-events:none means it cannot block:
+     *   - mouse
+     *   - touch
+     *   - gyro
+     */
+
+    this.emojiLayer =
+      document.createElement('div');
+
+    this.emojiLayer.id =
+      'native-emoji-layer';
+
+    Object.assign(
+      this.emojiLayer.style,
+      {
+
+        position: 'fixed',
+
+        inset: '0',
+
+        width: '100vw',
+
+        height: '100vh',
+
+        overflow: 'hidden',
+
+        pointerEvents: 'none',
+
+        zIndex: '10',
+
+        transform: 'translateZ(0)',
+
+        contain: 'layout style paint'
+      }
+    );
+
+    document.body.appendChild(
+      this.emojiLayer
+    );
+
+    console.log(
+      '[Emoji World] ✓ Native animated WebP layer created'
+    );
+  }
+
+
+  /* ================================================================
+     SCENE
+     ================================================================ */
+
+  _setupScene() {
+
+    this.cubesContainer =
+      new PIXI.Container();
+
+    this.titleContainer =
+      new PIXI.Container();
+
+    this.cubesContainer.sortableChildren =
+      true;
+
+    this.titleContainer.sortableChildren =
+      true;
+
+    this.app.stage.addChild(
+      this.cubesContainer
+    );
+
+    this.app.stage.addChild(
+      this.titleContainer
+    );
+
+
+    this.physics =
+      new Physics({
+
+        width: this.width,
+
+        height: this.height,
+
+        groundLevel:
+          this.height * 0.90,
+
+        gravity: 0.62,
+
+        friction: 0.985,
+
+        bounce: 0.55
+      });
+
+
+    this._createTitle();
+
+    this._createEmojisAndCubes();
+
+    console.log(
+      `[Emoji World] ✓ Created ${this.emojis.length} animated emojis`
+    );
+  }
+
+
+  /* ================================================================
+     TITLE
+     ================================================================ */
+
+  _createTitle() {
+
+    const title =
+      new PIXI.Text({
+
+        text: 'The Emojis',
+
+        style: {
+
+          fontFamily:
+            '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+
+          fontSize:
+            Math.max(
+              34,
+              Math.min(
+                58,
+                this.width * 0.045
+              )
+            ),
+
+          fontWeight: '700',
+
+          fill: 0x111111,
+
+          align: 'center',
+
+          letterSpacing: 1
         }
-    }
+      });
 
 
-    /* ========================================================
-       PIXI APPLICATION
-       ======================================================== */
+    title.anchor.set(0.5);
 
-    async _createPixiApp() {
+    title.x =
+      this.width / 2;
 
-        /*
-         * PixiJS 8:
-         *
-         * 1. new Application()
-         * 2. await app.init(...)
-         *
-         * DO NOT use Application.create().
-         */
+    title.y =
+      Math.max(
+        48,
+        Math.min(
+          75,
+          this.height * 0.085
+        )
+      );
 
-        this.app =
-            new PIXI.Application();
+    title.alpha = 0.98;
 
-        await this.app.init({
+    title.zIndex = 100;
 
-            /*
-             * Use the existing canvas.
-             */
-            canvas:
-                this.canvas,
+    this.titleContainer.addChild(
+      title
+    );
 
-            width:
-                this.width,
+    this.title = title;
+  }
 
-            height:
-                this.height,
 
-            /*
-             * White CSS background should
-             * remain visible.
-             */
-            backgroundAlpha:
-                0,
+  /* ================================================================
+     CREATE EMOJIS + GLASS PLATFORMS
+     ================================================================ */
 
-            antialias:
-                !this.isMobile,
+  _createEmojisAndCubes() {
 
-            autoDensity:
-                true,
+    /*
+     * Desktop:
+     *   6 x 4
+     *
+     * Mobile:
+     *   4 x 6
+     */
 
-            /*
-             * Limit DPR for mobile GPU load.
-             */
-            resolution:
-                this._getRenderResolution(),
+    const isMobile =
+      this.width < 700;
 
-            /*
-             * Prefer WebGL.
-             */
-            preference:
-                'webgl',
+    const cols =
+      isMobile ? 4 : 6;
 
-            powerPreference:
-                'high-performance',
+    const rows =
+      Math.ceil(24 / cols);
 
-            /*
-             * Do not create another ticker.
-             */
-            sharedTicker:
-                false
+
+    const sidePadding =
+      isMobile ? 24 : 70;
+
+
+    const availableWidth =
+      Math.max(
+        260,
+        this.width -
+        sidePadding * 2
+      );
+
+
+    const top =
+      this.height < 700
+        ? 120
+        : 135;
+
+
+    const bottom =
+      Math.min(
+        this.height - 50,
+        this.height * 0.91
+      );
+
+
+    const availableHeight =
+      Math.max(
+        300,
+        bottom - top
+      );
+
+
+    const xSpacing =
+      cols > 1
+        ? availableWidth /
+          (cols - 1)
+        : availableWidth;
+
+
+    const ySpacing =
+      rows > 1
+        ? availableHeight /
+          (rows - 1)
+        : availableHeight;
+
+
+    const spacing =
+      Math.min(
+        xSpacing,
+        ySpacing
+      );
+
+
+    const gridWidth =
+      spacing *
+      (cols - 1);
+
+
+    const gridHeight =
+      spacing *
+      (rows - 1);
+
+
+    const startX =
+      this.width / 2 -
+      gridWidth / 2;
+
+
+    const startY =
+      top +
+      (availableHeight -
+        gridHeight) / 2;
+
+
+    /*
+     * Mobile emojis should not become too large.
+     */
+
+    const emojiSize =
+      Math.max(
+        isMobile ? 54 : 58,
+
+        Math.min(
+          isMobile ? 82 : 108,
+
+          spacing * 0.70
+        )
+      );
+
+
+    const cubeSize =
+      Math.max(
+        isMobile ? 62 : 68,
+
+        Math.min(
+          isMobile ? 92 : 120,
+
+          spacing * 0.82
+        )
+      );
+
+
+    for (
+      let i = 0;
+      i < 24;
+      i++
+    ) {
+
+      const col =
+        i % cols;
+
+      const row =
+        Math.floor(i / cols);
+
+
+      const x =
+        startX +
+        col * spacing;
+
+
+      const y =
+        startY +
+        row * spacing;
+
+
+      const config =
+        this.emojiConfigs[i];
+
+
+      /* ------------------------------------------------------------
+         GLASS PLATFORM
+         ------------------------------------------------------------ */
+
+      const cube =
+        this._createGlassCube(
+          x,
+          y + emojiSize * 0.42,
+          cubeSize
+        );
+
+
+      cube.zIndex = 1;
+
+      this.cubesContainer.addChild(
+        cube
+      );
+
+
+      this.cubes.push({
+
+        sprite: cube,
+
+        x,
+
+        y
+      });
+
+
+      /* ------------------------------------------------------------
+         NATIVE ANIMATED WEBP
+         ------------------------------------------------------------ */
+
+      const img =
+        document.createElement('img');
+
+
+      /*
+       * IMPORTANT:
+       *
+       * Browser loads the animated WebP directly.
+       *
+       * Do NOT convert this into PIXI.Texture.
+       */
+
+      img.src =
+        `/assets/emojis/512 (${i + 1}).webp`;
+
+
+      img.alt =
+        `Emoji ${i + 1}`;
+
+
+      img.draggable =
+        false;
+
+
+      img.decoding =
+        'async';
+
+
+      img.loading =
+        'eager';
+
+
+      /*
+       * Critical for animated WebP.
+       */
+
+      img.setAttribute(
+        'fetchpriority',
+        'high'
+      );
+
+
+      Object.assign(
+        img.style,
+        {
+
+          position: 'absolute',
+
+          left: '0',
+
+          top: '0',
+
+          width: `${emojiSize}px`,
+
+          height: `${emojiSize}px`,
+
+          objectFit: 'contain',
+
+          display: 'block',
+
+          userSelect: 'none',
+
+          WebkitUserSelect: 'none',
+
+          pointerEvents: 'none',
+
+          willChange:
+            'transform',
+
+          transformOrigin:
+            '50% 50%',
+
+          backfaceVisibility:
+            'hidden',
+
+          WebkitBackfaceVisibility:
+            'hidden',
+
+          transform:
+            `translate3d(${x - emojiSize / 2}px, ${y - emojiSize / 2}px, 0)`,
+
+          opacity: '1'
+        }
+      );
+
+
+      /*
+       * If an image fails, show useful information.
+       */
+
+      img.addEventListener(
+        'error',
+        () => {
+
+          console.error(
+            `[Emoji World] Failed to load emoji ${i + 1}:`,
+            img.src
+          );
+        },
+        { once: true }
+      );
+
+
+      this.emojiLayer.appendChild(
+        img
+      );
+
+
+      /* ------------------------------------------------------------
+         ANIMATION STATE
+         ------------------------------------------------------------ */
+
+      const emoji = {
+
+        element: img,
+
+        index: i,
+
+        config,
+
+        originalX: x,
+
+        originalY: y,
+
+        targetX: x,
+
+        targetY: y,
+
+        x,
+
+        y,
+
+        size: emojiSize,
+
+        rotation: 0,
+
+        scale: 1,
+
+        opacity: 1,
+
+        idleTime:
+          Math.random() *
+          Math.PI *
+          2,
+
+        isFlying: false,
+
+        flyProgress: 0,
+
+        flyStartX: x,
+
+        flyStartY: y,
+
+        flyStartRotation: 0,
+
+        physicsBody: null,
+
+        lastRenderX: x,
+
+        lastRenderY: y,
+
+        lastRenderRotation: 0,
+
+        lastRenderScale: 1
+      };
+
+
+      /*
+       * Physics body.
+       */
+
+      emoji.physicsBody =
+        this.physics.createBody({
+
+          x,
+
+          y,
+
+          mass:
+            config.mass,
+
+          radius:
+            emojiSize * 0.40,
+
+          isActive: false
         });
 
-        if (!this.app) {
 
-            throw new Error(
-                'PixiJS Application was not created.'
-            );
-        }
-
-        if (!this.app.canvas) {
-
-            throw new Error(
-                'PixiJS canvas is unavailable.'
-            );
-        }
-
-        if (!this.app.stage) {
-
-            throw new Error(
-                'PixiJS stage is unavailable.'
-            );
-        }
-
-        if (!this.app.renderer) {
-
-            throw new Error(
-                'PixiJS renderer is unavailable.'
-            );
-        }
-
-        /*
-         * Ensure canvas fills viewport.
-         */
-        this.app.canvas.style.display =
-            'block';
-
-        this.app.canvas.style.width =
-            '100%';
-
-        this.app.canvas.style.height =
-            '100%';
-
-        this.app.canvas.style.position =
-            'absolute';
-
-        this.app.canvas.style.inset =
-            '0';
-
-        /*
-         * Pixi owns the canvas now.
-         */
-        this.canvas =
-            this.app.canvas;
-
-        /*
-         * Resize listener.
-         */
-        window.addEventListener(
-            'resize',
-            this.resizeHandler,
-            {
-                passive: true
-            }
-        );
-    }
-
-
-    /* ========================================================
-       RENDER RESOLUTION
-       ======================================================== */
-
-    _getRenderResolution() {
-
-        const dpr =
-            window.devicePixelRatio || 1;
-
-        /*
-         * Snapdragon-class phones:
-         *
-         * Do not render a 3x/4x framebuffer.
-         *
-         * This is one of the biggest GPU
-         * savings for mobile.
-         */
-
-        if (this.isMobile) {
-
-            return Math.min(
-                dpr,
-                1.25
-            );
-        }
-
-        return Math.min(
-            dpr,
-            1.5
-        );
-    }
-
-
-    /* ========================================================
-       DEVICE DETECTION
-       ======================================================== */
-
-    _isMobile() {
-
-        const ua =
-            navigator.userAgent ||
-            '';
-
-        return (
-            /Android/i.test(ua) ||
-            /iPhone|iPad|iPod/i.test(ua) ||
-            window.matchMedia(
-                '(pointer: coarse)'
-            ).matches
-        );
-    }
-
-
-    /* ========================================================
-       ASSET LOADING
-       ======================================================== */
-
-    async _loadAssets() {
-
-        const assets = [];
-
-        for (
-            let i = 1;
-            i <= 24;
-            i++
-        ) {
-
-            assets.push({
-
-                alias:
-                    `emoji${i}`,
-
-                /*
-                 * Assets are expected inside:
-                 *
-                 * public/assets/emojis/
-                 */
-                src:
-                    `/assets/emojis/512 (${i}).webp`
-            });
-        }
-
-        try {
-
-            await PIXI.Assets.load(
-                assets
-            );
-
-        } catch (error) {
-
-            console.error(
-                '[Emoji World] Asset loading failed:',
-                error
-            );
-
-            throw error;
-        }
-
-        /*
-         * Verify every texture.
-         */
-        for (
-            let i = 1;
-            i <= 24;
-            i++
-        ) {
-
-            const texture =
-                PIXI.Assets.get(
-                    `emoji${i}`
-                );
-
-            if (!texture) {
-
-                throw new Error(
-                    `Emoji texture ${i} was not found.`
-                );
-            }
-        }
-    }
-
-
-    /* ========================================================
-       SCENE
-       ======================================================== */
-
-    _setupScene() {
-
-        /*
-         * Containers.
-         */
-
-        this.backgroundContainer =
-            new PIXI.Container();
-
-        this.cubesContainer =
-            new PIXI.Container();
-
-        this.emojisContainer =
-            new PIXI.Container();
-
-        this.titleContainer =
-            new PIXI.Container();
-
-        /*
-         * Sorting.
-         */
-
-        this.cubesContainer.sortableChildren =
-            true;
-
-        this.emojisContainer.sortableChildren =
-            true;
-
-        this.titleContainer.sortableChildren =
-            true;
-
-        /*
-         * Add to stage.
-         */
-
-        this.app.stage.addChild(
-            this.backgroundContainer
-        );
-
-        this.app.stage.addChild(
-            this.cubesContainer
-        );
-
-        this.app.stage.addChild(
-            this.emojisContainer
-        );
-
-        this.app.stage.addChild(
-            this.titleContainer
-        );
-
-        /*
-         * Title.
-         */
-
-        this._createTitle();
-
-        /*
-         * Physics.
-         */
-
-        this.physics =
-            new Physics({
-
-                width:
-                    this.width,
-
-                height:
-                    this.height,
-
-                groundLevel:
-                    this.height * 0.88,
-
-                gravity:
-                    0.62,
-
-                friction:
-                    0.985,
-
-                bounce:
-                    0.48
-            });
-
-        /*
-         * Emojis.
-         */
-
-        this._createEmojis();
-
-        console.log(
-            `[Emoji World] ✓ ${this.emojis.length} emojis`
-        );
-    }
-
-
-    /* ========================================================
-       TITLE
-       ======================================================== */
-
-    _createTitle() {
-
-        const title =
-            new PIXI.Text({
-
-                text:
-                    'The Emojis',
-
-                style: {
-
-                    fontFamily:
-                        '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-
-                    fontSize:
-                        this._getTitleSize(),
-
-                    fontWeight:
-                        '700',
-
-                    fill:
-                        0x161616,
-
-                    align:
-                        'center',
-
-                    letterSpacing:
-                        1
-                }
-            });
-
-        title.anchor.set(
-            0.5
-        );
-
-        title.x =
-            this.width / 2;
-
-        title.y =
-            this._getTitleY();
-
-        title.zIndex =
-            100;
-
-        this.titleContainer.addChild(
-            title
-        );
-
-        this.title =
-            title;
-    }
-
-
-    _getTitleSize() {
-
-        if (
-            this.width < 400
-        ) {
-
-            return 30;
-        }
-
-        if (
-            this.width < 700
-        ) {
-
-            return 36;
-        }
-
-        return Math.min(
-            48,
-            this.width * 0.045
-        );
-    }
-
-
-    _getTitleY() {
-
-        return Math.max(
-            42,
-            Math.min(
-                65,
-                this.height * 0.065
-            )
-        );
-    }
-
-
-    /* ========================================================
-       EMOJI LAYOUT
-       ======================================================== */
-
-    _createEmojis() {
-
-        /*
-         * Mobile:
-         *
-         * 4 x 6
-         *
-         * Desktop:
-         *
-         * 6 x 4
-         */
-
-        const mobile =
-            this.width < 700;
-
-        const cols =
-            mobile
-                ? 4
-                : 6;
-
-        const rows =
-            Math.ceil(
-                24 / cols
-            );
-
-        /*
-         * Grid region.
-         */
-
-        const sidePadding =
-            mobile
-                ? 20
-                : 55;
-
-        const top =
-            mobile
-                ? 105
-                : 115;
-
-        const bottom =
-            mobile
-                ? this.height - 35
-                : this.height - 45;
-
-        const availableWidth =
-            Math.max(
-                200,
-                this.width -
-                sidePadding * 2
-            );
-
-        const availableHeight =
-            Math.max(
-                250,
-                bottom - top
-            );
-
-        /*
-         * Cell spacing.
-         */
-
-        const horizontalSpacing =
-            availableWidth /
-            Math.max(
-                1,
-                cols - 1
-            );
-
-        const verticalSpacing =
-            availableHeight /
-            Math.max(
-                1,
-                rows - 1
-            );
-
-        const spacing =
-            Math.min(
-                horizontalSpacing,
-                verticalSpacing
-            );
-
-        /*
-         * Grid dimensions.
-         */
-
-        const gridWidth =
-            spacing *
-            (cols - 1);
-
-        const gridHeight =
-            spacing *
-            (rows - 1);
-
-        const startX =
-            this.width / 2 -
-            gridWidth / 2;
-
-        const startY =
-            top +
-            (
-                availableHeight -
-                gridHeight
-            ) / 2;
-
-        /*
-         * Emoji size.
-         *
-         * Smaller on mobile.
-         */
-
-        const emojiSize =
-            mobile
-                ? Math.max(
-                    48,
-                    Math.min(
-                        76,
-                        spacing * 0.58
-                    )
-                )
-                : Math.max(
-                    62,
-                    Math.min(
-                        96,
-                        spacing * 0.58
-                    )
-                );
-
-        /*
-         * Glass platform size.
-         */
-
-        const platformWidth =
-            mobile
-                ? Math.max(
-                    48,
-                    Math.min(
-                        72,
-                        spacing * 0.58
-                    )
-                )
-                : Math.max(
-                    58,
-                    Math.min(
-                        92,
-                        spacing * 0.60
-                    )
-                );
-
-        const platformHeight =
-            platformWidth * 0.26;
-
-        /*
-         * Create 24 emojis.
-         */
-
-        for (
-            let i = 0;
-            i < 24;
-            i++
-        ) {
-
-            const col =
-                i % cols;
-
-            const row =
-                Math.floor(
-                    i / cols
-                );
-
-            const x =
-                startX +
-                col * spacing;
-
-            const baseY =
-                startY +
-                row * spacing;
-
-            const config =
-                this.emojiConfigs[i];
-
-            /*
-             * Platform is below emoji.
-             */
-            const platformY =
-                baseY +
-                emojiSize * 0.46;
-
-            /*
-             * Create platform.
-             */
-
-            const cube =
-                this._createGlassPlatform(
-                    x,
-                    platformY,
-                    platformWidth,
-                    platformHeight
-                );
-
-            cube.zIndex =
-                1;
-
-            this.cubesContainer.addChild(
-                cube
-            );
-
-            this.cubes.push({
-                sprite:
-                    cube,
-
-                x:
-                    x,
-
-                y:
-                    platformY
-            });
-
-            /*
-             * Load texture.
-             */
-
-            const texture =
-                PIXI.Assets.get(
-                    `emoji${i + 1}`
-                );
-
-            /*
-             * Create sprite.
-             */
-
-            const emoji =
-                new PIXI.Sprite(
-                    texture
-                );
-
-            emoji.anchor.set(
-                0.5
-            );
-
-            /*
-             * Explicit dimensions.
-             *
-             * Avoid scale 0.4 because
-             * 512px assets become ~205px.
-             */
-            emoji.width =
-                emojiSize;
-
-            emoji.height =
-                emojiSize;
-
-            emoji._baseWidth =
-                emojiSize;
-
-            emoji._baseHeight =
-                emojiSize;
-
-            /*
-             * Home position.
-             */
-
-            emoji.x =
-                x;
-
-            emoji.y =
-                baseY;
-
-            emoji.originalX =
-                x;
-
-            emoji.originalY =
-                baseY;
-
-            /*
-             * Animation state.
-             */
-
-            emoji.config =
-                config;
-
-            emoji.idleTime =
-                Math.random() *
-                Math.PI *
-                2;
-
-            emoji.idlePhase =
-                Math.random() *
-                Math.PI *
-                2;
-
-            emoji.isFlying =
-                false;
-
-            emoji.flyProgress =
-                0;
-
-            emoji.alpha =
-                1;
-
-            emoji.rotation =
-                0;
-
-            emoji.zIndex =
-                10;
-
-            /*
-             * Add to scene.
-             */
-
-            this.emojisContainer.addChild(
-                emoji
-            );
-
-            this.emojis.push(
-                emoji
-            );
-
-            /*
-             * Physics body.
-             *
-             * IMPORTANT:
-             * inactive until shake.
-             */
-            const body =
-                this.physics.createBody({
-
-                    x:
-                        emoji.x,
-
-                    y:
-                        emoji.y,
-
-                    mass:
-                        config.mass,
-
-                    radius:
-                        emojiSize * 0.40,
-
-                    isActive:
-                        false
-                });
-
-            emoji.physicsBody =
-                body;
-        }
-    }
-
-
-    /* ========================================================
-       GLASS PLATFORM
-       ======================================================== */
-
-    _createGlassPlatform(
-        x,
-        y,
-        width,
-        height
-    ) {
-
-        const group =
-            new PIXI.Container();
-
-        /*
-         * Soft shadow.
-         */
-
-        const shadow =
-            new PIXI.Graphics()
-                .ellipse(
-                    0,
-                    height * 0.75,
-                    width * 0.50,
-                    height * 0.48
-                )
-                .fill({
-                    color:
-                        0x000000,
-
-                    alpha:
-                        0.09
-                });
-
-        /*
-         * Glass base.
-         */
-
-        const glass =
-            new PIXI.Graphics()
-                .roundRect(
-                    -width / 2,
-                    -height / 2,
-                    width,
-                    height,
-                    height * 0.45
-                )
-                .fill({
-                    color:
-                        0xffffff,
-
-                    alpha:
-                        0.76
-                })
-                .stroke({
-                    color:
-                        0xd9e5ec,
-
-                    alpha:
-                        0.90,
-
-                    width:
-                        1
-                });
-
-        /*
-         * Glass highlight.
-         */
-
-        const highlight =
-            new PIXI.Graphics()
-                .roundRect(
-                    -width * 0.37,
-                    -height * 0.30,
-                    width * 0.74,
-                    height * 0.20,
-                    height * 0.12
-                )
-                .fill({
-                    color:
-                        0xffffff,
-
-                    alpha:
-                        0.90
-                });
-
-        /*
-         * Bottom reflection.
-         */
-
-        const reflection =
-            new PIXI.Graphics()
-                .ellipse(
-                    0,
-                    height * 0.08,
-                    width * 0.32,
-                    height * 0.13
-                )
-                .fill({
-                    color:
-                        0xcbdce8,
-
-                    alpha:
-                        0.22
-                });
-
-        group.addChild(
-            shadow
-        );
-
-        group.addChild(
-            glass
-        );
-
-        group.addChild(
-            highlight
-        );
-
-        group.addChild(
-            reflection
-        );
-
-        group.x =
-            x;
-
-        group.y =
-            y;
-
-        group.alpha =
-            0.95;
-
-        return group;
-    }
-
-
-    /* ========================================================
-       POINTER EVENTS
-       ======================================================== */
-
-    _setupPointerEvents() {
-
-        /*
-         * Pointer Events cover:
-         *
-         * mouse
-         * touch
-         * pen
-         */
-
-        document.addEventListener(
-            'pointermove',
-            (event) => {
-
-                this.pointer.x =
-                    event.clientX;
-
-                this.pointer.y =
-                    event.clientY;
-
-                this.pointer.active =
-                    true;
-            },
-            {
-                passive: true
-            }
-        );
-
-        document.addEventListener(
-            'pointerleave',
-            () => {
-
-                this.pointer.active =
-                    false;
-            },
-            {
-                passive: true
-            }
-        );
-
-        document.addEventListener(
-            'pointerdown',
-            (event) => {
-
-                this.pointer.x =
-                    event.clientX;
-
-                this.pointer.y =
-                    event.clientY;
-
-                this.pointer.active =
-                    true;
-
-                /*
-                 * iOS motion permission must
-                 * be requested after a gesture.
-                 */
-                this._requestGyroPermission();
-            },
-            {
-                passive: true
-            }
-        );
-
-        document.addEventListener(
-            'pointerup',
-            () => {
-
-                /*
-                 * Keep pointer active on desktop.
-                 *
-                 * Touch interaction naturally
-                 * stops being relevant when the
-                 * finger leaves the screen.
-                 */
-            },
-            {
-                passive: true
-            }
-        );
-    }
-
-
-    /* ========================================================
-       GYROSCOPE
-       ======================================================== */
-
-    _setupGyro() {
-
-        /*
-         * gyro.js owns the actual sensor listeners.
-         *
-         * Do NOT create additional
-         * deviceorientation/devicemotion
-         * listeners here.
-         */
-
-        console.log(
-            '[Emoji World] Gyroscope ready.'
-        );
-    }
-
-
-    async _requestGyroPermission() {
-
-        if (
-            this.permissionRequested
-        ) {
-            return;
-        }
-
-        this.permissionRequested =
-            true;
-
-        try {
-
-            await this.gyro.requestPermission();
-
-            console.log(
-                '[Emoji World] ✓ Motion sensors enabled'
-            );
-
-        } catch (error) {
-
-            console.warn(
-                '[Emoji World] Motion sensor permission unavailable:',
-                error
-            );
-        }
-    }
-
-
-    /* ========================================================
-       GYROSCOPE VISUAL EFFECT
-       ======================================================== */
-
-    _updateGyroVisuals() {
-
-        if (
-            this.isShaking ||
-            this.isRecovering ||
-            !this.gyro.enabled
-        ) {
-            return;
-        }
-
-        const tilt =
-            this.gyro.getTilt();
-
-        /*
-         * Keep tilt subtle.
-         *
-         * Large movement looks unnatural
-         * and can be uncomfortable.
-         */
-
-        const offsetX =
-            tilt.x *
-            (
-                this.isMobile
-                    ? 8
-                    : 5
-            );
-
-        const offsetY =
-            tilt.y *
-            (
-                this.isMobile
-                    ? 6
-                    : 4
-            );
-
-        for (
-            let i = 0;
-            i < this.emojis.length;
-            i++
-        ) {
-
-            const emoji =
-                this.emojis[i];
-
-            if (
-                emoji.isFlying
-            ) {
-                continue;
-            }
-
-            /*
-             * Slight parallax.
-             */
-            emoji._gyroX =
-                offsetX;
-
-            emoji._gyroY =
-                offsetY;
-        }
-    }
-
-
-    /* ========================================================
-       SHAKE
-       ======================================================== */
-
-    _checkShake() {
-
-        if (
-            this.isShaking ||
-            this.isRecovering
-        ) {
-            return;
-        }
-
-        if (
-            !this.gyro.enabled
-        ) {
-            return;
-        }
-
-        if (
-            this.gyro.pollShake()
-        ) {
-
-            this._onShakeDetected();
-        }
-    }
-
-
-    _onShakeDetected() {
-
-        if (
-            this.isShaking ||
-            this.isRecovering
-        ) {
-            return;
-        }
-
-        this.isShaking =
-            true;
-
-        this.returnTimer =
-            1900;
-
-        console.log(
-            '📱 SHAKE DETECTED!'
-        );
-
-        console.log(
-            '🌪️ Emojis falling...'
-        );
-
-        /*
-         * Activate physics.
-         */
-
-        for (
-            let i = 0;
-            i < this.emojis.length;
-            i++
-        ) {
-
-            const emoji =
-                this.emojis[i];
-
-            const body =
-                emoji.physicsBody;
-
-            emoji.isFlying =
-                true;
-
-            /*
-             * Start physics from
-             * current visual position.
-             */
-
-            body.x =
-                emoji.x;
-
-            body.y =
-                emoji.y;
-
-            /*
-             * Activate.
-             */
-
-            body.isActive =
-                true;
-
-            body.isResting =
-                false;
-
-            body.restTimer =
-                0;
-
-            /*
-             * Strong upward impulse.
-             */
-
-            body.vy =
-                -10 -
-                Math.random() * 7;
-
-            /*
-             * Random horizontal movement.
-             */
-
-            body.vx =
-                (
-                    Math.random() -
-                    0.5
-                ) * 10;
-
-            /*
-             * Rotation.
-             */
-
-            body.angularVelocity =
-                (
-                    Math.random() -
-                    0.5
-                ) * 0.55;
-        }
-    }
-
-
-    /* ========================================================
-       RETURN ANIMATION
-       ======================================================== */
-
-    _startReturnAnimation() {
-
-        if (
-            this.isRecovering
-        ) {
-            return;
-        }
-
-        this.isRecovering =
-            true;
-
-        this.isShaking =
-            false;
-
-        /*
-         * Stop physics.
-         *
-         * The emojis now become
-         * animation-controlled.
-         */
-
-        if (
-            this.physics
-        ) {
-
-            this.physics.deactivateAll();
-        }
-
-        for (
-            let i = 0;
-            i < this.emojis.length;
-            i++
-        ) {
-
-            const emoji =
-                this.emojis[i];
-
-            emoji.isFlying =
-                true;
-
-            emoji.flyProgress =
-                0;
-        }
-
-        console.log(
-            '✨ Emojis flying back home...'
-        );
-    }
-
-
-    /* ========================================================
-       ANIMATION LOOP
-       ======================================================== */
-
-    _startAnimationLoop() {
-
-        /*
-         * Use PixiJS's own ticker.
-         *
-         * Do NOT create a second PIXI.Ticker.
-         */
-
-        this.app.ticker.add(
-            this._updateFrame,
-            this
-        );
-    }
-
-
-    _updateFrame(ticker) {
-
-        /*
-         * Completely pause work while
-         * browser page is hidden.
-         */
-
-        if (
-            !this.isPageVisible
-        ) {
-            return;
-        }
-
-        /*
-         * Real milliseconds.
-         */
-
-        const deltaMs =
-            Math.min(
-                ticker.deltaMS || 16.67,
-                50
-            );
-
-        /*
-         * Frame-normalized value.
-         *
-         * 1 = approximately 60 FPS.
-         */
-
-        const deltaFrames =
-            ticker.deltaTime || 1;
-
-        this.elapsed +=
-            deltaMs;
-
-        /*
-         * Shake detection.
-         *
-         * Sensor work is lightweight.
-         */
-
-        this._checkShake();
-
-        /*
-         * Gyro parallax.
-         */
-
-        this._updateGyroVisuals();
-
-        /*
-         * Shake countdown.
-         */
-
-        if (
-            this.isShaking &&
-            !this.isRecovering
-        ) {
-
-            this.returnTimer -=
-                deltaMs;
-
-            if (
-                this.returnTimer <= 0
-            ) {
-
-                this._startReturnAnimation();
-            }
-        }
-
-        /*
-         * Physics only while
-         * emojis are falling.
-         */
-
-        if (
-            this.physics &&
-            this.isShaking
-        ) {
-
-            this.physics.update(
-                deltaMs
-            );
-        }
-
-        /*
-         * Update every emoji.
-         */
-
-        for (
-            let i = 0;
-            i < this.emojis.length;
-            i++
-        ) {
-
-            const emoji =
-                this.emojis[i];
-
-            if (
-                emoji.isFlying
-            ) {
-
-                if (
-                    this.isRecovering
-                ) {
-
-                    this._updateReturnAnimation(
-                        emoji,
-                        deltaMs
-                    );
-
-                } else {
-
-                    this._updateFallingAnimation(
-                        emoji
-                    );
-                }
-
-            } else {
-
-                this._updateIdleAnimation(
-                    emoji,
-                    deltaFrames
-                );
-            }
-        }
-    }
-
-
-    /* ========================================================
-       IDLE ANIMATION
-       ======================================================== */
-
-    _updateIdleAnimation(
-        emoji,
-        deltaFrames
-    ) {
-
-        const config =
-            emoji.config;
-
-        /*
-         * Individual phase.
-         */
-
-        emoji.idleTime +=
-            config.idleSpeed *
-            deltaFrames;
-
-        const time =
-            emoji.idleTime;
-
-        const phase =
-            emoji.idlePhase;
-
-        const amplitude =
-            config.idleAmplitude;
-
-        /*
-         * Start from home.
-         */
-
-        let x =
-            emoji.originalX;
-
-        let y =
-            emoji.originalY;
-
-        let rotation =
-            0;
-
-        let scale =
-            1;
-
-        /*
-         * ----------------------------------------------------
-         * Individual personalities
-         * ----------------------------------------------------
-         */
-
-        switch (
-            config.idleType
-        ) {
-
-            case 'bounce':
-
-                y +=
-                    Math.sin(
-                        time +
-                        phase
-                    ) *
-                    amplitude;
-
-                break;
-
-
-            case 'tilt':
-
-                rotation =
-                    Math.sin(
-                        time +
-                        phase
-                    ) *
-                    0.08;
-
-                y +=
-                    Math.cos(
-                        time * 1.2 +
-                        phase
-                    ) *
-                    amplitude *
-                    0.45;
-
-                break;
-
-
-            case 'pulse':
-
-                scale =
-                    1 +
-                    Math.sin(
-                        time +
-                        phase
-                    ) *
-                    0.055;
-
-                break;
-
-
-            case 'sway':
-
-                x +=
-                    Math.sin(
-                        time +
-                        phase
-                    ) *
-                    amplitude *
-                    0.40;
-
-                rotation =
-                    Math.sin(
-                        time * 0.7 +
-                        phase
-                    ) *
-                    0.06;
-
-                break;
-
-
-            case 'bob':
-
-                y +=
-                    Math.sin(
-                        time * 1.3 +
-                        phase
-                    ) *
-                    amplitude *
-                    0.65;
-
-                break;
-
-
-            case 'vibrate':
-
-                x +=
-                    Math.sin(
-                        time * 7 +
-                        phase
-                    ) *
-                    amplitude *
-                    0.15;
-
-                break;
-
-
-            case 'spin':
-
-                rotation =
-                    Math.sin(
-                        time * 0.55 +
-                        phase
-                    ) *
-                    0.10;
-
-                break;
-
-
-            case 'drift':
-
-                x +=
-                    Math.sin(
-                        time * 0.65 +
-                        phase
-                    ) *
-                    amplitude *
-                    0.45;
-
-                y +=
-                    Math.cos(
-                        time * 0.5 +
-                        phase
-                    ) *
-                    amplitude *
-                    0.45;
-
-                break;
-
-
-            case 'tremble':
-
-                rotation =
-                    Math.sin(
-                        time * 8 +
-                        phase
-                    ) *
-                    0.025;
-
-                break;
-
-
-            case 'float':
-
-                y +=
-                    Math.sin(
-                        time * 0.65 +
-                        phase
-                    ) *
-                    amplitude;
-
-                scale =
-                    1 +
-                    Math.sin(
-                        time * 0.5 +
-                        phase
-                    ) *
-                    0.025;
-
-                break;
-
-
-            case 'droop':
-
-                y +=
-                    Math.cos(
-                        time * 0.8 +
-                        phase
-                    ) *
-                    amplitude *
-                    0.40;
-
-                rotation =
-                    Math.sin(
-                        time * 0.45 +
-                        phase
-                    ) *
-                    0.06;
-
-                break;
-
-
-            case 'twitch':
-
-                x +=
-                    Math.sin(
-                        time * 3.8 +
-                        phase
-                    ) *
-                    amplitude *
-                    0.15;
-
-                break;
-
-
-            case 'shake':
-
-                x +=
-                    Math.sin(
-                        time * 2.8 +
-                        phase
-                    ) *
-                    amplitude *
-                    0.28;
-
-                y +=
-                    Math.cos(
-                        time * 2.2 +
-                        phase
-                    ) *
-                    amplitude *
-                    0.18;
-
-                break;
-
-
-            case 'playful':
-
-                y +=
-                    Math.sin(
-                        time * 1.8 +
-                        phase
-                    ) *
-                    amplitude *
-                    0.45;
-
-                rotation =
-                    Math.sin(
-                        time * 1.4 +
-                        phase
-                    ) *
-                    0.10;
-
-                scale =
-                    1 +
-                    Math.sin(
-                        time * 1.8 +
-                        phase
-                    ) *
-                    0.035;
-
-                break;
-
-
-            case 'shiver':
-
-                x +=
-                    Math.sin(
-                        time * 8 +
-                        phase
-                    ) *
-                    amplitude *
-                    0.12;
-
-                y +=
-                    Math.cos(
-                        time * 9 +
-                        phase
-                    ) *
-                    amplitude *
-                    0.08;
-
-                break;
-
-
-            default:
-
-                break;
-        }
-
-        /*
-         * Gyroscope parallax.
-         */
-
-        x +=
-            emoji._gyroX || 0;
-
-        y +=
-            emoji._gyroY || 0;
-
-        /*
-         * Cursor interaction.
-         */
-
-        const interaction =
-            this._getCursorInteraction(
-                x,
-                y
-            );
-
-        if (
-            interaction.active
-        ) {
-
-            /*
-             * Move slightly away from
-             * cursor.
-             */
-
-            x +=
-                interaction.pushX;
-
-            y +=
-                interaction.pushY;
-
-            /*
-             * Slight tilt.
-             */
-
-            rotation +=
-                interaction.rotation;
-
-            /*
-             * Slight scale increase.
-             */
-
-            scale *=
-                interaction.scale;
-        }
-
-        /*
-         * Smooth position.
-         *
-         * This prevents choppy movement.
-         */
-
-        const smoothing =
-            this.isMobile
-                ? 0.18
-                : 0.22;
-
-        emoji.x +=
-            (
-                x -
-                emoji.x
-            ) *
-            smoothing;
-
-        emoji.y +=
-            (
-                y -
-                emoji.y
-            ) *
-            smoothing;
-
-        emoji.rotation +=
-            (
-                rotation -
-                emoji.rotation
-            ) *
-            0.12;
-
-        /*
-         * Smooth scale.
-         */
-
-        const targetWidth =
-            emoji._baseWidth *
-            scale;
-
-        const targetHeight =
-            emoji._baseHeight *
-            scale;
-
-        emoji.width +=
-            (
-                targetWidth -
-                emoji.width
-            ) *
-            0.12;
-
-        emoji.height +=
-            (
-                targetHeight -
-                emoji.height
-            ) *
-            0.12;
-    }
-
-
-    /* ========================================================
-       CURSOR INTERACTION
-       ======================================================== */
-
-    _getCursorInteraction(
-        x,
-        y
-    ) {
-
-        if (
-            !this.pointer.active
-        ) {
-
-            return {
-                active: false,
-                pushX: 0,
-                pushY: 0,
-                rotation: 0,
-                scale: 1
-            };
-        }
-
-        const dx =
-            x -
-            this.pointer.x;
-
-        const dy =
-            y -
-            this.pointer.y;
-
-        const distance =
-            Math.sqrt(
-                dx * dx +
-                dy * dy
-            );
-
-        const range =
-            this.isMobile
-                ? 130
-                : 180;
-
-        if (
-            distance >= range ||
-            distance <= 0.001
-        ) {
-
-            return {
-                active: false,
-                pushX: 0,
-                pushY: 0,
-                rotation: 0,
-                scale: 1
-            };
-        }
-
-        const proximity =
-            1 -
-            distance / range;
-
-        /*
-         * Soft push away.
-         */
-
-        const push =
-            proximity *
-            (
-                this.isMobile
-                    ? 4
-                    : 7
-            );
-
-        return {
-
-            active: true,
-
-            pushX:
-                (
-                    dx /
-                    distance
-                ) *
-                push,
-
-            pushY:
-                (
-                    dy /
-                    distance
-                ) *
-                push,
-
-            rotation:
-                (
-                    dx /
-                    range
-                ) *
-                0.04 *
-                proximity,
-
-            scale:
-                1 +
-                proximity *
-                0.055
-        };
-    }
-
-
-    /* ========================================================
-       FALLING
-       ======================================================== */
-
-    _updateFallingAnimation(
+      this.emojis.push(
         emoji
-    ) {
-
-        const body =
-            emoji.physicsBody;
-
-        if (!body) {
-            return;
-        }
-
-        emoji.x =
-            body.x;
-
-        emoji.y =
-            body.y;
-
-        emoji.rotation =
-            body.rotation;
+      );
     }
 
 
-    /* ========================================================
-       FLY BACK TO PLATFORM
-       ======================================================== */
+    console.log(
+      '[Emoji World] ✓ Native animated WebP elements created'
+    );
+  }
 
-    _updateReturnAnimation(
-        emoji,
-        deltaMs
-    ) {
 
-        /*
-         * 900ms return duration.
-         */
+  /* ================================================================
+     GLASS PLATFORM
+     ================================================================ */
 
-        emoji.flyProgress =
-            Math.min(
-                1,
-                emoji.flyProgress +
-                deltaMs /
-                900
-            );
+  _createGlassCube(
+    x,
+    y,
+    size
+  ) {
 
-        const progress =
-            emoji.flyProgress;
+    const group =
+      new PIXI.Container();
 
-        /*
-         * Smooth cinematic easing.
-         */
 
-        const eased =
-            this._easeOutBack(
-                progress
-            );
+    const shadow =
+      new PIXI.Graphics()
+        .ellipse(
+          0,
+          size * 0.48,
+          size * 0.44,
+          size * 0.10
+        )
+        .fill({
+          color: 0x000000,
+          alpha: 0.12
+        });
 
-        const body =
-            emoji.physicsBody;
 
-        /*
-         * Current physics position.
-         */
+    const cube =
+      new PIXI.Graphics()
+        .roundRect(
+          -size / 2,
+          -size / 2,
+          size,
+          size,
+          14
+        )
+        .fill({
+          color: 0xf7fbff,
+          alpha: 0.72
+        })
+        .stroke({
+          color: 0xcbdbe8,
+          alpha: 0.75,
+          width: 1.5
+        });
 
-        const startX =
-            body.x;
 
-        const startY =
-            body.y;
+    const highlight =
+      new PIXI.Graphics()
+        .roundRect(
+          -size / 2 + 4,
+          -size / 2 + 4,
+          size * 0.46,
+          size * 0.46,
+          10
+        )
+        .fill({
+          color: 0xffffff,
+          alpha: 0.55
+        });
 
-        /*
-         * Home.
-         */
 
-        const homeX =
-            emoji.originalX;
+    group.addChild(
+      shadow,
+      cube,
+      highlight
+    );
 
-        const homeY =
-            emoji.originalY;
 
-        /*
-         * Fly back.
-         */
+    group.position.set(
+      x,
+      y
+    );
 
-        emoji.x =
-            startX +
-            (
-                homeX -
-                startX
-            ) *
-            eased;
 
-        emoji.y =
-            startY +
-            (
-                homeY -
-                startY
-            ) *
-            eased;
+    group.alpha = 0.92;
 
-        /*
-         * Rotate while flying.
-         */
+    return group;
+  }
 
-        const rotationAmount =
-            body.rotation *
-            (
-                1 -
-                eased
-            );
 
-        emoji.rotation =
-            rotationAmount;
+  /* ================================================================
+     INPUT EVENTS
+     ================================================================ */
 
-        /*
-         * Small scale effect near
-         * landing.
-         */
+  _setupEventListeners() {
 
-        const landingScale =
-            progress < 0.75
-                ? 1
-                : 1 +
-                    (
-                        0.06 *
-                        Math.sin(
-                            (
-                                progress -
-                                0.75
-                            ) *
-                            Math.PI *
-                            4
-                        )
-                    );
+    /* --------------------------------------------------------------
+       MOUSE
+       -------------------------------------------------------------- */
 
-        emoji.width =
-            emoji._baseWidth *
-            landingScale;
+    window.addEventListener(
+      'mousemove',
+      (event) => {
 
-        emoji.height =
-            emoji._baseHeight *
-            landingScale;
+        this.mouse.x =
+          event.clientX;
 
-        /*
-         * Finished.
-         */
+        this.mouse.y =
+          event.clientY;
+      },
+      { passive: true }
+    );
+
+
+    /* --------------------------------------------------------------
+       TOUCH START
+       -------------------------------------------------------------- */
+
+    window.addEventListener(
+      'touchstart',
+      (event) => {
+
+        this.touchActive = true;
+
+        const touch =
+          event.touches[0];
+
+        if (touch) {
+
+          this.mouse.x =
+            touch.clientX;
+
+          this.mouse.y =
+            touch.clientY;
+        }
+
+        this._requestGyroPermissionOnce();
+
+      },
+      { passive: true }
+    );
+
+
+    /* --------------------------------------------------------------
+       TOUCH MOVE
+       -------------------------------------------------------------- */
+
+    window.addEventListener(
+      'touchmove',
+      (event) => {
+
+        const touch =
+          event.touches[0];
+
+        if (touch) {
+
+          this.mouse.x =
+            touch.clientX;
+
+          this.mouse.y =
+            touch.clientY;
+        }
+
+      },
+      { passive: true }
+    );
+
+
+    /* --------------------------------------------------------------
+       TOUCH END
+       -------------------------------------------------------------- */
+
+    window.addEventListener(
+      'touchend',
+      () => {
+
+        this.touchActive = false;
+
+      },
+      { passive: true }
+    );
+
+
+    /* --------------------------------------------------------------
+       CLICK
+       -------------------------------------------------------------- */
+
+    window.addEventListener(
+      'click',
+      () => {
+
+        this._requestGyroPermissionOnce();
+
+      },
+      { passive: true }
+    );
+
+
+    /* --------------------------------------------------------------
+       GYROSCOPE
+       -------------------------------------------------------------- */
+
+    window.addEventListener(
+      'deviceorientation',
+      () => {
+
+        this._applyGyroInteraction();
+
+      },
+      { passive: true }
+    );
+
+
+    /* --------------------------------------------------------------
+       SHAKE
+       -------------------------------------------------------------- */
+
+    window.addEventListener(
+      'devicemotion',
+      () => {
 
         if (
-            progress >= 1
+          this.gyro &&
+          this.gyro.pollShake()
         ) {
 
-            emoji.isFlying =
-                false;
-
-            emoji.flyProgress =
-                0;
-
-            emoji.x =
-                emoji.originalX;
-
-            emoji.y =
-                emoji.originalY;
-
-            emoji.rotation =
-                0;
-
-            emoji.width =
-                emoji._baseWidth;
-
-            emoji.height =
-                emoji._baseHeight;
-
-            /*
-             * Reset physics body.
-             */
-
-            body.x =
-                emoji.originalX;
-
-            body.y =
-                emoji.originalY;
-
-            body.vx =
-                0;
-
-            body.vy =
-                0;
-
-            body.angularVelocity =
-                0;
-
-            body.rotation =
-                0;
-
-            body.isActive =
-                false;
-
-            body.isResting =
-                true;
-
-            /*
-             * Check whether all emojis
-             * have returned.
-             */
-
-            if (
-                this.emojis.every(
-                    item =>
-                        !item.isFlying
-                )
-            ) {
-
-                this.isRecovering =
-                    false;
-
-                console.log(
-                    '🏠 All emojis are back home.'
-                );
-            }
+          this._onShakeDetected();
         }
+
+      },
+      { passive: true }
+    );
+  }
+
+
+  /* ================================================================
+     GYRO PERMISSION
+     ================================================================ */
+
+  async _requestGyroPermissionOnce() {
+
+    if (
+      this._permissionRequested
+    ) {
+
+      return;
     }
 
 
-    /* ========================================================
-       EASING
-       ======================================================== */
+    this._permissionRequested =
+      true;
 
-    _easeOutBack(t) {
 
-        const c1 =
-            1.70158;
+    try {
 
-        const c3 =
-            c1 + 1;
+      await this.gyro.requestPermission();
 
-        return (
-            1 +
-            c3 *
-            Math.pow(
-                t - 1,
-                3
-            ) +
-            c1 *
-            Math.pow(
-                t - 1,
-                2
-            )
+      console.log(
+        '[Emoji World] ✓ Motion permission requested'
+      );
+
+    } catch (error) {
+
+      console.warn(
+        '[Emoji World] Motion permission unavailable:',
+        error
+      );
+    }
+  }
+
+
+  /* ================================================================
+     GYRO TILT
+     ================================================================ */
+
+  _applyGyroInteraction() {
+
+    if (
+      this.isShaking ||
+      this.isRecovering
+    ) {
+
+      return;
+    }
+
+
+    const tilt =
+      this.gyro.getTilt();
+
+
+    const tiltX =
+      tilt.x * 16;
+
+
+    const tiltY =
+      tilt.y * 10;
+
+
+    for (
+      const emoji of this.emojis
+    ) {
+
+      if (
+        !emoji.isFlying
+      ) {
+
+        emoji.targetX =
+          emoji.originalX +
+          tiltX;
+
+
+        emoji.targetY =
+          emoji.originalY +
+          tiltY;
+      }
+    }
+  }
+
+
+  /* ================================================================
+     SHAKE
+     ================================================================ */
+
+  _onShakeDetected() {
+
+    if (
+      this.isShaking ||
+      this.isRecovering
+    ) {
+
+      return;
+    }
+
+
+    this.isShaking =
+      true;
+
+
+    this.shakeRecoveryTime =
+      2500;
+
+
+    console.log(
+      '🌍 SHAKE DETECTED! Emojis falling!'
+    );
+
+
+    for (
+      const emoji of this.emojis
+    ) {
+
+      const body =
+        emoji.physicsBody;
+
+      if (!body) {
+        continue;
+      }
+
+
+      emoji.isFlying =
+        true;
+
+
+      body.isActive =
+        true;
+
+
+      body.isResting =
+        false;
+
+
+      body.restTimer =
+        0;
+
+
+      body.x =
+        emoji.x;
+
+
+      body.y =
+        emoji.y;
+
+
+      body.vx =
+        (Math.random() - 0.5) *
+        10;
+
+
+      body.vy =
+        -10 -
+        Math.random() * 7;
+
+
+      body.angularVelocity =
+        (Math.random() - 0.5) *
+        0.45;
+    }
+  }
+
+
+  /* ================================================================
+     RETURN EMOJIS
+     ================================================================ */
+
+  _returnEmojis() {
+
+    if (
+      this.isRecovering
+    ) {
+
+      return;
+    }
+
+
+    this.isRecovering =
+      true;
+
+
+    this.isShaking =
+      false;
+
+
+    for (
+      const emoji of this.emojis
+    ) {
+
+      emoji.isFlying =
+        true;
+
+      emoji.flyProgress =
+        0;
+
+
+      emoji.flyStartX =
+        emoji.x;
+
+
+      emoji.flyStartY =
+        emoji.y;
+
+
+      emoji.flyStartRotation =
+        emoji.rotation;
+    }
+
+
+    console.log(
+      '✨ Emojis flying back to their glass cubes...'
+    );
+  }
+
+
+  /* ================================================================
+     ANIMATION LOOP
+     ================================================================ */
+
+  _startAnimationLoop() {
+
+    /*
+     * We use Pixi's ticker only as the central frame clock.
+     *
+     * The WebP itself is animated by the browser.
+     */
+
+    this.app.ticker.add(
+      this._boundUpdateFrame
+    );
+
+
+    console.log(
+      '🎞️ Animation loop started'
+    );
+  }
+
+
+  /* ================================================================
+     FRAME UPDATE
+     ================================================================ */
+
+  _updateFrame(ticker) {
+
+    try {
+
+      const dtMs =
+        Math.min(
+          ticker.deltaMS || 16.67,
+          50
         );
-    }
 
 
-    /* ========================================================
-       PAGE VISIBILITY
-       ======================================================== */
+      const dt =
+        Math.min(
+          Math.max(
+            dtMs / 16.67,
+            0.1
+          ),
+          2
+        );
 
-    setPageVisibility(
-        visible
-    ) {
 
-        this.isPageVisible =
-            visible;
+      /* ------------------------------------------------------------
+         SHAKE TIMER
+         ------------------------------------------------------------ */
+
+      if (
+        this.isShaking &&
+        !this.isRecovering
+      ) {
+
+        this.shakeRecoveryTime -=
+          dtMs;
+
 
         if (
-            !this.app ||
-            !this.app.ticker
+          this.shakeRecoveryTime <= 0
         ) {
-            return;
+
+          this._returnEmojis();
         }
+      }
+
+
+      /* ------------------------------------------------------------
+         PHYSICS
+         ------------------------------------------------------------ */
+
+      if (
+        this.physics
+      ) {
+
+        this.physics.update(
+          dtMs
+        );
+      }
+
+
+      /* ------------------------------------------------------------
+         EMOJIS
+         ------------------------------------------------------------ */
+
+      for (
+        const emoji of this.emojis
+      ) {
 
         if (
-            visible
+          emoji.isFlying
         ) {
 
-            this.app.ticker.start();
+          if (
+            this.isRecovering
+          ) {
+
+            this._updateFlyingBackAnimation(
+              emoji,
+              dtMs
+            );
+
+          } else {
+
+            this._updateFallingAnimation(
+              emoji
+            );
+          }
 
         } else {
 
-            this.app.ticker.stop();
+          this._updateIdleAnimation(
+            emoji,
+            dt
+          );
         }
+
+
+        /*
+         * Render native HTML element.
+         */
+
+        this._renderNativeEmoji(
+          emoji
+        );
+      }
+
+    } catch (error) {
+
+      console.error(
+        '[Emoji World] Frame update error:',
+        error
+      );
+    }
+  }
+
+
+  /* ================================================================
+     IDLE ANIMATION
+     ================================================================ */
+
+  _updateIdleAnimation(
+    emoji,
+    dt
+  ) {
+
+    const config =
+      emoji.config;
+
+
+    emoji.idleTime +=
+      config.idleSpeed * dt;
+
+
+    const baseX =
+      emoji.originalX;
+
+
+    const baseY =
+      emoji.originalY;
+
+
+    const amplitude =
+      config.idleAmplitude;
+
+
+    const t =
+      emoji.idleTime;
+
+
+    switch (
+      config.idleType
+    ) {
+
+
+      case 'bounce':
+
+        emoji.y =
+          baseY +
+          Math.sin(t) *
+          amplitude;
+
+        break;
+
+
+      case 'pulse': {
+
+        const s =
+          1 +
+          Math.sin(t) *
+          config.scaleAmount;
+
+
+        emoji.scale =
+          s;
+
+
+        emoji.y =
+          baseY +
+          Math.sin(t * 0.8) *
+          2;
+
+        break;
+      }
+
+
+      case 'sway':
+
+        emoji.y =
+          baseY +
+          Math.sin(t) *
+          amplitude;
+
+
+        emoji.rotation =
+          Math.sin(t * 0.7) *
+          0.10;
+
+        break;
+
+
+      case 'tilt':
+
+        emoji.rotation =
+          Math.sin(t) *
+          0.16;
+
+
+        emoji.y =
+          baseY +
+          Math.sin(t * 1.2) *
+          amplitude *
+          0.55;
+
+        break;
+
+
+      case 'spin':
+
+        emoji.rotation +=
+          config.spinSpeed * dt;
+
+
+        emoji.y =
+          baseY +
+          Math.sin(t * 0.7) *
+          2;
+
+        break;
+
+
+      case 'bob':
+
+        emoji.y =
+          baseY +
+          Math.sin(t * 1.4) *
+          amplitude;
+
+        break;
+
+
+      case 'drift':
+
+        emoji.x =
+          baseX +
+          Math.sin(t) *
+          amplitude;
+
+
+        emoji.y =
+          baseY +
+          Math.cos(t * 0.7) *
+          amplitude *
+          0.7;
+
+        break;
+
+
+      case 'vibrate':
+
+        emoji.x =
+          baseX +
+          Math.sin(t * 5) *
+          amplitude;
+
+
+        emoji.y =
+          baseY +
+          Math.cos(t * 4) *
+          amplitude *
+          0.5;
+
+        break;
+
+
+      case 'tremble':
+
+        emoji.rotation =
+          Math.sin(t * 7) *
+          0.035;
+
+
+        emoji.x =
+          baseX +
+          Math.sin(t * 8) *
+          amplitude *
+          0.5;
+
+        break;
+
+
+      case 'float':
+
+        emoji.y =
+          baseY +
+          Math.sin(t * 0.9) *
+          amplitude;
+
+
+        emoji.x =
+          baseX +
+          Math.cos(t * 0.65) *
+          amplitude *
+          0.45;
+
+
+        emoji.opacity =
+          0.92 +
+          Math.sin(t * 1.2) *
+          0.06;
+
+        break;
+
+
+      case 'droop':
+
+        emoji.y =
+          baseY +
+          Math.cos(t) *
+          amplitude;
+
+
+        emoji.rotation =
+          Math.sin(t * 0.6) *
+          0.12;
+
+        break;
+
+
+      case 'twitch':
+
+        emoji.y =
+          baseY +
+          Math.sin(t * 1.8) *
+          amplitude *
+          0.35;
+
+
+        emoji.rotation =
+          Math.sin(t * 3.2) *
+          0.025;
+
+        break;
+
+
+      case 'shake':
+
+        emoji.x =
+          baseX +
+          Math.sin(t * 3.5) *
+          amplitude;
+
+
+        emoji.y =
+          baseY +
+          Math.cos(t * 3.5) *
+          amplitude *
+          0.5;
+
+        break;
+
+
+      case 'playful':
+
+        emoji.rotation =
+          Math.sin(t * 1.5) *
+          0.18;
+
+
+        emoji.y =
+          baseY +
+          Math.sin(t * 2) *
+          amplitude;
+
+        break;
+
+
+      case 'shiver':
+
+        emoji.x =
+          baseX +
+          Math.sin(t * 8) *
+          amplitude *
+          0.55;
+
+
+        emoji.y =
+          baseY +
+          Math.cos(t * 7) *
+          amplitude *
+          0.35;
+
+        break;
+
+
+      default:
+
+        emoji.x =
+          baseX;
+
+        emoji.y =
+          baseY;
     }
 
 
-    /* ========================================================
-       RESIZE
-       ======================================================== */
+    /*
+     * Default scale.
+     */
 
-    _onResize() {
+    if (
+      !emoji.scale ||
+      !Number.isFinite(
+        emoji.scale
+      )
+    ) {
 
-        if (
-            !this.app ||
-            !this.app.renderer
-        ) {
-            return;
-        }
+      emoji.scale = 1;
+    }
 
-        const oldWidth =
-            this.width;
 
-        const oldHeight =
-            this.height;
+    /*
+     * Smooth gyro follow.
+     */
 
-        this.width =
-            window.innerWidth;
+    if (
+      !this.isShaking &&
+      !this.isRecovering
+    ) {
 
-        this.height =
-            window.innerHeight;
+      emoji.x +=
+        (
+          emoji.targetX -
+          emoji.x
+        ) *
+        0.045;
 
-        /*
-         * Ignore tiny resize events.
-         */
 
-        if (
-            oldWidth ===
-                this.width &&
-            oldHeight ===
-                this.height
-        ) {
-            return;
-        }
+      emoji.y +=
+        (
+          emoji.targetY -
+          emoji.y
+        ) *
+        0.045;
+    }
 
-        /*
-         * Resize renderer.
-         */
 
-        this.app.renderer.resize(
-            this.width,
-            this.height
+    /*
+     * Cursor interaction.
+     */
+
+    this._addMouseProximityEffect(
+      emoji
+    );
+  }
+
+
+/* ================================================================
+   CURSOR PROXIMITY
+   ================================================================ */
+
+_addMouseProximityEffect(
+  emoji
+) {
+
+  const isTouchDevice =
+    'ontouchstart' in window ||
+    navigator.maxTouchPoints > 0;
+
+
+  /*
+   * Do not run cursor interaction on
+   * idle mobile devices.
+   */
+
+  if (
+    isTouchDevice &&
+    !this.touchActive
+  ) {
+
+    return;
+  }
+
+
+  /* --------------------------------------------------------------
+     CURSOR DISTANCE
+     -------------------------------------------------------------- */
+
+  const dx =
+    this.mouse.x -
+    emoji.x;
+
+
+  const dy =
+    this.mouse.y -
+    emoji.y;
+
+
+  const distance =
+    Math.hypot(
+      dx,
+      dy
+    );
+
+
+  /*
+   * Smaller interaction area.
+   *
+   * Mobile:
+   *   100px
+   *
+   * Desktop:
+   *   160px
+   *
+   * This prevents emojis from reacting
+   * when the cursor is relatively far away.
+   */
+
+  const range =
+    window.innerWidth < 700
+      ? 100
+      : 160;
+
+
+  /* --------------------------------------------------------------
+     CURSOR REACTION
+     -------------------------------------------------------------- */
+
+  if (
+    distance > 0 &&
+    distance < range
+  ) {
+
+    /*
+     * 0 = cursor at edge of range
+     * 1 = cursor directly on emoji
+     */
+
+    const proximity =
+      1 -
+      distance / range;
+
+
+    /*
+     * Soft quadratic response.
+     *
+     * Maximum movement is approximately 7px.
+     *
+     * Previously this was 22px, which caused
+     * the emojis to fly too far away.
+     */
+
+    const push =
+      proximity *
+      proximity *
+      7;
+
+
+    /*
+     * Hard safety limit.
+     *
+     * An emoji can NEVER be pushed more
+     * than 7px by the cursor.
+     */
+
+    const maxPush =
+      7;
+
+
+    const finalPush =
+      Math.min(
+        push,
+        maxPush
+      );
+
+
+    /*
+     * Move away from cursor.
+     */
+
+    emoji.x -=
+      (dx / distance) *
+      finalPush;
+
+
+    emoji.y -=
+      (dy / distance) *
+      finalPush;
+
+
+    /* ------------------------------------------------------------
+       SMALL REACTION SCALE
+       ------------------------------------------------------------ */
+
+    const scale =
+      1 +
+      proximity *
+      0.06;
+
+
+    /*
+     * Very subtle enlargement.
+     *
+     * Maximum:
+     * 1.06x
+     */
+
+    emoji.scale =
+      Math.max(
+        emoji.scale || 1,
+        scale
+      );
+
+
+    /* ------------------------------------------------------------
+       SMALL ROTATION
+       ------------------------------------------------------------ */
+
+    /*
+     * Tiny tilt toward the cursor reaction.
+     */
+
+    emoji.rotation +=
+      (dx / range) *
+      0.006;
+
+
+  } else {
+
+    /* ------------------------------------------------------------
+       SMOOTH RETURN
+       ------------------------------------------------------------ */
+
+    /*
+     * Gradually return to normal scale.
+     */
+
+    emoji.scale +=
+      (
+        1 -
+        emoji.scale
+      ) *
+      0.12;
+
+
+    /*
+     * Prevent tiny floating-point
+     * values from accumulating.
+     */
+
+    if (
+      Math.abs(
+        emoji.scale - 1
+      ) < 0.001
+    ) {
+
+      emoji.scale = 1;
+    }
+  }
+}
+
+
+  /* ================================================================
+     FALLING / PHYSICS
+     ================================================================ */
+
+  _updateFallingAnimation(
+    emoji
+  ) {
+
+    const body =
+      emoji.physicsBody;
+
+
+    if (!body) {
+
+      return;
+    }
+
+
+    emoji.x =
+      body.x;
+
+
+    emoji.y =
+      body.y;
+
+
+    emoji.rotation =
+      body.rotation;
+
+
+    emoji.scale = 1;
+  }
+
+
+  /* ================================================================
+     RETURN ANIMATION
+     ================================================================ */
+
+  _updateFlyingBackAnimation(
+    emoji,
+    dtMs
+  ) {
+
+    const body =
+      emoji.physicsBody;
+
+
+    if (!body) {
+
+      return;
+    }
+
+
+    /*
+     * 1.15 second cinematic return.
+     */
+
+    emoji.flyProgress =
+      Math.min(
+        1,
+        emoji.flyProgress +
+        dtMs / 1150
+      );
+
+
+    const p =
+      this._easeInOutBack(
+        emoji.flyProgress
+      );
+
+
+    const startX =
+      emoji.flyStartX;
+
+
+    const startY =
+      emoji.flyStartY;
+
+
+    /*
+     * Slight arc.
+     */
+
+    const arc =
+      Math.sin(
+        emoji.flyProgress *
+        Math.PI
+      ) *
+      -90;
+
+
+    emoji.x =
+      startX +
+      (
+        emoji.originalX -
+        startX
+      ) *
+      p;
+
+
+    emoji.y =
+      startY +
+      (
+        emoji.originalY -
+        startY
+      ) *
+      p +
+      arc *
+      (1 - p);
+
+
+    emoji.rotation =
+      emoji.flyStartRotation *
+      (1 - p);
+
+
+    /*
+     * Little bounce/pop near the cube.
+     */
+
+    const returnScale =
+      1 +
+      Math.sin(
+        emoji.flyProgress *
+        Math.PI
+      ) *
+      0.12;
+
+
+    emoji.scale =
+      returnScale;
+
+
+    if (
+      emoji.flyProgress >= 1
+    ) {
+
+      emoji.isFlying =
+        false;
+
+
+      emoji.flyProgress =
+        0;
+
+
+      emoji.x =
+        emoji.originalX;
+
+
+      emoji.y =
+        emoji.originalY;
+
+
+      emoji.rotation =
+        0;
+
+
+      emoji.scale =
+        1;
+
+
+      body.x =
+        emoji.originalX;
+
+
+      body.y =
+        emoji.originalY;
+
+
+      body.vx =
+        0;
+
+
+      body.vy =
+        0;
+
+
+      body.angularVelocity =
+        0;
+
+
+      body.isActive =
+        false;
+
+
+      body.isResting =
+        true;
+
+
+      if (
+        this.emojis.every(
+          item =>
+            !item.isFlying
+        )
+      ) {
+
+        this.isRecovering =
+          false;
+      }
+    }
+  }
+
+
+  /* ================================================================
+     EASING
+     ================================================================ */
+
+  _easeInOutBack(t) {
+
+    const c1 =
+      1.70158;
+
+
+    const c2 =
+      c1 * 1.525;
+
+
+    if (
+      t < 0.5
+    ) {
+
+      return (
+        Math.pow(
+          2 * t,
+          2
+        ) *
+        (
+          (
+            c2 + 1
+          ) *
+          2 * t -
+          c2
+        )
+      ) / 2;
+    }
+
+
+    return (
+      Math.pow(
+        2 * t - 2,
+        2
+      ) *
+      (
+        (
+          c2 + 1
+        ) *
+        (t * 2 - 2) +
+        c2
+      ) +
+      2
+    ) / 2;
+  }
+
+
+  _easeOutBack(t) {
+
+    const c1 =
+      1.70158;
+
+
+    const c3 =
+      c1 + 1;
+
+
+    return (
+      1 +
+      c3 *
+      Math.pow(
+        t - 1,
+        3
+      ) +
+      c1 *
+      Math.pow(
+        t - 1,
+        2
+      )
+    );
+  }
+
+
+  /* ================================================================
+     NATIVE WEBP RENDER
+     ================================================================ */
+
+  _renderNativeEmoji(
+    emoji
+  ) {
+
+    const element =
+      emoji.element;
+
+
+    if (!element) {
+
+      return;
+    }
+
+
+    /*
+     * Avoid unnecessary DOM writes.
+     *
+     * This is important for mobile performance.
+     */
+
+    const x =
+      Math.round(
+        emoji.x * 10
+      ) / 10;
+
+
+    const y =
+      Math.round(
+        emoji.y * 10
+      ) / 10;
+
+
+    const rotation =
+      Math.round(
+        emoji.rotation *
+        1000
+      ) / 1000;
+
+
+    const scale =
+      Math.round(
+        (
+          emoji.scale ||
+          1
+        ) *
+        1000
+      ) / 1000;
+
+
+    const half =
+      emoji.size / 2;
+
+
+    /*
+     * GPU-friendly transform.
+     *
+     * translate3d forces compositor layer.
+     */
+
+    const transform =
+      `translate3d(${x - half}px, ${y - half}px, 0) ` +
+      `rotate(${rotation}rad) ` +
+      `scale(${scale})`;
+
+
+    /*
+     * Only write when changed.
+     */
+
+    if (
+      element._lastTransform !==
+      transform
+    ) {
+
+      element.style.transform =
+        transform;
+
+
+      element._lastTransform =
+        transform;
+    }
+
+
+    const opacity =
+      emoji.opacity ??
+      1;
+
+
+    if (
+      element._lastOpacity !==
+      opacity
+    ) {
+
+      element.style.opacity =
+        opacity;
+
+
+      element._lastOpacity =
+        opacity;
+    }
+  }
+
+
+  /* ================================================================
+     RESIZE
+     ================================================================ */
+
+  _onWindowResize() {
+
+    if (
+      !this.app?.renderer
+    ) {
+
+      return;
+    }
+
+
+    this.width =
+      window.innerWidth;
+
+
+    this.height =
+      window.innerHeight;
+
+
+    this.app.renderer.resize(
+      this.width,
+      this.height
+    );
+
+
+    if (
+      this.title
+    ) {
+
+      this.title.x =
+        this.width / 2;
+
+
+      this.title.y =
+        Math.max(
+          48,
+          Math.min(
+            75,
+            this.height *
+            0.085
+          )
         );
 
-        /*
-         * Update title.
-         */
 
-        if (
-            this.title
-        ) {
-
-            this.title.x =
-                this.width / 2;
-
-            this.title.y =
-                this._getTitleY();
-
-            this.title.style.fontSize =
-                this._getTitleSize();
-        }
-
-        /*
-         * Update physics bounds.
-         */
-
-        if (
-            this.physics
-        ) {
-
-            this.physics.resize(
-                this.width,
-                this.height,
-                this.height *
-                    0.88
-            );
-        }
-
-        /*
-         * Recalculate emoji home
-         * positions.
-         *
-         * This prevents a desktop grid
-         * from remaining after rotation
-         * to mobile landscape.
-         */
-
-        this._recalculateLayout();
-    }
-
-
-    /* ========================================================
-       RESPONSIVE LAYOUT
-       ======================================================== */
-
-    _recalculateLayout() {
-
-        if (
-            !this.emojis.length
-        ) {
-            return;
-        }
-
-        /*
-         * Do not rearrange emojis while
-         * they are falling.
-         */
-
-        if (
-            this.isShaking ||
-            this.isRecovering
-        ) {
-            return;
-        }
-
-        const mobile =
-            this.width < 700;
-
-        const cols =
-            mobile
-                ? 4
-                : 6;
-
-        const rows =
-            Math.ceil(
-                24 / cols
-            );
-
-        const sidePadding =
-            mobile
-                ? 20
-                : 55;
-
-        const top =
-            mobile
-                ? 105
-                : 115;
-
-        const bottom =
-            mobile
-                ? this.height - 35
-                : this.height - 45;
-
-        const availableWidth =
-            Math.max(
-                200,
-                this.width -
-                sidePadding * 2
-            );
-
-        const availableHeight =
-            Math.max(
-                250,
-                bottom - top
-            );
-
-        const horizontalSpacing =
-            availableWidth /
-            Math.max(
-                1,
-                cols - 1
-            );
-
-        const verticalSpacing =
-            availableHeight /
-            Math.max(
-                1,
-                rows - 1
-            );
-
-        const spacing =
-            Math.min(
-                horizontalSpacing,
-                verticalSpacing
-            );
-
-        const gridWidth =
-            spacing *
-            (cols - 1);
-
-        const gridHeight =
-            spacing *
-            (rows - 1);
-
-        const startX =
-            this.width / 2 -
-            gridWidth / 2;
-
-        const startY =
-            top +
-            (
-                availableHeight -
-                gridHeight
-            ) / 2;
-
-        const emojiSize =
-            mobile
-                ? Math.max(
-                    48,
-                    Math.min(
-                        76,
-                        spacing * 0.58
-                    )
-                )
-                : Math.max(
-                    62,
-                    Math.min(
-                        96,
-                        spacing * 0.58
-                    )
-                );
-
-        for (
-            let i = 0;
-            i < this.emojis.length;
-            i++
-        ) {
-
-            const emoji =
-                this.emojis[i];
-
-            const col =
-                i % cols;
-
-            const row =
-                Math.floor(
-                    i / cols
-                );
-
-            const x =
-                startX +
-                col * spacing;
-
-            const y =
-                startY +
-                row * spacing;
-
-            const platformY =
-                y +
-                emojiSize *
-                0.46;
-
-            emoji.originalX =
-                x;
-
-            emoji.originalY =
-                y;
-
-            emoji._baseWidth =
-                emojiSize;
-
-            emoji._baseHeight =
-                emojiSize;
-
-            /*
-             * Smoothly move to new layout.
-             */
-
-            emoji.x =
-                x;
-
-            emoji.y =
-                y;
-
-            emoji.width =
-                emojiSize;
-
-            emoji.height =
-                emojiSize;
-
-            /*
-             * Move platform.
-             */
-
-            if (
-                this.cubes[i]
-            ) {
-
-                this.cubes[i].x =
-                    x;
-
-                this.cubes[i].y =
-                    platformY;
-
-                this.cubes[i].sprite.x =
-                    x;
-
-                this.cubes[i].sprite.y =
-                    platformY;
-            }
-
-            /*
-             * Physics home.
-             */
-
-            if (
-                emoji.physicsBody
-            ) {
-
-                emoji.physicsBody.x =
-                    x;
-
-                emoji.physicsBody.y =
-                    y;
-            }
-        }
-    }
-
-
-    /* ========================================================
-       EMOJI CONFIGURATION
-       ======================================================== */
-
-    _getEmojiConfigs() {
-
-        return [
-
-            {
-                name: 'Happy',
-                idleType: 'bounce',
-                mass: 0.90,
-                idleSpeed: 0.020,
-                idleAmplitude: 6
-            },
-
-            {
-                name: 'Cool',
-                idleType: 'tilt',
-                mass: 1.05,
-                idleSpeed: 0.014,
-                idleAmplitude: 5
-            },
-
-            {
-                name: 'Love',
-                idleType: 'pulse',
-                mass: 0.85,
-                idleSpeed: 0.025,
-                idleAmplitude: 6
-            },
-
-            {
-                name: 'Awestruck',
-                idleType: 'sway',
-                mass: 1.00,
-                idleSpeed: 0.015,
-                idleAmplitude: 6
-            },
-
-            {
-                name: 'Thinking',
-                idleType: 'bob',
-                mass: 1.05,
-                idleSpeed: 0.018,
-                idleAmplitude: 6
-            },
-
-            {
-                name: 'Angry',
-                idleType: 'vibrate',
-                mass: 1.15,
-                idleSpeed: 0.035,
-                idleAmplitude: 4
-            },
-
-            {
-                name: 'Party',
-                idleType: 'spin',
-                mass: 0.90,
-                idleSpeed: 0.012,
-                idleAmplitude: 3
-            },
-
-            {
-                name: 'Smirk',
-                idleType: 'tilt',
-                mass: 1.00,
-                idleSpeed: 0.016,
-                idleAmplitude: 5
-            },
-
-            {
-                name: 'Sleepy',
-                idleType: 'drift',
-                mass: 0.95,
-                idleSpeed: 0.009,
-                idleAmplitude: 4
-            },
-
-            {
-                name: 'Shocked',
-                idleType: 'bounce',
-                mass: 1.05,
-                idleSpeed: 0.027,
-                idleAmplitude: 7
-            },
-
-            {
-                name: 'Scared',
-                idleType: 'tremble',
-                mass: 0.85,
-                idleSpeed: 0.024,
-                idleAmplitude: 3
-            },
-
-            {
-                name: 'Relaxed',
-                idleType: 'sway',
-                mass: 1.00,
-                idleSpeed: 0.011,
-                idleAmplitude: 5
-            },
-
-            {
-                name: 'Angel',
-                idleType: 'float',
-                mass: 0.80,
-                idleSpeed: 0.010,
-                idleAmplitude: 6
-            },
-
-            {
-                name: 'Sad',
-                idleType: 'droop',
-                mass: 1.10,
-                idleSpeed: 0.018,
-                idleAmplitude: 5
-            },
-
-            {
-                name: 'Nerd',
-                idleType: 'twitch',
-                mass: 0.90,
-                idleSpeed: 0.030,
-                idleAmplitude: 3
-            },
-
-            {
-                name: 'Frustrated',
-                idleType: 'shake',
-                mass: 1.10,
-                idleSpeed: 0.025,
-                idleAmplitude: 4
-            },
-
-            {
-                name: 'Playful',
-                idleType: 'playful',
-                mass: 0.95,
-                idleSpeed: 0.020,
-                idleAmplitude: 6
-            },
-
-            {
-                name: 'Kiss',
-                idleType: 'bob',
-                mass: 0.85,
-                idleSpeed: 0.016,
-                idleAmplitude: 5
-            },
-
-            {
-                name: 'Cold',
-                idleType: 'shiver',
-                mass: 1.05,
-                idleSpeed: 0.024,
-                idleAmplitude: 3
-            },
-
-            {
-                name: 'Melting',
-                idleType: 'droop',
-                mass: 1.00,
-                idleSpeed: 0.014,
-                idleAmplitude: 4
-            },
-
-            {
-                name: 'Grinning',
-                idleType: 'bounce',
-                mass: 0.90,
-                idleSpeed: 0.021,
-                idleAmplitude: 6
-            },
-
-            {
-                name: 'Winking',
-                idleType: 'tilt',
-                mass: 1.00,
-                idleSpeed: 0.014,
-                idleAmplitude: 4
-            },
-
-            {
-                name: 'Straight',
-                idleType: 'sway',
-                mass: 1.05,
-                idleSpeed: 0.010,
-                idleAmplitude: 3
-            },
-
-            {
-                name: 'Slight',
-                idleType: 'drift',
-                mass: 0.92,
-                idleSpeed: 0.012,
-                idleAmplitude: 4
-            }
-        ];
-    }
-
-
-    /* ========================================================
-       DESTROY
-       ======================================================== */
-
-    destroy() {
-
-        /*
-         * Remove resize listener.
-         */
-
-        window.removeEventListener(
-            'resize',
-            this.resizeHandler
+      this.title.style.fontSize =
+        Math.max(
+          34,
+          Math.min(
+            58,
+            this.width *
+            0.045
+          )
         );
-
-        /*
-         * Stop ticker.
-         */
-
-        if (
-            this.app &&
-            this.app.ticker
-        ) {
-
-            this.app.ticker.stop();
-        }
-
-        /*
-         * Destroy gyro.
-         */
-
-        if (
-            this.gyro
-        ) {
-
-            this.gyro.destroy();
-        }
-
-        /*
-         * Destroy PixiJS.
-         */
-
-        if (
-            this.app
-        ) {
-
-            this.app.destroy(
-                true,
-                {
-                    children: true,
-                    texture: false,
-                    textureSource: false
-                }
-            );
-        }
-
-        this.app =
-            null;
-
-        this.emojis =
-            [];
-
-        this.cubes =
-            [];
-
-        this.physics =
-            null;
     }
+
+
+    if (
+      this.physics
+    ) {
+
+      this.physics.width =
+        this.width;
+
+
+      this.physics.height =
+        this.height;
+
+
+      this.physics.groundLevel =
+        this.height *
+        0.90;
+    }
+  }
+
+
+  /* ================================================================
+     CLEANUP
+     ================================================================ */
+
+  destroy() {
+
+    console.log(
+      '[Emoji World] Destroying...'
+    );
+
+
+    window.removeEventListener(
+      'resize',
+      this._resizeHandler
+    );
+
+
+    if (
+      this.app
+    ) {
+
+      this.app.ticker.remove(
+        this._boundUpdateFrame
+      );
+    }
+
+
+    if (
+      this.emojiLayer
+    ) {
+
+      this.emojiLayer.remove();
+      this.emojiLayer = null;
+    }
+
+
+    if (
+      this.app
+    ) {
+
+      this.app.destroy(
+        true,
+        {
+          children: true,
+          texture: false,
+          textureSource: false
+        }
+      );
+
+      this.app = null;
+    }
+
+
+    this.emojis = [];
+    this.cubes = [];
+
+    console.log(
+      '[Emoji World] ✓ Destroyed'
+    );
+  }
+
+
+  /* ================================================================
+     EMOJI CONFIGURATION
+     ================================================================ */
+
+  _getEmojiConfigs() {
+
+    return [
+
+      {
+        index: 0,
+        name: 'Happy',
+        idleType: 'bounce',
+        mass: 0.9,
+        idleSpeed: 0.055,
+        idleAmplitude: 10
+      },
+
+      {
+        index: 1,
+        name: 'Smile',
+        idleType: 'tilt',
+        mass: 1.1,
+        idleSpeed: 0.045,
+        idleAmplitude: 8
+      },
+
+      {
+        index: 2,
+        name: 'Grinning',
+        idleType: 'pulse',
+        mass: 0.8,
+        idleSpeed: 0.070,
+        idleAmplitude: 8,
+        scaleAmount: 0.08
+      },
+
+      {
+        index: 3,
+        name: 'Laughing',
+        idleType: 'playful',
+        mass: 1.0,
+        idleSpeed: 0.050,
+        idleAmplitude: 7
+      },
+
+      {
+        index: 4,
+        name: 'Joy',
+        idleType: 'bounce',
+        mass: 0.9,
+        idleSpeed: 0.065,
+        idleAmplitude: 11
+      },
+
+      {
+        index: 5,
+        name: 'TearsOfJoy',
+        idleType: 'sway',
+        mass: 1.0,
+        idleSpeed: 0.050,
+        idleAmplitude: 8
+      },
+
+      {
+        index: 6,
+        name: 'ROFL',
+        idleType: 'shake',
+        mass: 0.9,
+        idleSpeed: 0.060,
+        idleAmplitude: 5
+      },
+
+      {
+        index: 7,
+        name: 'Cute',
+        idleType: 'float',
+        mass: 0.8,
+        idleSpeed: 0.035,
+        idleAmplitude: 9
+      },
+
+      {
+        index: 8,
+        name: 'Angry',
+        idleType: 'vibrate',
+        mass: 1.2,
+        idleSpeed: 0.080,
+        idleAmplitude: 3
+      },
+
+      {
+        index: 9,
+        name: 'Hug',
+        idleType: 'pulse',
+        mass: 1.0,
+        idleSpeed: 0.045,
+        idleAmplitude: 5,
+        scaleAmount: 0.06
+      },
+
+      {
+        index: 10,
+        name: 'FacePalm',
+        idleType: 'droop',
+        mass: 1.1,
+        idleSpeed: 0.040,
+        idleAmplitude: 6
+      },
+
+      {
+        index: 11,
+        name: 'Pleading',
+        idleType: 'bob',
+        mass: 0.85,
+        idleSpeed: 0.050,
+        idleAmplitude: 8
+      },
+
+      {
+        index: 12,
+        name: 'Blossom',
+        idleType: 'sway',
+        mass: 0.9,
+        idleSpeed: 0.045,
+        idleAmplitude: 7
+      },
+
+      {
+        index: 13,
+        name: 'Purple',
+        idleType: 'float',
+        mass: 1.0,
+        idleSpeed: 0.040,
+        idleAmplitude: 8
+      },
+
+      {
+        index: 14,
+        name: 'Ghost',
+        idleType: 'float',
+        mass: 0.8,
+        idleSpeed: 0.030,
+        idleAmplitude: 12
+      },
+
+      {
+        index: 15,
+        name: 'Nerd',
+        idleType: 'twitch',
+        mass: 0.9,
+        idleSpeed: 0.070,
+        idleAmplitude: 4
+      },
+
+      {
+        index: 16,
+        name: 'Surprised',
+        idleType: 'bounce',
+        mass: 0.95,
+        idleSpeed: 0.065,
+        idleAmplitude: 10
+      },
+
+      {
+        index: 17,
+        name: 'Cold',
+        idleType: 'shiver',
+        mass: 1.05,
+        idleSpeed: 0.075,
+        idleAmplitude: 3
+      },
+
+      {
+        index: 18,
+        name: 'Melting',
+        idleType: 'droop',
+        mass: 1.0,
+        idleSpeed: 0.040,
+        idleAmplitude: 6
+      },
+
+      {
+        index: 19,
+        name: 'Grinning',
+        idleType: 'bounce',
+        mass: 0.9,
+        idleSpeed: 0.060,
+        idleAmplitude: 9
+      },
+
+      {
+        index: 20,
+        name: 'Plain',
+        idleType: 'drift',
+        mass: 0.95,
+        idleSpeed: 0.035,
+        idleAmplitude: 5
+      },
+
+      {
+        index: 21,
+        name: 'Peek',
+        idleType: 'tilt',
+        mass: 1.0,
+        idleSpeed: 0.050,
+        idleAmplitude: 6
+      },
+
+      {
+        index: 22,
+        name: 'Neutral',
+        idleType: 'sway',
+        mass: 1.08,
+        idleSpeed: 0.038,
+        idleAmplitude: 4
+      },
+
+      {
+        index: 23,
+        name: 'SlightSmile',
+        idleType: 'drift',
+        mass: 0.92,
+        idleSpeed: 0.045,
+        idleAmplitude: 6
+      }
+    ];
+  }
 }

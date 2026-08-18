@@ -1,589 +1,324 @@
 /**
- * ============================================================
- * THE EMOJIS
- * Main Application Entry
- * ============================================================
- *
- * Vite + PixiJS
+ * The Emojis
+ * ----------
+ * Main application entry point.
  *
  * Responsibilities:
- * - Start EmojiWorld once
- * - Find the Pixi canvas placeholder
- * - Handle initialization errors
- * - Expose EmojiWorld for debugging
- * - Handle mobile touch behavior
- * - Handle page visibility for mobile performance
- * ============================================================
+ * - Wait for DOM
+ * - Find Pixi canvas
+ * - Initialize EmojiWorld
+ * - Wait for complete async initialization
+ * - Expose world for debugging
+ * - Handle initialization errors safely
+ * - Enable mobile touch interaction
  */
 
 import { EmojiWorld } from './emojiWorld.js';
 import './style.css';
 
+'use strict';
 
-/* ============================================================
-   CONFIGURATION
-   ============================================================ */
-
-const CONFIG = {
-    canvasId: 'pixi-canvas',
-
-    /*
-     * Prevent accidental double initialization.
-     */
-    initializationKey: '__THE_EMOJIS_WORLD__',
-
-    /*
-     * Mobile devices can temporarily freeze while
-     * switching tabs/apps. We let EmojiWorld know
-     * when the page becomes hidden.
-     */
-    pauseWhenHidden: true
-};
-
-
-/* ============================================================
-   STATE
-   ============================================================ */
+console.log('🎮 Loading The Emojis...');
 
 let emojiWorld = null;
 let initialized = false;
 
-
 /* ============================================================
-   DOM HELPERS
-   ============================================================ */
-
-/**
- * Get the Pixi canvas placeholder.
- */
-function getCanvas() {
-    return document.getElementById(
-        CONFIG.canvasId
-    );
-}
-
-
-/**
- * Create a lightweight error message.
- *
- * Do NOT paint the whole canvas red.
- * A red canvas makes debugging harder and
- * looks broken to users.
- */
-function showInitializationError(error) {
-
-    console.error(
-        '[The Emojis] Initialization failed:',
-        error
-    );
-
-    const app =
-        document.getElementById('app');
-
-    if (!app) {
-        return;
-    }
-
-    /*
-     * Avoid adding multiple error panels.
-     */
-    if (
-        document.getElementById(
-            'emoji-error'
-        )
-    ) {
-        return;
-    }
-
-    const errorPanel =
-        document.createElement('div');
-
-    errorPanel.id =
-        'emoji-error';
-
-    errorPanel.setAttribute(
-        'role',
-        'alert'
-    );
-
-    errorPanel.innerHTML = `
-        <div class="emoji-error-content">
-            <strong>The Emojis could not start.</strong>
-            <span>Please refresh the page.</span>
-        </div>
-    `;
-
-    /*
-     * Keep the fallback extremely lightweight.
-     */
-    Object.assign(
-        errorPanel.style,
-        {
-            position: 'fixed',
-            inset: '0',
-            display: 'grid',
-            placeItems: 'center',
-            padding: '24px',
-            background: '#050505',
-            color: '#ffffff',
-            fontFamily:
-                'system-ui, -apple-system, BlinkMacSystemFont, sans-serif',
-            zIndex: '99999',
-            textAlign: 'center',
-            pointerEvents: 'none'
-        }
-    );
-
-    const content =
-        errorPanel.querySelector(
-            '.emoji-error-content'
-        );
-
-    if (content) {
-        Object.assign(
-            content.style,
-            {
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px',
-                opacity: '0.9'
-            }
-        );
-    }
-
-    app.appendChild(
-        errorPanel
-    );
-}
-
-
-/* ============================================================
-   INITIALIZATION
+   APPLICATION INITIALIZATION
    ============================================================ */
 
 async function initializeEmojiWorld() {
+  if (initialized) {
+    return;
+  }
 
+  initialized = true;
+
+  console.log('📄 Initializing application...');
+
+  /*
+   * Find the canvas created in index.html.
+   */
+  const canvas =
+    document.getElementById('pixi-canvas');
+
+  if (!canvas) {
+    console.error(
+      '❌ Canvas element #pixi-canvas was not found.'
+    );
+
+    showInitializationError(
+      'Canvas element not found.'
+    );
+
+    return;
+  }
+
+  console.log(
+    '✓ Pixi canvas found'
+  );
+
+  try {
     /*
-     * Prevent duplicate startup.
+     * Create the EmojiWorld.
      *
-     * This is especially useful with
-     * Vite HMR during development.
+     * EmojiWorld starts its asynchronous initialization
+     * internally and exposes the promise as .ready.
      */
-    if (
-        initialized ||
-        window[
-            CONFIG.initializationKey
-        ]
-    ) {
-        console.warn(
-            '[The Emojis] Already initialized.'
-        );
+    emojiWorld =
+      new EmojiWorld(canvas, {
+        quality: 'auto'
+      });
 
-        return window[
-            CONFIG.initializationKey
-        ];
-    }
-
-    initialized = true;
+    /*
+     * Make it accessible from DevTools.
+     *
+     * Example:
+     *
+     * window.emojiWorld
+     */
+    window.emojiWorld =
+      emojiWorld;
 
     console.log(
-        '✨ The Emojis — starting...'
+      '⏳ Waiting for PixiJS + assets...'
     );
 
     /*
-     * Find placeholder canvas.
+     * VERY IMPORTANT:
+     *
+     * Wait until:
+     *
+     * 1. PixiJS initializes
+     * 2. WebGL renderer initializes
+     * 3. 24 WebP assets load
+     * 4. Scene is created
+     * 5. Event listeners are attached
+     * 6. Animation ticker starts
      */
-    const canvas =
-        getCanvas();
-
-    if (!canvas) {
-
-        const error =
-            new Error(
-                `Canvas #${CONFIG.canvasId} was not found.`
-            );
-
-        console.error(
-            '[The Emojis]',
-            error
-        );
-
-        initialized = false;
-
-        showInitializationError(
-            error
-        );
-
-        return null;
-    }
+    await emojiWorld.ready;
 
     console.log(
-        '[The Emojis] Canvas placeholder found.'
+      '✨ The Emojis is ready!'
     );
 
-    try {
+    console.log(
+      '😀 24 emoji characters loaded'
+    );
 
-        /*
-         * Create the world.
-         *
-         * EmojiWorld handles the PixiJS
-         * application and replaces the
-         * placeholder canvas with the
-         * real Pixi canvas.
-         */
-        emojiWorld =
-            new EmojiWorld(
-                canvas,
-                {
-                    quality: 'auto'
-                }
-            );
+    console.log(
+      '🖱️ Desktop: move cursor over emojis'
+    );
 
-        /*
-         * Global reference for debugging.
-         *
-         * Example in DevTools:
-         *
-         * window.emojiWorld
-         */
-        window[
-            CONFIG.initializationKey
-        ] = emojiWorld;
+    console.log(
+      '📱 Mobile: tilt / shake your phone'
+    );
 
-        window.emojiWorld =
-            emojiWorld;
+    /*
+     * Optional event for external UI.
+     */
+    window.dispatchEvent(
+      new CustomEvent(
+        'emoji-world-ready'
+      )
+    );
 
-        console.log(
-            '🎉 The Emojis world created.'
-        );
+  } catch (error) {
+    console.error(
+      '❌ Failed to initialize The Emojis:',
+      error
+    );
 
-        console.log(
-            '🖱️ Desktop: move the cursor.'
-        );
+    console.error(
+      'Stack:',
+      error?.stack || error
+    );
 
-        console.log(
-            '📱 Mobile: tilt the phone and shake once.'
-        );
-
-        /*
-         * Some versions of EmojiWorld may expose
-         * a ready Promise.
-         *
-         * If available, wait for it.
-         */
-        if (
-            emojiWorld.ready &&
-            typeof emojiWorld.ready.then ===
-                'function'
-        ) {
-
-            await emojiWorld.ready;
-
-            console.log(
-                '✅ The Emojis world is ready.'
-            );
-        }
-
-        return emojiWorld;
-
-    } catch (error) {
-
-        initialized = false;
-
-        window[
-            CONFIG.initializationKey
-        ] = null;
-
-        window.emojiWorld =
-            null;
-
-        showInitializationError(
-            error
-        );
-
-        return null;
-    }
+    showInitializationError(
+      'Unable to initialize the emoji world.'
+    );
+  }
 }
 
+/* ============================================================
+   ERROR DISPLAY
+   ============================================================ */
+
+function showInitializationError(message) {
+  /*
+   * Do not use canvas.getContext('2d') here.
+   *
+   * PixiJS owns the canvas and may already have a WebGL
+   * rendering context attached to it.
+   */
+
+  let errorBox =
+    document.getElementById(
+      'emoji-init-error'
+    );
+
+  if (!errorBox) {
+    errorBox =
+      document.createElement('div');
+
+    errorBox.id =
+      'emoji-init-error';
+
+    errorBox.style.position =
+      'fixed';
+
+    errorBox.style.left =
+      '50%';
+
+    errorBox.style.top =
+      '50%';
+
+    errorBox.style.transform =
+      'translate(-50%, -50%)';
+
+    errorBox.style.zIndex =
+      '99999';
+
+    errorBox.style.maxWidth =
+      '90vw';
+
+    errorBox.style.padding =
+      '24px 28px';
+
+    errorBox.style.borderRadius =
+      '18px';
+
+    errorBox.style.background =
+      'rgba(255,255,255,0.96)';
+
+    errorBox.style.color =
+      '#111';
+
+    errorBox.style.fontFamily =
+      'system-ui, sans-serif';
+
+    errorBox.style.textAlign =
+      'center';
+
+    errorBox.style.boxShadow =
+      '0 20px 60px rgba(0,0,0,.2)';
+
+    document.body.appendChild(
+      errorBox
+    );
+  }
+
+  errorBox.innerHTML = `
+    <div style="
+      font-size:32px;
+      margin-bottom:10px;
+    ">
+      😵
+    </div>
+
+    <div style="
+      font-size:18px;
+      font-weight:700;
+      margin-bottom:6px;
+    ">
+      The Emojis couldn't start
+    </div>
+
+    <div style="
+      font-size:14px;
+      opacity:.7;
+    ">
+      ${message}
+    </div>
+
+    <div style="
+      margin-top:12px;
+      font-size:12px;
+      opacity:.5;
+    ">
+      Check the browser console for details.
+    </div>
+  `;
+}
+
+/* ============================================================
+   MOBILE TOUCH OPTIMIZATION
+   ============================================================ */
+
+/*
+ * Prevent browser scrolling while interacting directly
+ * with the Pixi canvas.
+ *
+ * This is intentionally limited to the canvas so normal
+ * page interactions remain untouched.
+ */
+document.addEventListener(
+  'touchmove',
+  (event) => {
+    const target =
+      event.target;
+
+    if (
+      target instanceof HTMLCanvasElement
+    ) {
+      event.preventDefault();
+    }
+  },
+  {
+    passive: false
+  }
+);
 
 /* ============================================================
    PAGE VISIBILITY
    ============================================================ */
 
-/**
- * Pause/resume animation when the browser
- * hides the page.
- *
- * This is important on mobile because
- * browsers may switch tabs or lock the
- * screen and we don't want unnecessary
- * animation work.
+/*
+ * When the browser tab becomes hidden, Pixi's ticker normally
+ * handles this reasonably well, but resetting pointer state
+ * prevents strange cursor jumps after returning to the page.
  */
-function setupVisibilityHandling() {
+document.addEventListener(
+  'visibilitychange',
+  () => {
+    if (
+      document.visibilityState ===
+      'hidden'
+    ) {
+      return;
+    }
 
     if (
-        !CONFIG.pauseWhenHidden
+      window.emojiWorld?.mouse
     ) {
-        return;
+      window.emojiWorld.mouse.x =
+        window.innerWidth / 2;
+
+      window.emojiWorld.mouse.y =
+        window.innerHeight / 2;
     }
-
-    document.addEventListener(
-        'visibilitychange',
-        () => {
-
-            if (!emojiWorld) {
-                return;
-            }
-
-            const hidden =
-                document.hidden;
-
-            /*
-             * Let EmojiWorld decide how its
-             * Pixi ticker should be handled.
-             */
-            if (
-                typeof emojiWorld.setPageVisibility ===
-                'function'
-            ) {
-
-                emojiWorld.setPageVisibility(
-                    !hidden
-                );
-
-                return;
-            }
-
-            /*
-             * Fallback for current implementation.
-             */
-            if (
-                emojiWorld.app &&
-                emojiWorld.app.ticker
-            ) {
-
-                if (hidden) {
-                    emojiWorld.app.ticker.stop();
-                } else {
-                    emojiWorld.app.ticker.start();
-                }
-            }
-        },
-        {
-            passive: true
-        }
-    );
-}
-
-
-/* ============================================================
-   TOUCH PERFORMANCE
-   ============================================================ */
-
-/**
- * Prevent browser scrolling while interacting
- * with the Emoji World canvas.
- *
- * CSS touch-action is preferred, but this
- * provides an additional fallback.
- */
-function setupTouchHandling() {
-
-    document.addEventListener(
-        'touchmove',
-        (event) => {
-
-            const target =
-                event.target;
-
-            /*
-             * Only block scrolling when the
-             * interaction is actually happening
-             * over the Pixi canvas.
-             */
-            if (
-                target &&
-                (
-                    target.id ===
-                    CONFIG.canvasId ||
-                    target.tagName ===
-                    'CANVAS'
-                )
-            ) {
-                event.preventDefault();
-            }
-        },
-        {
-            passive: false
-        }
-    );
-}
-
-
-/* ============================================================
-   GLOBAL ERROR HANDLING
-   ============================================================ */
-
-/**
- * Catch unexpected synchronous errors.
- */
-window.addEventListener(
-    'error',
-    (event) => {
-
-        console.error(
-            '[The Emojis] Runtime error:',
-            event.error ||
-            event.message
-        );
-    }
+  }
 );
 
-
-/**
- * Catch asynchronous Promise errors.
- *
- * This is particularly important for
- * PixiJS initialization because
- * Application.create() is asynchronous.
- */
-window.addEventListener(
-    'unhandledrejection',
-    (event) => {
-
-        console.error(
-            '[The Emojis] Unhandled Promise rejection:',
-            event.reason
-        );
-
-        /*
-         * Only show the UI error if the
-         * world has not successfully started.
-         */
-        if (!emojiWorld) {
-
-            showInitializationError(
-                event.reason
-            );
-        }
-    }
-);
-
-
 /* ============================================================
-   VITE / HMR SUPPORT
+   DOM READY
    ============================================================ */
 
-/**
- * During Vite development, HMR can reload
- * modules without fully reloading the page.
- *
- * Destroy the previous world if possible.
- */
 if (
-    import.meta.hot
+  document.readyState ===
+  'loading'
 ) {
-
-    import.meta.hot.dispose(
-        () => {
-
-            console.log(
-                '[The Emojis] Cleaning up HMR...'
-            );
-
-            if (
-                emojiWorld &&
-                typeof emojiWorld.destroy ===
-                'function'
-            ) {
-
-                try {
-                    emojiWorld.destroy();
-                } catch (error) {
-                    console.warn(
-                        '[The Emojis] Cleanup warning:',
-                        error
-                    );
-                }
-            }
-
-            emojiWorld = null;
-
-            initialized = false;
-
-            window[
-                CONFIG.initializationKey
-            ] = null;
-
-            window.emojiWorld =
-                null;
-        }
-    );
-}
-
-
-/* ============================================================
-   BOOT
- * ============================================================ */
-
-async function boot() {
-
-    /*
-     * If the script is loaded as a module
-     * at the end of body, DOM is already
-     * available. Otherwise wait for it.
-     */
-    if (
-        document.readyState ===
-        'loading'
-    ) {
-
-        await new Promise(
-            (resolve) => {
-
-                document.addEventListener(
-                    'DOMContentLoaded',
-                    resolve,
-                    {
-                        once: true
-                    }
-                );
-            }
-        );
+  document.addEventListener(
+    'DOMContentLoaded',
+    initializeEmojiWorld,
+    {
+      once: true
     }
-
-    console.log(
-        '📄 DOM ready.'
-    );
-
-    /*
-     * Setup browser behavior first.
-     */
-    setupTouchHandling();
-
-    setupVisibilityHandling();
-
-    /*
-     * Start Emoji World.
-     */
-    await initializeEmojiWorld();
+  );
+} else {
+  /*
+   * Handles cases where this module loads after
+   * DOMContentLoaded has already fired.
+   */
+  initializeEmojiWorld();
 }
-
-
-/* ============================================================
-   START APPLICATION
-   ============================================================ */
-
-boot().catch(
-    (error) => {
-
-        console.error(
-            '[The Emojis] Fatal startup error:',
-            error
-        );
-
-        showInitializationError(
-            error
-        );
-    }
-);

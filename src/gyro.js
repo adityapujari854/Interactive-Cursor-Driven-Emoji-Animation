@@ -1,281 +1,210 @@
 /**
- * Mobile Gyroscope + Shake Detection
- * ------------------------------------
+ * Mobile Gyroscope / Device Motion Handler
+ * -----------------------------------------
  *
- * Features:
- * - Device tilt / gyroscope
- * - Device motion
- * - Shake detection
- * - iOS permission handling
- * - Android compatibility
- * - Cooldown to prevent repeated shake triggers
+ * Handles:
+ * - Device tilt
+ * - Mobile shake detection
+ * - iOS permission
+ * - Android motion sensors
  *
- * Designed for the Emoji World project.
+ * Optimized for mobile performance.
  */
+
+'use strict';
 
 export class GyroHandler {
   constructor(options = {}) {
-    this.enabled = false;
+    /* ==========================================================
+       ORIENTATION
+       ========================================================== */
 
-    this.permissionGranted = false;
-
-    /*
-     * Current orientation.
-     */
+    this.alpha = 0;
     this.beta = 0;
     this.gamma = 0;
-    this.alpha = 0;
 
-    /*
-     * Smoothed orientation.
-     */
+    /* Smoothed orientation */
     this.smoothBeta = 0;
     this.smoothGamma = 0;
 
-    /*
-     * Motion values.
-     */
-    this.accelX = 0;
-    this.accelY = 0;
-    this.accelZ = 0;
+    /* ==========================================================
+       ACCELERATION
+       ========================================================== */
+
+    this.ax = 0;
+    this.ay = 0;
+    this.az = 0;
+
+    /* Previous acceleration */
+    this.previousAx = 0;
+    this.previousAy = 0;
+    this.previousAz = 0;
+
+    /* Smoothed acceleration */
+    this.filteredAcceleration = 0;
+
+    /* ==========================================================
+       SHAKE SETTINGS
+       ========================================================== */
 
     /*
-     * Previous acceleration.
-     */
-    this.lastAccelX = 0;
-    this.lastAccelY = 0;
-    this.lastAccelZ = 0;
-
-    /*
-     * Shake detection.
+     * Lower than the old 25 threshold.
+     *
+     * This makes normal real-world phone shakes easier to detect
+     * while still filtering normal hand movement.
      */
     this.shakeThreshold =
-      options.shakeThreshold || 18;
+      Number.isFinite(options.shakeThreshold)
+        ? options.shakeThreshold
+        : 11;
 
+    /*
+     * Prevent multiple shake events from firing from
+     * one physical shake.
+     */
     this.shakeCooldown =
-      options.shakeCooldown || 1200;
+      Number.isFinite(options.shakeCooldown)
+        ? options.shakeCooldown
+        : 1200;
 
     this.lastShakeTime = 0;
 
-    /*
-     * Prevent accidental repeated
-     * shake events.
-     */
-    this.shakeArmed = true;
+    this.shakeDetected = false;
 
-    /*
-     * Timestamp.
-     */
-    this.lastMotionTime = 0;
+    /* ==========================================================
+       SUPPORT
+       ========================================================== */
 
-    /*
-     * Bound event handlers.
-     *
-     * This is important so the same
-     * listener can be removed later.
-     */
-    this._orientationHandler =
+    this.isSupported = false;
+
+    this.orientationSupported = false;
+
+    this.motionSupported = false;
+
+    this.permissionGranted = false;
+
+    /* ==========================================================
+       LISTENER STATE
+       ========================================================== */
+
+    this.orientationListenerAttached = false;
+
+    this.motionListenerAttached = false;
+
+    /* ==========================================================
+       BOUND FUNCTIONS
+       ========================================================== */
+
+    this._handleOrientation =
       this._handleOrientation.bind(this);
 
-    this._motionHandler =
+    this._handleMotion =
       this._handleMotion.bind(this);
 
-    /*
-     * iOS permission requirement.
-     */
-    this.requiresPermission =
-      typeof DeviceOrientationEvent !==
-        'undefined' &&
-      typeof DeviceOrientationEvent.requestPermission ===
-        'function';
+    /* Initialize support detection */
+    this._init();
   }
 
-  /**
-   * Request device orientation/motion permission.
-   *
-   * Must normally be called after
-   * a user gesture on iOS.
-   */
-  async requestPermission() {
-    /*
-     * Desktop.
-     */
-    if (
-      typeof window === 'undefined'
-    ) {
-      return false;
-    }
+  /* ============================================================
+     INITIALIZATION
+     ============================================================ */
 
-    /*
-     * APIs unavailable.
-     */
+  _init() {
     const hasOrientation =
+      typeof window !== 'undefined' &&
       'DeviceOrientationEvent' in window;
 
     const hasMotion =
+      typeof window !== 'undefined' &&
       'DeviceMotionEvent' in window;
 
+    this.orientationSupported =
+      hasOrientation;
+
+    this.motionSupported =
+      hasMotion;
+
+    this.isSupported =
+      hasOrientation ||
+      hasMotion;
+
+    /*
+     * Android and browsers that don't require explicit
+     * permission can start immediately.
+     *
+     * iOS permission is requested later from a user gesture.
+     */
+
+    const needsOrientationPermission =
+      hasOrientation &&
+      typeof DeviceOrientationEvent.requestPermission ===
+        'function';
+
+    const needsMotionPermission =
+      hasMotion &&
+      typeof DeviceMotionEvent.requestPermission ===
+        'function';
+
+    if (!needsOrientationPermission) {
+      this._attachOrientationListener();
+    }
+
+    if (!needsMotionPermission) {
+      /*
+       * Motion is attached immediately on Android.
+       *
+       * Some browsers may still block it until interaction,
+       * but the listener itself is safe.
+       */
+      this._attachMotionListener();
+    }
+  }
+
+  /* ============================================================
+     ORIENTATION LISTENER
+     ============================================================ */
+
+  _attachOrientationListener() {
     if (
-      !hasOrientation &&
-      !hasMotion
+      this.orientationListenerAttached ||
+      !this.orientationSupported
     ) {
-      console.log(
-        '[Gyro] Device motion APIs unavailable.'
-      );
-
-      return false;
-    }
-
-    try {
-      /*
-       * iOS orientation permission.
-       */
-      if (
-        typeof DeviceOrientationEvent !==
-          'undefined' &&
-        typeof DeviceOrientationEvent.requestPermission ===
-          'function'
-      ) {
-        const orientationPermission =
-          await DeviceOrientationEvent.requestPermission();
-
-        if (
-          orientationPermission !==
-          'granted'
-        ) {
-          console.warn(
-            '[Gyro] Orientation permission denied.'
-          );
-
-          return false;
-        }
-      }
-
-      /*
-       * Some iOS versions also expose
-       * motion permission separately.
-       */
-      if (
-        typeof DeviceMotionEvent !==
-          'undefined' &&
-        typeof DeviceMotionEvent.requestPermission ===
-          'function'
-      ) {
-        const motionPermission =
-          await DeviceMotionEvent.requestPermission();
-
-        if (
-          motionPermission !==
-          'granted'
-        ) {
-          console.warn(
-            '[Gyro] Motion permission denied.'
-          );
-
-          return false;
-        }
-      }
-
-      this.permissionGranted =
-        true;
-
-      this.enable();
-
-      console.log(
-        '[Gyro] ✓ Motion permission granted.'
-      );
-
-      return true;
-    } catch (error) {
-      console.warn(
-        '[Gyro] Permission request failed:',
-        error
-      );
-
-      /*
-       * Android usually doesn't require
-       * an explicit permission request.
-       */
-      this.permissionGranted =
-        true;
-
-      this.enable();
-
-      return true;
-    }
-  }
-
-  /**
-   * Enable sensors.
-   */
-  enable() {
-    if (this.enabled) {
       return;
     }
 
-    /*
-     * Device orientation.
-     */
     window.addEventListener(
       'deviceorientation',
-      this._orientationHandler,
+      this._handleOrientation,
       {
         passive: true
       }
     );
 
-    /*
-     * Device motion.
-     */
-    window.addEventListener(
-      'devicemotion',
-      this._motionHandler,
-      {
-        passive: true
-      }
-    );
-
-    this.enabled = true;
+    this.orientationListenerAttached = true;
 
     console.log(
-      '[Gyro] ✓ Sensors enabled.'
+      '[Gyro] Orientation listener attached'
     );
   }
 
-  /**
-   * Disable sensors.
-   */
-  disable() {
-    if (!this.enabled) {
+  /* ============================================================
+     ORIENTATION HANDLER
+     ============================================================ */
+
+  _handleOrientation(event) {
+    if (!event) {
       return;
     }
 
-    window.removeEventListener(
-      'deviceorientation',
-      this._orientationHandler
-    );
-
-    window.removeEventListener(
-      'devicemotion',
-      this._motionHandler
-    );
-
-    this.enabled = false;
-
-    console.log(
-      '[Gyro] Sensors disabled.'
-    );
-  }
-
-  /**
-   * Orientation event.
-   */
-  _handleOrientation(
-    event
-  ) {
     /*
-     * Values can occasionally be null.
+     * Raw orientation values.
      */
+
+    const alpha =
+      Number.isFinite(event.alpha)
+        ? event.alpha
+        : 0;
+
     const beta =
       Number.isFinite(event.beta)
         ? event.beta
@@ -286,117 +215,449 @@ export class GyroHandler {
         ? event.gamma
         : 0;
 
-    const alpha =
-      Number.isFinite(event.alpha)
-        ? event.alpha
-        : 0;
+    this.alpha = alpha;
 
     this.beta = beta;
 
     this.gamma = gamma;
 
-    this.alpha = alpha;
-
     /*
-     * Smooth the values.
+     * Smooth tilt values.
      *
-     * This prevents the emojis from
-     * jumping when the sensor is noisy.
+     * This prevents emojis from jumping when the phone
+     * sensor produces small noisy changes.
      */
+
     const smoothing = 0.12;
 
     this.smoothBeta +=
-      (
-        beta -
-        this.smoothBeta
-      ) * smoothing;
+      (beta - this.smoothBeta) *
+      smoothing;
 
     this.smoothGamma +=
-      (
-        gamma -
-        this.smoothGamma
-      ) * smoothing;
+      (gamma - this.smoothGamma) *
+      smoothing;
   }
 
-  /**
-   * Motion event.
-   */
-  _handleMotion(
-    event
-  ) {
-    const acceleration =
+  /* ============================================================
+     MOTION LISTENER
+     ============================================================ */
+
+  _attachMotionListener() {
+    if (
+      this.motionListenerAttached ||
+      !this.motionSupported
+    ) {
+      return;
+    }
+
+    window.addEventListener(
+      'devicemotion',
+      this._handleMotion,
+      {
+        passive: true
+      }
+    );
+
+    this.motionListenerAttached = true;
+
+    console.log(
+      '[Gyro] Motion listener attached'
+    );
+  }
+
+  /* ============================================================
+     MOTION HANDLER
+     ============================================================ */
+
+  _handleMotion(event) {
+    if (!event) {
+      return;
+    }
+
+    /*
+     * Prefer acceleration without gravity.
+     *
+     * This is much better for shake detection when available.
+     */
+
+    let acceleration =
+      event.acceleration;
+
+    if (
+      acceleration &&
+      Number.isFinite(acceleration.x) &&
+      Number.isFinite(acceleration.y) &&
+      Number.isFinite(acceleration.z)
+    ) {
+      this.ax =
+        acceleration.x || 0;
+
+      this.ay =
+        acceleration.y || 0;
+
+      this.az =
+        acceleration.z || 0;
+
+      this._detectShakeFromAcceleration();
+
+      return;
+    }
+
+    /*
+     * Fallback to accelerationIncludingGravity.
+     */
+
+    acceleration =
       event.accelerationIncludingGravity;
 
     if (!acceleration) {
       return;
     }
 
-    const x =
-      Number.isFinite(
-        acceleration.x
-      )
+    const ax =
+      Number.isFinite(acceleration.x)
         ? acceleration.x
         : 0;
 
-    const y =
-      Number.isFinite(
-        acceleration.y
-      )
+    const ay =
+      Number.isFinite(acceleration.y)
         ? acceleration.y
         : 0;
 
-    const z =
-      Number.isFinite(
-        acceleration.z
-      )
+    const az =
+      Number.isFinite(acceleration.z)
         ? acceleration.z
         : 0;
 
-    this.accelX = x;
+    this.ax = ax;
+    this.ay = ay;
+    this.az = az;
 
-    this.accelY = y;
-
-    this.accelZ = z;
-
-    this.lastMotionTime =
-      performance.now();
+    this._detectShakeWithGravity();
   }
 
-  /**
-   * Get smoothed phone tilt.
-   *
-   * Returns normalized values
-   * approximately in the range
-   * -1 to +1.
-   */
-  getTilt() {
-    /*
-     * Gamma:
-     * left/right tilt.
-     */
-    let x =
-      this.smoothGamma / 35;
+  /* ============================================================
+     SHAKE DETECTION
+     ============================================================ */
 
-    /*
-     * Beta:
-     * front/back tilt.
-     */
-    let y =
-      this.smoothBeta / 45;
-
-    /*
-     * Clamp.
-     */
-    x =
-      Math.max(
-        -1,
-        Math.min(1, x)
+  _detectShakeFromAcceleration() {
+    const magnitude =
+      Math.sqrt(
+        this.ax * this.ax +
+        this.ay * this.ay +
+        this.az * this.az
       );
 
-    y =
+    /*
+     * Low-pass filtering.
+     *
+     * Reduces sensor noise without adding noticeable delay.
+     */
+
+    this.filteredAcceleration +=
+      (magnitude -
+        this.filteredAcceleration) *
+      0.35;
+
+    /*
+     * Use the sudden acceleration change.
+     */
+
+    const delta =
+      Math.abs(
+        magnitude -
+        this.filteredAcceleration
+      );
+
+    /*
+     * Combine acceleration magnitude and sudden movement.
+     */
+
+    const shakeForce =
+      Math.max(
+        magnitude,
+        delta * 2.5
+      );
+
+    this._triggerShakeIfNeeded(
+      shakeForce
+    );
+  }
+
+  /* ============================================================
+     SHAKE DETECTION WITH GRAVITY
+     * ============================================================ */
+
+  _detectShakeWithGravity() {
+    /*
+     * Calculate total acceleration.
+     */
+
+    const magnitude =
+      Math.sqrt(
+        this.ax * this.ax +
+        this.ay * this.ay +
+        this.az * this.az
+      );
+
+    /*
+     * Gravity is approximately 9.81 m/s².
+     */
+
+    const gravityRemoved =
+      Math.abs(
+        magnitude - 9.81
+      );
+
+    /*
+     * Detect sudden change between sensor samples.
+     */
+
+    const deltaX =
+      this.ax -
+      this.previousAx;
+
+    const deltaY =
+      this.ay -
+      this.previousAy;
+
+    const deltaZ =
+      this.az -
+      this.previousAz;
+
+    const delta =
+      Math.sqrt(
+        deltaX * deltaX +
+        deltaY * deltaY +
+        deltaZ * deltaZ
+      );
+
+    /*
+     * Store current values.
+     */
+
+    this.previousAx =
+      this.ax;
+
+    this.previousAy =
+      this.ay;
+
+    this.previousAz =
+      this.az;
+
+    /*
+     * Combine both measurements.
+     *
+     * Sudden movement is more useful than simply checking
+     * total acceleration.
+     */
+
+    const shakeForce =
+      Math.max(
+        gravityRemoved,
+        delta
+      );
+
+    this._triggerShakeIfNeeded(
+      shakeForce
+    );
+  }
+
+  /* ============================================================
+     TRIGGER SHAKE
+     ============================================================ */
+
+  _triggerShakeIfNeeded(
+    shakeForce
+  ) {
+    if (
+      !Number.isFinite(shakeForce)
+    ) {
+      return;
+    }
+
+    const now =
+      performance.now();
+
+    /*
+     * Ignore small movements.
+     */
+
+    if (
+      shakeForce <
+      this.shakeThreshold
+    ) {
+      return;
+    }
+
+    /*
+     * Prevent repeated events from one shake.
+     */
+
+    if (
+      now -
+        this.lastShakeTime <
+      this.shakeCooldown
+    ) {
+      return;
+    }
+
+    this.lastShakeTime =
+      now;
+
+    this.shakeDetected =
+      true;
+
+    console.log(
+      `[Gyro] 📱 SHAKE DETECTED (${shakeForce.toFixed(1)})`
+    );
+  }
+
+  /* ============================================================
+     REQUEST SENSOR PERMISSION
+     ============================================================ */
+
+  async requestPermission() {
+    /*
+     * Already granted.
+     */
+
+    if (this.permissionGranted) {
+      return true;
+    }
+
+    /*
+     * No sensor support.
+     */
+
+    if (!this.isSupported) {
+      console.warn(
+        '[Gyro] Device sensors are not supported'
+      );
+
+      return false;
+    }
+
+    let orientationGranted =
+      true;
+
+    let motionGranted =
+      true;
+
+    /* ==========================================================
+       iOS ORIENTATION
+       ========================================================== */
+
+    if (
+      typeof DeviceOrientationEvent !==
+        'undefined' &&
+      typeof DeviceOrientationEvent.requestPermission ===
+        'function'
+    ) {
+      try {
+        const result =
+          await DeviceOrientationEvent.requestPermission();
+
+        orientationGranted =
+          result === 'granted';
+
+        if (
+          orientationGranted
+        ) {
+          this._attachOrientationListener();
+        }
+      } catch (error) {
+        orientationGranted =
+          false;
+
+        console.warn(
+          '[Gyro] Orientation permission failed:',
+          error
+        );
+      }
+    } else {
+      this._attachOrientationListener();
+    }
+
+    /* ==========================================================
+       iOS MOTION
+       ========================================================== */
+
+    if (
+      typeof DeviceMotionEvent !==
+        'undefined' &&
+      typeof DeviceMotionEvent.requestPermission ===
+        'function'
+    ) {
+      try {
+        const result =
+          await DeviceMotionEvent.requestPermission();
+
+        motionGranted =
+          result === 'granted';
+
+        if (
+          motionGranted
+        ) {
+          this._attachMotionListener();
+        }
+      } catch (error) {
+        motionGranted =
+          false;
+
+        console.warn(
+          '[Gyro] Motion permission failed:',
+          error
+        );
+      }
+    } else {
+      this._attachMotionListener();
+    }
+
+    this.permissionGranted =
+      orientationGranted ||
+      motionGranted;
+
+    console.log(
+      '[Gyro] Permission status:',
+      {
+        orientation:
+          orientationGranted,
+
+        motion:
+          motionGranted
+      }
+    );
+
+    return this.permissionGranted;
+  }
+
+  /* ============================================================
+     GET TILT
+     ============================================================ */
+
+  getTilt() {
+    /*
+     * Convert gamma/beta to normalized values.
+     */
+
+    const x =
       Math.max(
         -1,
-        Math.min(1, y)
+        Math.min(
+          1,
+          this.smoothGamma / 45
+        )
+      );
+
+    const y =
+      Math.max(
+        -1,
+        Math.min(
+          1,
+          this.smoothBeta / 45
+        )
       );
 
     return {
@@ -405,158 +666,116 @@ export class GyroHandler {
     };
   }
 
-  /**
-   * Calculate motion intensity.
-   */
-  getMotionIntensity() {
-    const magnitude =
-      Math.sqrt(
-        this.accelX *
-          this.accelX +
-        this.accelY *
-          this.accelY +
-        this.accelZ *
-          this.accelZ
-      );
+  /* ============================================================
+     GET RAW TILT
+     ============================================================ */
 
-    return magnitude;
+  getRawTilt() {
+    return {
+      alpha:
+        this.alpha,
+
+      beta:
+        this.beta,
+
+      gamma:
+        this.gamma
+    };
   }
 
-  /**
-   * Detect a single shake.
-   *
-   * Called from the animation loop.
-   *
-   * IMPORTANT:
-   * This method does not create
-   * another animation loop.
-   */
+  /* ============================================================
+     POLL SHAKE
+     ============================================================ */
+
   pollShake() {
-    if (
-      !this.enabled
-    ) {
-      return false;
-    }
-
-    const now =
-      performance.now();
+    const detected =
+      this.shakeDetected;
 
     /*
-     * Cooldown.
-     */
-    if (
-      now -
-        this.lastShakeTime <
-      this.shakeCooldown
-    ) {
-      return false;
-    }
-
-    /*
-     * Calculate acceleration magnitude.
+     * Clear immediately.
      *
-     * accelerationIncludingGravity
-     * normally contains ~9.8 m/s²
-     * from gravity.
+     * EmojiWorld receives the event once.
      */
-    const magnitude =
-      Math.sqrt(
-        this.accelX *
-          this.accelX +
-        this.accelY *
-          this.accelY +
-        this.accelZ *
-          this.accelZ
-      );
 
-    /*
-     * Compare against gravity.
-     *
-     * A strong shake creates a
-     * significant acceleration spike.
-     */
-    const dynamicAcceleration =
-      Math.abs(
-        magnitude - 9.81
-      );
+    this.shakeDetected =
+      false;
 
-    /*
-     * Shake detected.
-     */
-    if (
-      dynamicAcceleration >=
-      this.shakeThreshold
-    ) {
-      /*
-       * Require a real cooldown.
-       */
-      this.lastShakeTime =
-        now;
-
-      return true;
-    }
-
-    return false;
+    return detected;
   }
 
-  /**
-   * Alternative stronger shake detector.
-   *
-   * Can be used later if the normal
-   * detector is too sensitive.
-   */
-  detectStrongShake() {
-    const magnitude =
-      this.getMotionIntensity();
+  /* ============================================================
+     SUPPORT CHECKS
+     ============================================================ */
 
-    return (
-      Math.abs(
-        magnitude - 9.81
-      ) >
-      this.shakeThreshold
-    );
+  isMotionSupported() {
+    return this.motionSupported;
   }
 
-  /**
-   * Check whether sensors are
-   * currently providing data.
-   */
-  isReceivingData() {
-    if (
-      !this.enabled
-    ) {
-      return false;
-    }
-
-    return (
-      performance.now() -
-        this.lastMotionTime <
-      2000
-    );
+  isOrientationSupported() {
+    return this.orientationSupported;
   }
 
-  /**
-   * Reset shake state.
-   */
+  isSensorSupported() {
+    return this.isSupported;
+  }
+
+  hasPermission() {
+    return this.permissionGranted;
+  }
+
+  /* ============================================================
+     RESET
+     ============================================================ */
+
   resetShake() {
-    this.lastShakeTime = 0;
+    this.shakeDetected =
+      false;
+
+    this.lastShakeTime =
+      0;
+
+    this.previousAx =
+      0;
+
+    this.previousAy =
+      0;
+
+    this.previousAz =
+      0;
+
+    this.filteredAcceleration =
+      0;
   }
 
-  /**
-   * Destroy handler.
-   */
+  /* ============================================================
+     DESTROY
+     ============================================================ */
+
   destroy() {
-    this.disable();
+    if (
+      this.orientationListenerAttached
+    ) {
+      window.removeEventListener(
+        'deviceorientation',
+        this._handleOrientation
+      );
 
-    this.beta = 0;
-    this.gamma = 0;
-    this.alpha = 0;
+      this.orientationListenerAttached =
+        false;
+    }
 
-    this.smoothBeta = 0;
-    this.smoothGamma = 0;
+    if (
+      this.motionListenerAttached
+    ) {
+      window.removeEventListener(
+        'devicemotion',
+        this._handleMotion
+      );
 
-    this.accelX = 0;
-    this.accelY = 0;
-    this.accelZ = 0;
+      this.motionListenerAttached =
+        false;
+    }
+
+    this.resetShake();
   }
 }
