@@ -72,7 +72,7 @@ export class EmojiWorld {
       this._detectMobileOrTablet();
 
     this.mobileAnimationLimit =
-      10;
+      8;
 
     this.mobileActiveEmojis =
       new Set();
