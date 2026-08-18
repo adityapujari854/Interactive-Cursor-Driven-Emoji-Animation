@@ -1,7 +1,6 @@
 /* ============================================================
    INTERACTIVE 3D EMOJI WORLD
-   MOBILE PERFORMANCE OPTIMIZED
-   Target: Snapdragon 888 / Adreno 660 class
+   PERFORMANCE-FIRST CSS
    ============================================================ */
 
 
@@ -32,6 +31,8 @@ body {
     width: 100%;
     height: 100%;
 
+    margin: 0;
+
     overflow: hidden;
 
     background: #f7f9fc;
@@ -52,6 +53,8 @@ body {
 
     overscroll-behavior: none;
 
+    -webkit-tap-highlight-color: transparent;
+
     touch-action: none;
 }
 
@@ -61,14 +64,13 @@ body {
    ============================================================ */
 
 .scene {
-
-    --cursor-x: 50vw;
-    --cursor-y: 50vh;
-
     position: relative;
 
     width: 100%;
     height: 100%;
+
+    min-width: 0;
+    min-height: 0;
 
     overflow: hidden;
 
@@ -76,44 +78,41 @@ body {
 
     background:
         radial-gradient(
-            circle at 50% 35%,
+            circle at 50% 38%,
             #ffffff 0%,
-            #fafbfd 48%,
+            #fbfcfd 46%,
             #f1f5f9 100%
         );
 
-    contain: layout paint style;
+    contain: strict;
 
     transform: translateZ(0);
-
-    -webkit-tap-highlight-color: transparent;
 }
 
 
 /* ============================================================
-   STATIC BACKGROUND GLOW
-   ============================================================
-
-   IMPORTANT:
-   This is intentionally static.
-   Do NOT animate this with the cursor.
+   STATIC BACKGROUND
    ============================================================ */
 
 .background-glow {
-
     position: absolute;
 
     inset: 0;
 
-    z-index: -2;
+    z-index: -1;
 
     pointer-events: none;
 
     background:
         radial-gradient(
-            circle at 50% 40%,
-            rgba(255, 237, 170, 0.14),
-            transparent 48%
+            circle at 50% 35%,
+            rgba(
+                255,
+                235,
+                170,
+                0.11
+            ),
+            transparent 52%
         );
 
     contain: strict;
@@ -125,84 +124,190 @@ body {
    ============================================================ */
 
 .world-header {
-
     position: absolute;
 
-    top: 24px;
-    right: 28px;
+    top: 20px;
+    left: 24px;
 
-    z-index: 20;
+    z-index: 50;
 
     display: flex;
+
     align-items: center;
-    justify-content: flex-end;
-    gap: 14px;
+
+    gap: 12px;
 
     pointer-events: none;
 }
 
 
+/* ============================================================
+   REDUCED ANIMATION BUTTON
+   ============================================================ */
+
 .theme-toggle {
+    position: relative;
+
     display: inline-flex;
+
     align-items: center;
-    gap: 8px;
 
-    padding: 9px 14px;
+    justify-content: center;
 
-    border: 1px solid rgba(148, 163, 184, 0.18);
+    gap: 7px;
+
+    height: 34px;
+
+    padding:
+        0 12px;
+
+    border:
+        1px solid
+        rgba(
+            148,
+            163,
+            184,
+            0.18
+        );
+
     border-radius: 999px;
 
-    background: rgba(255, 255, 255, 0.7);
-    color: #475569;
+    background:
+        rgba(
+            255,
+            255,
+            255,
+            0.94
+        );
+
+    color: #64748b;
+
+    font-family: inherit;
 
     font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
 
-    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+    font-weight: 600;
+
+    line-height: 1;
+
+    white-space: nowrap;
 
     cursor: pointer;
+
     pointer-events: auto;
 
-    transition: transform 180ms ease, box-shadow 180ms ease;
+    box-shadow:
+        0 4px 12px
+        rgba(
+            15,
+            23,
+            42,
+            0.06
+        );
+
+    transition:
+        transform 160ms ease,
+        background-color 160ms ease,
+        box-shadow 160ms ease,
+        border-color 160ms ease;
+
+    -webkit-tap-highlight-color: transparent;
 }
+
 
 .theme-toggle:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 10px 20px rgba(15, 23, 42, 0.12);
+    transform:
+        translate3d(
+            0,
+            -1px,
+            0
+        );
+
+    background:
+        #ffffff;
+
+    border-color:
+        rgba(
+            148,
+            163,
+            184,
+            0.28
+        );
+
+    box-shadow:
+        0 6px 16px
+        rgba(
+            15,
+            23,
+            42,
+            0.09
+        );
 }
 
+
+.theme-toggle:active {
+    transform:
+        translate3d(
+            0,
+            1px,
+            0
+        )
+        scale(0.98);
+}
+
+
 .theme-toggle:focus-visible {
-    outline: 2px solid rgba(96, 165, 250, 0.85);
+    outline:
+        2px solid
+        rgba(
+            59,
+            130,
+            246,
+            0.35
+        );
+
     outline-offset: 3px;
 }
 
-.theme-toggle-icon {
-    display: inline-grid;
-    place-items: center;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.82);
-    font-size: 9px;
+
+.theme-toggle:disabled {
+    opacity: 0.6;
+
+    cursor: wait;
+
+    pointer-events: none;
 }
 
 
-.brand {
+.theme-toggle-icon {
+    display: inline-flex;
 
+    align-items: center;
+
+    justify-content: center;
+
+    font-size: 13px;
+
+    line-height: 1;
+}
+
+
+/* ============================================================
+   BRAND
+   ============================================================ */
+
+.brand {
     display: flex;
 
     align-items: center;
 
-    gap: 11px;
+    gap: 9px;
 }
 
 
 .brand-icon {
-
-    width: 38px;
-    height: 38px;
+    width: 36px;
+    height: 36px;
 
     display: grid;
 
@@ -210,49 +315,63 @@ body {
 
     border-radius: 50%;
 
-    background: #ffffff;
+    background:
+        rgba(
+            255,
+            255,
+            255,
+            0.96
+        );
 
     border:
         1px solid
-        rgba(148, 163, 184, 0.16);
+        rgba(
+            148,
+            163,
+            184,
+            0.14
+        );
 
     box-shadow:
-        0 5px 14px
-        rgba(15, 23, 42, 0.07);
+        0 4px 11px
+        rgba(
+            15,
+            23,
+            42,
+            0.06
+        );
 
-    font-size: 18px;
+    font-size: 17px;
 
     transform: translateZ(0);
 }
 
 
 .brand-text h1 {
+    color: #475569;
 
-    font-size: 16px;
+    font-size: 15px;
 
     line-height: 1.1;
 
     font-weight: 700;
 
-    letter-spacing: -0.02em;
-
-    color: #475569;
+    letter-spacing: -0.025em;
 }
 
 
 .brand-text p {
-
     margin-top: 4px;
 
-    font-size: 8px;
+    color: #94a3b8;
+
+    font-size: 7px;
 
     line-height: 1;
 
     font-weight: 700;
 
-    letter-spacing: 0.14em;
-
-    color: #94a3b8;
+    letter-spacing: 0.13em;
 }
 
 
@@ -261,21 +380,22 @@ body {
    ============================================================ */
 
 .emoji-world {
-
     position: absolute;
 
     inset: 0;
-
-    padding:
-        88px
-        38px
-        65px;
 
     display: flex;
 
     align-items: center;
 
     justify-content: center;
+
+    padding:
+        72px
+        30px
+        48px;
+
+    overflow: hidden;
 
     contain: layout;
 }
@@ -286,11 +406,11 @@ body {
    ============================================================ */
 
 .emoji-grid {
-
-    width: min(
-        1180px,
-        100%
-    );
+    width:
+        min(
+            1160px,
+            100%
+        );
 
     height: 100%;
 
@@ -300,7 +420,7 @@ body {
         repeat(
             6,
             minmax(
-                100px,
+                90px,
                 1fr
             )
         );
@@ -309,26 +429,20 @@ body {
         repeat(
             4,
             minmax(
-                110px,
+                100px,
                 1fr
             )
         );
 
-    column-gap: 18px;
+    column-gap: 14px;
 
-    row-gap: 12px;
+    row-gap: 7px;
 
     align-items: center;
 
     justify-items: center;
 
     contain: layout;
-
-    /*
-     * Prevent browser from unnecessarily
-     * painting outside the grid.
-     */
-    overflow: visible;
 }
 
 
@@ -337,11 +451,11 @@ body {
    ============================================================ */
 
 .emoji-card {
-
     position: relative;
 
-    width: 135px;
-    height: 145px;
+    width: 132px;
+
+    height: 142px;
 
     display: flex;
 
@@ -349,9 +463,6 @@ body {
 
     justify-content: center;
 
-    /*
-     * Only transform is updated by JS.
-     */
     transform:
         translate3d(
             var(--push-x, 0px),
@@ -360,17 +471,21 @@ body {
         );
 
     /*
-     * Keep animation on compositor.
+     * Only cards actually moved by JS
+     * need compositor promotion.
      */
     will-change: transform;
 
-    contain: layout style;
+    contain:
+        layout
+        paint
+        style;
 
-    /*
-     * Avoid expensive transitions
-     * fighting requestAnimationFrame.
-     */
-    transition: none;
+    pointer-events: none;
+
+    backface-visibility: hidden;
+
+    -webkit-backface-visibility: hidden;
 }
 
 
@@ -379,14 +494,14 @@ body {
    ============================================================ */
 
 .emoji-character {
-
     position: absolute;
 
     left: 50%;
 
-    bottom: 37px;
+    bottom: 35px;
 
     width: 102px;
+
     height: 102px;
 
     display: flex;
@@ -408,15 +523,15 @@ body {
             var(--emoji-scale, 1)
         );
 
-    /*
-     * The emoji itself is frequently animated,
-     * so promote only this layer.
-     */
     will-change: transform;
 
     contain: layout paint;
 
     pointer-events: none;
+
+    backface-visibility: hidden;
+
+    -webkit-backface-visibility: hidden;
 }
 
 
@@ -425,13 +540,14 @@ body {
    ============================================================ */
 
 .emoji-visual {
-
     display: block;
 
     width: 100%;
     height: 100%;
 
     object-fit: contain;
+
+    image-rendering: auto;
 
     user-select: none;
 
@@ -440,36 +556,36 @@ body {
     -webkit-user-drag: none;
 
     /*
-     * One static shadow only.
+     * Deliberately no filter.
      *
-     * Avoid filter: drop-shadow()
-     * because it can be expensive with
-     * 24 moving images on mobile GPUs.
+     * Filters applied to 24 animated images
+     * are expensive on mobile GPUs.
      */
     filter: none;
 
-    transform:
-        translateZ(0);
+    transform: translateZ(0);
 
     backface-visibility: hidden;
+
+    -webkit-backface-visibility: hidden;
 
     contain: strict;
 }
 
 
 /* ============================================================
-   GLASS PLATFORM
+   GLOSSY GLASS PLATFORM
    ============================================================ */
 
 .glass-platform {
-
     position: absolute;
 
     left: 50%;
 
-    bottom: 8px;
+    bottom: 7px;
 
-    width: 118px;
+    width: 116px;
+
     height: 27px;
 
     transform:
@@ -478,47 +594,53 @@ body {
             0,
             0
         )
-        perspective(250px)
+        perspective(240px)
         rotateX(58deg);
 
     border-radius: 50%;
 
-    /*
-     * Solid translucent-looking gradient
-     * instead of backdrop-filter.
-     */
     background:
         linear-gradient(
             180deg,
-            rgba(255, 255, 255, 0.96),
-            rgba(226, 232, 240, 0.78)
+            rgba(
+                255,
+                255,
+                255,
+                0.96
+            ),
+            rgba(
+                226,
+                232,
+                240,
+                0.76
+            )
         );
 
     border:
         1px solid
-        rgba(255, 255, 255, 0.95);
+        rgba(
+            255,
+            255,
+            255,
+            0.90
+        );
 
-    /*
-     * Single low-cost shadow.
-     */
     box-shadow:
-        0 7px 12px
-        rgba(71, 85, 105, 0.13);
+        0 6px 11px
+        rgba(
+            71,
+            85,
+            105,
+            0.11
+        );
 
     pointer-events: none;
-
-    will-change: transform;
 
     contain: paint;
 }
 
 
-/* ============================================================
-   PLATFORM INNER HIGHLIGHT
-   ============================================================ */
-
 .glass-platform::before {
-
     content: "";
 
     position: absolute;
@@ -530,8 +652,45 @@ body {
     background:
         linear-gradient(
             180deg,
-            rgba(255, 255, 255, 0.95),
-            rgba(255, 255, 255, 0.25)
+            rgba(
+                255,
+                255,
+                255,
+                0.92
+            ),
+            rgba(
+                255,
+                255,
+                255,
+                0.22
+            )
+        );
+
+    pointer-events: none;
+}
+
+
+.glass-platform::after {
+    content: "";
+
+    position: absolute;
+
+    left: 20%;
+
+    top: 4px;
+
+    width: 43%;
+
+    height: 3px;
+
+    border-radius: 50%;
+
+    background:
+        rgba(
+            255,
+            255,
+            255,
+            0.9
         );
 
     pointer-events: none;
@@ -539,48 +698,21 @@ body {
 
 
 /* ============================================================
-   PLATFORM SHINE
-   ============================================================ */
-
-.glass-platform::after {
-
-    content: "";
-
-    position: absolute;
-
-    left: 20%;
-
-    top: 5px;
-
-    width: 42%;
-
-    height: 3px;
-
-    border-radius: 50%;
-
-    background:
-        rgba(255, 255, 255, 0.9);
-
-    pointer-events: none;
-}
-
-
-/* ============================================================
-   EMOJI CONTACT SHADOW
+   CONTACT SHADOW
    ============================================================ */
 
 .emoji-character::after {
-
     content: "";
 
     position: absolute;
 
     left: 50%;
 
-    bottom: -6px;
+    bottom: -5px;
 
-    width: 65px;
-    height: 12px;
+    width: 62px;
+
+    height: 10px;
 
     transform:
         translate3d(
@@ -592,13 +724,12 @@ body {
     border-radius: 50%;
 
     background:
-        rgba(15, 23, 42, 0.12);
-
-    /*
-     * Very small blur only.
-     */
-    filter:
-        blur(4px);
+        rgba(
+            15,
+            23,
+            42,
+            0.09
+        );
 
     opacity: 0.65;
 
@@ -607,36 +738,24 @@ body {
 
 
 /* ============================================================
-   CURSOR RESPONSE
-   ============================================================ */
-
-.emoji-card.near-cursor
-.emoji-character {
-
-    /*
-     * JS already controls position.
-     * This class only changes a cheap
-     * transform variable.
-     */
-}
-
-
-/* ============================================================
    CURSOR LIGHT
    ============================================================ */
 
 .cursor-light {
-
     position: fixed;
 
-    left: var(--cursor-x);
+    left: 0;
+    top: 0;
 
-    top: var(--cursor-y);
-
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
 
     transform:
+        translate3d(
+            50vw,
+            50vh,
+            0
+        )
         translate3d(
             -50%,
             -50%,
@@ -647,26 +766,20 @@ body {
 
     z-index: 100;
 
-    will-change:
-        transform;
+    will-change: transform;
 
     contain: strict;
 }
 
 
-/* ============================================================
-   CURSOR CORE
-   ============================================================ */
-
 .cursor-light-core {
-
     position: absolute;
 
     left: 50%;
     top: 50%;
 
-    width: 10px;
-    height: 10px;
+    width: 9px;
+    height: 9px;
 
     transform:
         translate3d(
@@ -680,34 +793,35 @@ body {
     background: #ffffff;
 
     border:
-        2px solid
-        rgba(255, 255, 255, 0.95);
+        1px solid
+        rgba(
+            255,
+            255,
+            255,
+            0.95
+        );
 
     box-shadow:
-        0 0 8px
-        rgba(255, 214, 90, 0.85);
+        0 0 7px
+        rgba(
+            255,
+            214,
+            90,
+            0.75
+        );
 
-    contain: strict;
+    pointer-events: none;
 }
 
 
-/* ============================================================
-   CURSOR HALO
-   ============================================================
-
-   Small and static-sized.
-   No large animated blur.
-   ============================================================ */
-
 .cursor-light-halo {
-
     position: absolute;
 
     left: 50%;
     top: 50%;
 
-    width: 48px;
-    height: 48px;
+    width: 42px;
+    height: 42px;
 
     transform:
         translate3d(
@@ -721,14 +835,22 @@ body {
     background:
         radial-gradient(
             circle,
-            rgba(255, 224, 120, 0.22),
-            rgba(255, 224, 120, 0.04) 50%,
+            rgba(
+                255,
+                225,
+                125,
+                0.15
+            ) 0%,
+            rgba(
+                255,
+                225,
+                125,
+                0.05
+            ) 40%,
             transparent 72%
         );
 
     pointer-events: none;
-
-    contain: strict;
 }
 
 
@@ -737,7 +859,6 @@ body {
    ============================================================ */
 
 .reaction-layer {
-
     position: fixed;
 
     inset: 0;
@@ -752,31 +873,23 @@ body {
 }
 
 
-/* ============================================================
-   REACTION
-   ============================================================ */
-
 .reaction {
-
     position: fixed;
 
     left: var(--reaction-x);
 
     top: var(--reaction-y);
 
-    font-size: 18px;
+    font-size: 17px;
 
     pointer-events: none;
 
     animation:
         reactionFloat
-        900ms
+        850ms
         ease-out
         forwards;
 
-    /*
-     * Only opacity + transform animate.
-     */
     will-change:
         transform,
         opacity;
@@ -788,7 +901,6 @@ body {
 @keyframes reactionFloat {
 
     0% {
-
         opacity: 0;
 
         transform:
@@ -800,8 +912,8 @@ body {
             scale(0.7);
     }
 
-    20% {
 
+    20% {
         opacity: 1;
 
         transform:
@@ -813,8 +925,8 @@ body {
             scale(1);
     }
 
-    100% {
 
+    100% {
         opacity: 0;
 
         transform:
@@ -839,12 +951,11 @@ body {
    ============================================================ */
 
 .interaction-status {
-
     position: absolute;
 
     left: 50%;
 
-    bottom: 18px;
+    bottom: 13px;
 
     transform:
         translate3d(
@@ -856,51 +967,48 @@ body {
     z-index: 30;
 
     padding:
-        8px
-        14px;
+        7px
+        13px;
 
     border-radius: 999px;
 
-    /*
-     * No backdrop-filter.
-     */
     background:
-        rgba(255, 255, 255, 0.94);
+        rgba(
+            255,
+            255,
+            255,
+            0.94
+        );
 
     border:
         1px solid
-        rgba(148, 163, 184, 0.16);
+        rgba(
+            148,
+            163,
+            184,
+            0.13
+        );
 
     box-shadow:
-        0 4px 12px
-        rgba(71, 85, 105, 0.07);
+        0 4px 10px
+        rgba(
+            71,
+            85,
+            105,
+            0.055
+        );
 
-    font-size: 11px;
+    color: #64748b;
+
+    font-size: 10px;
 
     font-weight: 500;
 
-    color: #64748b;
+    line-height: 1;
 
     white-space: nowrap;
 
     pointer-events: none;
-}
-
-
-/* ============================================================
-   DISABLE SELECTION
-   ============================================================ */
-
-.emoji-world,
-.emoji-grid,
-.emoji-card,
-.emoji-character,
-.emoji-visual,
-.glass-platform {
-
-    user-select: none;
-
-    -webkit-user-select: none;
 }
 
 
@@ -911,43 +1019,40 @@ body {
 @media (min-width: 1200px) {
 
     .emoji-grid {
+        width:
+            min(
+                1160px,
+                100%
+            );
 
-        width: min(
-            1180px,
-            100%
-        );
+        column-gap: 18px;
 
-        column-gap: 22px;
-
-        row-gap: 15px;
+        row-gap: 10px;
     }
 
 
     .emoji-card {
+        width: 136px;
 
-        width: 140px;
-
-        height: 150px;
+        height: 146px;
     }
 
 
     .emoji-character {
+        width: 104px;
 
-        width: 105px;
-
-        height: 105px;
+        height: 104px;
     }
 
 
     .glass-platform {
-
-        width: 122px;
+        width: 119px;
     }
 }
 
 
 /* ============================================================
-   SMALL LAPTOP
+   LAPTOP
    ============================================================ */
 
 @media (
@@ -956,54 +1061,48 @@ body {
     max-width: 1199px
 ) {
 
-    .emoji-world {
+    .world-header {
+        top: 18px;
 
+        left: 20px;
+    }
+
+
+    .emoji-world {
         padding:
-            82px
-            22px
-            60px;
+            70px
+            18px
+            46px;
     }
 
 
     .emoji-grid {
+        column-gap: 6px;
 
-        column-gap: 8px;
-
-        row-gap: 8px;
+        row-gap: 5px;
     }
 
 
     .emoji-card {
+        width: 116px;
 
-        width: 120px;
-
-        height: 135px;
+        height: 130px;
     }
 
 
     .emoji-character {
+        width: 88px;
 
-        width: 90px;
+        height: 88px;
 
-        height: 90px;
-
-        bottom: 34px;
+        bottom: 32px;
     }
 
 
     .glass-platform {
+        width: 102px;
 
-        width: 105px;
-
-        height: 24px;
-    }
-
-
-    .world-header {
-
-        top: 20px;
-
-        left: 22px;
+        height: 23px;
     }
 }
 
@@ -1018,51 +1117,46 @@ body {
     max-width: 899px
 ) {
 
-    html,
-    body {
+    .world-header {
+        top: 17px;
 
-        overflow: auto;
+        left: 17px;
+
+        gap: 8px;
     }
 
 
-    body {
+    .theme-toggle {
+        height: 31px;
 
-        touch-action: pan-y;
+        padding:
+            0 9px;
+
+        gap: 5px;
+
+        font-size: 9px;
     }
 
 
-    .scene {
-
-        min-height: 900px;
-
-        height: auto;
+    .theme-toggle-icon {
+        font-size: 12px;
     }
 
 
     .emoji-world {
-
-        position: relative;
-
-        inset: auto;
-
-        min-height: 900px;
-
         padding:
-            100px
-            18px
-            80px;
+            88px
+            12px
+            52px;
     }
 
 
     .emoji-grid {
-
-        height: auto;
-
         grid-template-columns:
             repeat(
                 4,
                 minmax(
-                    95px,
+                    80px,
                     1fr
                 )
             );
@@ -1070,44 +1164,54 @@ body {
         grid-template-rows:
             repeat(
                 6,
-                135px
+                minmax(
+                    88px,
+                    1fr
+                )
             );
 
-        gap: 12px;
+        column-gap: 5px;
+
+        row-gap: 4px;
     }
 
 
     .emoji-card {
+        width: 104px;
 
-        width: 112px;
-
-        height: 130px;
+        height: 120px;
     }
 
 
     .emoji-character {
+        width: 80px;
 
-        width: 84px;
+        height: 80px;
 
-        height: 84px;
-
-        bottom: 33px;
+        bottom: 29px;
     }
 
 
     .glass-platform {
+        width: 92px;
 
-        width: 100px;
+        height: 21px;
 
-        height: 23px;
+        bottom: 5px;
     }
 
 
-    .world-header {
+    .brand-icon {
+        width: 32px;
 
-        top: 20px;
+        height: 32px;
 
-        left: 20px;
+        font-size: 15px;
+    }
+
+
+    .brand-text h1 {
+        font-size: 13px;
     }
 }
 
@@ -1120,7 +1224,6 @@ body {
 
     html,
     body {
-
         width: 100%;
 
         height: 100%;
@@ -1130,13 +1233,11 @@ body {
 
 
     body {
-
         touch-action: none;
     }
 
 
     .scene {
-
         width: 100vw;
 
         height: 100dvh;
@@ -1152,40 +1253,78 @@ body {
        -------------------------------------------------------- */
 
     .world-header {
+        top: 10px;
 
-        top: 14px;
+        left: 10px;
 
-        left: 15px;
+        right: 10px;
+
+        gap: 6px;
+
+        align-items: center;
+    }
+
+
+    .theme-toggle {
+        height: 29px;
+
+        padding:
+            0 8px;
+
+        gap: 5px;
+
+        font-size: 8px;
+
+        box-shadow:
+            0 3px 8px
+            rgba(
+                15,
+                23,
+                42,
+                0.05
+            );
+    }
+
+
+    .theme-toggle-icon {
+        font-size: 11px;
     }
 
 
     .brand {
-
-        gap: 8px;
+        gap: 6px;
     }
 
 
     .brand-icon {
+        width: 29px;
 
-        width: 31px;
+        height: 29px;
 
-        height: 31px;
+        font-size: 13px;
 
-        font-size: 15px;
+        box-shadow:
+            0 3px 7px
+            rgba(
+                15,
+                23,
+                42,
+                0.05
+            );
     }
 
 
     .brand-text h1 {
-
-        font-size: 13px;
+        font-size: 11px;
     }
 
 
     .brand-text p {
+        margin-top: 2px;
 
-        font-size: 7px;
+        font-size: 5.5px;
 
-        letter-spacing: 0.11em;
+        letter-spacing: 0.08em;
     }
 
 
@@ -1194,24 +1333,22 @@ body {
        -------------------------------------------------------- */
 
     .emoji-world {
-
-        position: absolute;
-
         inset: 0;
 
         padding:
-            68px
-            7px
-            45px;
+            51px
+            2px
+            31px;
+
+        overflow: hidden;
     }
 
 
     /* --------------------------------------------------------
-       3 COLUMN MOBILE GRID
+       GRID
        -------------------------------------------------------- */
 
     .emoji-grid {
-
         width: 100%;
 
         height: 100%;
@@ -1229,103 +1366,147 @@ body {
             repeat(
                 8,
                 minmax(
-                    70px,
+                    0,
                     1fr
                 )
             );
 
-        column-gap: 2px;
+        column-gap: 0;
 
-        row-gap: 3px;
+        row-gap: 0;
 
         align-items: center;
+
+        justify-items: center;
     }
 
 
     /* --------------------------------------------------------
-       MOBILE CARD
+       CARD
        -------------------------------------------------------- */
 
     .emoji-card {
-
         width: 100%;
 
         height: 100%;
 
         min-width: 0;
 
-        min-height: 70px;
+        min-height: 0;
 
-        /*
-         * Important:
-         * only one composited transform layer.
-         */
         will-change: transform;
+
+        contain:
+            layout
+            paint
+            style;
     }
 
 
     /* --------------------------------------------------------
-       MOBILE EMOJI
+       CHARACTER
        -------------------------------------------------------- */
 
     .emoji-character {
-
         width:
             clamp(
-                58px,
-                21vw,
-                78px
+                51px,
+                20.5vw,
+                76px
             );
 
         height:
             clamp(
-                58px,
-                21vw,
-                78px
+                51px,
+                20.5vw,
+                76px
             );
 
         bottom:
             clamp(
-                24px,
-                6vw,
-                31px
+                21px,
+                5.6vw,
+                29px
+            );
+
+        perspective: none;
+
+        transform:
+            translate3d(
+                -50%,
+                var(--breath, 0px),
+                0
+            )
+            rotate(
+                var(--emoji-rotation, 0deg)
+            )
+            scale(
+                var(--emoji-scale, 1)
             );
     }
 
 
+    .emoji-visual {
+        width: 100%;
+
+        height: 100%;
+
+        filter: none;
+
+        transform:
+            translateZ(0);
+    }
+
+
     /* --------------------------------------------------------
-       MOBILE PLATFORM
+       PLATFORM
        -------------------------------------------------------- */
 
     .glass-platform {
-
         width:
             clamp(
-                68px,
-                25vw,
-                91px
+                61px,
+                24vw,
+                88px
             );
 
         height:
             clamp(
-                18px,
-                6vw,
-                23px
+                16px,
+                5.3vw,
+                22px
             );
 
-        bottom: 5px;
+        bottom: 3px;
 
-        /*
-         * Reduce shadow complexity.
-         */
+        transform:
+            translate3d(
+                -50%,
+                0,
+                0
+            )
+            rotateX(58deg);
+
         box-shadow:
-            0 4px 8px
+            0 3px 7px
             rgba(
                 71,
                 85,
                 105,
-                0.11
+                0.09
             );
+    }
+
+
+    .glass-platform::before {
+        inset: 2px;
+    }
+
+
+    .glass-platform::after {
+        top: 3px;
+
+        height: 2px;
     }
 
 
@@ -1334,76 +1515,76 @@ body {
        -------------------------------------------------------- */
 
     .emoji-character::after {
+        width: 41px;
 
-        width: 48px;
-
-        height: 8px;
+        height: 7px;
 
         bottom: -4px;
-
-        /*
-         * Remove blur on small screens.
-         */
-        filter: none;
 
         background:
             rgba(
                 15,
                 23,
                 42,
-                0.08
+                0.065
             );
     }
 
 
     /* --------------------------------------------------------
-       CURSOR
+       CURSOR LIGHT
        -------------------------------------------------------- */
 
     .cursor-light {
+        width: 14px;
 
-        width: 16px;
-
-        height: 16px;
+        height: 14px;
     }
 
 
     .cursor-light-core {
+        width: 7px;
 
-        width: 8px;
-
-        height: 8px;
-
-        border-width: 1px;
+        height: 7px;
 
         box-shadow:
-            0 0 6px
+            0 0 5px
             rgba(
                 255,
                 214,
                 90,
-                0.8
+                0.70
             );
     }
 
 
     .cursor-light-halo {
+        width: 29px;
 
-        width: 36px;
-
-        height: 36px;
+        height: 29px;
 
         background:
             radial-gradient(
                 circle,
                 rgba(
                     255,
-                    224,
-                    120,
-                    0.18
+                    225,
+                    125,
+                    0.13
                 ),
                 transparent 70%
             );
+    }
+
+
+    /* --------------------------------------------------------
+       REACTIONS
+       -------------------------------------------------------- */
+
+    .reaction {
+        font-size: 14px;
+
+        animation-duration: 700ms;
     }
 
 
@@ -1412,42 +1593,26 @@ body {
        -------------------------------------------------------- */
 
     .interaction-status {
-
-        bottom: 9px;
+        bottom: 6px;
 
         max-width:
             calc(
-                100% - 24px
+                100% - 16px
             );
 
         padding:
-            6px
-            11px;
+            5px
+            9px;
 
-        font-size: 9px;
+        font-size: 7.5px;
 
-        overflow: hidden;
-
-        text-overflow: ellipsis;
-    }
-
-
-    /* --------------------------------------------------------
-       REMOVE DESKTOP-ONLY VISUAL COST
-       -------------------------------------------------------- */
-
-    .background-glow {
-
-        background:
-            radial-gradient(
-                circle at 50% 35%,
-                rgba(
-                    255,
-                    237,
-                    170,
-                    0.10
-                ),
-                transparent 52%
+        box-shadow:
+            0 2px 7px
+            rgba(
+                71,
+                85,
+                105,
+                0.04
             );
     }
 }
@@ -1459,59 +1624,64 @@ body {
 
 @media (max-width: 380px) {
 
-    .emoji-world {
+    .world-header {
+        left: 7px;
 
+        right: 7px;
+    }
+
+
+    .theme-toggle {
         padding:
-            63px
-            3px
-            42px;
-    }
+            0 7px;
 
-
-    .emoji-grid {
-
-        column-gap: 0;
-
-        row-gap: 1px;
-    }
-
-
-    .emoji-character {
-
-        width:
-            clamp(
-                52px,
-                20vw,
-                68px
-            );
-
-        height:
-            clamp(
-                52px,
-                20vw,
-                68px
-            );
-
-        bottom: 22px;
-    }
-
-
-    .glass-platform {
-
-        width:
-            clamp(
-                62px,
-                24vw,
-                78px
-            );
-
-        height: 17px;
+        font-size: 7px;
     }
 
 
     .brand-text p {
-
         display: none;
+    }
+
+
+    .emoji-world {
+        padding:
+            49px
+            0
+            29px;
+    }
+
+
+    .emoji-character {
+        width:
+            clamp(
+                48px,
+                20vw,
+                64px
+            );
+
+        height:
+            clamp(
+                48px,
+                20vw,
+                64px
+            );
+
+        bottom: 19px;
+    }
+
+
+    .glass-platform {
+        width:
+            clamp(
+                57px,
+                23vw,
+                75px
+            );
+
+        height: 15px;
+
+        bottom: 2px;
     }
 }
 
@@ -1526,17 +1696,51 @@ body {
     orientation: landscape
 ) {
 
-    .emoji-world {
+    .world-header {
+        top: 7px;
+
+        left: 9px;
+    }
+
+
+    .theme-toggle {
+        height: 26px;
 
         padding:
-            54px
-            15px
-            32px;
+            0 8px;
+
+        font-size: 7px;
+    }
+
+
+    .brand-icon {
+        width: 26px;
+
+        height: 26px;
+
+        font-size: 12px;
+    }
+
+
+    .brand-text h1 {
+        font-size: 10px;
+    }
+
+
+    .brand-text p {
+        display: none;
+    }
+
+
+    .emoji-world {
+        padding:
+            38px
+            5px
+            18px;
     }
 
 
     .emoji-grid {
-
         grid-template-columns:
             repeat(
                 6,
@@ -1550,40 +1754,101 @@ body {
             repeat(
                 4,
                 minmax(
-                    60px,
+                    0,
                     1fr
                 )
             );
-
-        column-gap: 2px;
-
-        row-gap: 2px;
     }
 
 
     .emoji-character {
+        width:
+            clamp(
+                43px,
+                8.8vw,
+                62px
+            );
 
-        width: 55px;
+        height:
+            clamp(
+                43px,
+                8.8vw,
+                62px
+            );
 
-        height: 55px;
-
-        bottom: 20px;
+        bottom: 16px;
     }
 
 
     .glass-platform {
+        width:
+            clamp(
+                53px,
+                10.5vw,
+                72px
+            );
 
-        width: 65px;
+        height: 14px;
 
-        height: 17px;
-
-        bottom: 3px;
+        bottom: 1px;
     }
 
 
     .interaction-status {
-
         display: none;
+    }
+}
+
+
+/* ============================================================
+   TOUCH DEVICES
+   ============================================================ */
+
+@media (pointer: coarse) {
+
+    /*
+     * Don't create expensive hover states
+     * on touch devices.
+     */
+
+    .theme-toggle:hover {
+        transform: none;
+
+        box-shadow:
+            0 3px 8px
+            rgba(
+                15,
+                23,
+                42,
+                0.05
+            );
+    }
+
+
+    .emoji-card:hover {
+        transform:
+            translate3d(
+                var(--push-x, 0px),
+                var(--push-y, 0px),
+                0
+            );
+    }
+
+
+    .emoji-card:hover
+    .emoji-character {
+        transform:
+            translate3d(
+                -50%,
+                var(--breath, 0px),
+                0
+            )
+            rotate(
+                var(--emoji-rotation, 0deg)
+            )
+            scale(
+                var(--emoji-scale, 1)
+            );
     }
 }
 
@@ -1599,7 +1864,6 @@ body {
     *,
     *::before,
     *::after {
-
         animation-duration:
             0.01ms !important;
 
@@ -1613,61 +1877,81 @@ body {
 
 
 /* ============================================================
-   LOW POWER / COARSE POINTER DEVICES
+   PERFORMANCE SAFETY
    ============================================================ */
 
-@media (
-    pointer: coarse
-) {
+.emoji-world,
+.emoji-grid,
+.emoji-card,
+.emoji-character,
+.emoji-visual,
+.glass-platform {
+    user-select: none;
 
-    /*
-     * Touch devices do not need hover
-     * effects or large cursor effects.
-     */
-
-    .emoji-card:hover
-    .emoji-visual {
-
-        transform: none;
-    }
-
-
-    .cursor-light-halo {
-
-        width: 32px;
-
-        height: 32px;
-    }
+    -webkit-user-select: none;
 }
 
-
-/* ============================================================
-   GPU / COMPOSITING SAFETY
-   ============================================================ */
-
-/*
- * Do NOT add will-change to the entire grid,
- * scene, body or all children.
- *
- * Only moving elements receive it.
- */
 
 .emoji-card,
 .emoji-character,
 .cursor-light,
 .reaction {
-
     backface-visibility: hidden;
 
     -webkit-backface-visibility: hidden;
 }
 
 
+img {
+    max-width: 100%;
+
+    user-select: none;
+
+    -webkit-user-drag: none;
+}
+
+
 /* ============================================================
-   FINAL
+   SAFE AREA SUPPORT
    ============================================================ */
 
-img {
+@supports (
+    padding:
+    env(safe-area-inset-top)
+) {
 
-    max-width: 100%;
+    @media (max-width: 599px) {
+
+        .world-header {
+            top:
+                calc(
+                    10px +
+                    env(
+                        safe-area-inset-top
+                    )
+                );
+        }
+
+
+        .emoji-world {
+            padding-top:
+                calc(
+                    51px +
+                    env(
+                        safe-area-inset-top
+                    )
+                );
+        }
+
+
+        .interaction-status {
+            bottom:
+                calc(
+                    6px +
+                    env(
+                        safe-area-inset-bottom
+                    )
+                );
+        }
+    }
 }

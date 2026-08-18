@@ -1,15 +1,31 @@
 /* ============================================================
    INTERACTIVE 3D EMOJI WORLD
-   PERFORMANCE OPTIMIZED
-   Target: Snapdragon 888 / Adreno 660 class
+   FULL PERFORMANCE-OPTIMIZED SCRIPT
+
+   Features:
+   - 24 unique emoji characters
+   - Cursor interaction
+   - Touch interaction
+   - Gyroscope / device orientation
+   - Individual personality movement
+   - Smooth floating animation
+   - Cursor avoidance
+   - Reaction effects
+   - Mobile optimization
+   - Snapdragon 888 friendly
+   - One requestAnimationFrame loop
+   - Cached emoji positions
+   - Visibility pause
+   - Reduced DOM work
    ============================================================ */
 
 (() => {
+
     "use strict";
 
 
     /* ========================================================
-       DOM
+       DOM REFERENCES
        ======================================================== */
 
     const scene =
@@ -28,16 +44,21 @@
         document.getElementById("interactionStatus");
 
 
-    if (!scene || !emojiGrid) {
+    if (
+        !scene ||
+        !emojiGrid
+    ) {
+
         console.error(
-            "Emoji World: required elements not found."
+            "Emoji World: required DOM elements not found."
         );
+
         return;
     }
 
 
     /* ========================================================
-       DEVICE PERFORMANCE PROFILE
+       DEVICE / PERFORMANCE DETECTION
        ======================================================== */
 
     const coarsePointer =
@@ -45,97 +66,138 @@
             "(pointer: coarse)"
         ).matches;
 
+
     const reducedMotion =
         window.matchMedia(
             "(prefers-reduced-motion: reduce)"
         ).matches;
 
 
-    /*
-     * Mobile profile.
-     *
-     * Snapdragon 888 is powerful enough for
-     * this scene, but unnecessary calculations
-     * still cause frame drops.
-     */
-
-    const MOBILE =
+    const mobile =
         coarsePointer ||
-        window.innerWidth < 700;
+        window.innerWidth <= 700;
 
+
+    const smallMobile =
+        window.innerWidth <= 420;
+
+
+    const isIOS =
+        /iPad|iPhone|iPod/.test(
+            navigator.userAgent
+        ) ||
+        (
+            navigator.platform === "MacIntel" &&
+            navigator.maxTouchPoints > 1
+        );
+
+
+    /*
+     * Mobile deliberately uses a lower visual workload.
+     *
+     * Input remains responsive because pointer/sensor
+     * values are stored immediately and processed by the
+     * single render loop.
+     */
 
     const CONFIG = {
 
-        /*
-         * Cursor interaction radius.
-         */
-
         interactionRadius:
-            MOBILE ? 155 : 190,
+            mobile
+                ? 135
+                : 185,
 
-        /*
-         * Maximum cursor push.
-         */
 
         maxPush:
-            MOBILE ? 25 : 34,
+            mobile
+                ? 18
+                : 30,
 
-        /*
-         * Cursor smoothing.
-         */
 
         cursorSmoothing:
-            MOBILE ? 0.22 : 0.18,
+            mobile
+                ? 0.25
+                : 0.18,
 
-        /*
-         * Emoji movement smoothing.
-         */
 
         movementSmoothing:
-            MOBILE ? 0.10 : 0.075,
+            mobile
+                ? 0.13
+                : 0.085,
 
-        /*
-         * Rotation smoothing.
-         */
 
         rotationSmoothing:
-            MOBILE ? 0.12 : 0.10,
+            mobile
+                ? 0.13
+                : 0.10,
+
+
+        gyroSmoothing:
+            0.065,
+
+
+        gyroStrength:
+            mobile
+                ? 0.45
+                : 0.25,
+
+
+        gyroMax:
+            mobile
+                ? 7
+                : 4,
+
+
+        idleStrength:
+            mobile
+                ? 0.45
+                : 1,
+
 
         /*
-         * Glow smoothing.
+         * Mobile does not need a new reaction
+         * every time the cursor touches a character.
          */
 
-        glowSmoothing:
-            MOBILE ? 0.13 : 0.10,
+        reactionChance:
+            mobile
+                ? 0.08
+                : 0.20,
+
+
+        reactionCooldown:
+            mobile
+                ? 1600
+                : 900,
+
 
         /*
-         * Position refresh interval.
+         * Cached positions are refreshed after layout
+         * changes rather than every frame.
+         */
+
+        positionRefreshDelay:
+            mobile
+                ? 350
+                : 200,
+
+
+        /*
+         * Visual frame budget.
          *
-         * We do NOT measure DOM geometry
-         * every frame.
+         * 50 FPS mobile is intentionally chosen instead
+         * of forcing a constant 60 FPS workload.
          */
 
-        positionRefresh:
-            MOBILE ? 250 : 150,
-
-        /*
-         * Cursor processing interval.
-         */
-
-        interactionInterval:
-            MOBILE ? 16 : 0,
-
-        /*
-         * Reaction probability.
-         */
-
-        reactionProbability:
-            MOBILE ? 0.20 : 0.30
+        frameInterval:
+            mobile
+                ? 1000 / 50
+                : 1000 / 60
     };
 
 
     /* ========================================================
-       CURSOR
+       CURSOR STATE
        ======================================================== */
 
     const cursor = {
@@ -152,244 +214,290 @@
         targetY:
             window.innerHeight * 0.5,
 
-        visible:
+        active:
             false
     };
 
 
     /* ========================================================
-       PERSONALITIES
+       TOUCH STATE
+       ======================================================== */
+
+    const touch = {
+
+        active: false,
+
+        x:
+            window.innerWidth * 0.5,
+
+        y:
+            window.innerHeight * 0.5
+    };
+
+
+    /* ========================================================
+       GYROSCOPE STATE
+       ======================================================== */
+
+    const gyro = {
+
+        supported: false,
+
+        permissionGranted: false,
+
+        active: false,
+
+        calibrated: false,
+
+        beta: 0,
+
+        gamma: 0,
+
+        targetBeta: 0,
+
+        targetGamma: 0,
+
+        calibrationBeta: 0,
+
+        calibrationGamma: 0,
+
+        lastEventTime: 0
+    };
+
+
+    /* ========================================================
+       EMOJI PERSONALITIES
        ======================================================== */
 
     const personalities = [
 
         {
-            name: "Happy",
             animation: "bounce",
             speed: 1.00,
             movement: 1.00,
             rotation: 0.5,
+            gyro: 1.00,
             reaction: "✨"
         },
 
         {
-            name: "Laughing",
             animation: "laugh",
-            speed: 1.10,
+            speed: 1.08,
             movement: 1.00,
-            rotation: 1.3,
+            rotation: 1.2,
+            gyro: 0.90,
             reaction: "😂"
         },
 
         {
-            name: "Love",
             animation: "pulse",
-            speed: 0.80,
+            speed: 0.78,
             movement: 0.70,
             rotation: 0.4,
+            gyro: 0.60,
             reaction: "💗"
         },
 
         {
-            name: "Cool",
             animation: "cool",
-            speed: 0.65,
+            speed: 0.62,
             movement: 0.80,
             rotation: 1.0,
+            gyro: 0.75,
             reaction: "😎"
         },
 
         {
-            name: "Thinking",
             animation: "thinking",
-            speed: 0.70,
+            speed: 0.68,
             movement: 0.70,
-            rotation: 2.0,
+            rotation: 1.8,
+            gyro: 0.70,
             reaction: "❔"
         },
 
         {
-            name: "Angry",
             animation: "angry",
-            speed: 1.10,
-            movement: 1.20,
+            speed: 1.08,
+            movement: 1.15,
             rotation: 2.0,
+            gyro: 1.20,
             reaction: "💢"
         },
 
         {
-            name: "Party",
             animation: "party",
-            speed: 1.20,
-            movement: 1.20,
+            speed: 1.18,
+            movement: 1.15,
             rotation: 1.5,
+            gyro: 1.20,
             reaction: "🎉"
         },
 
         {
-            name: "Excited",
             animation: "excited",
-            speed: 1.30,
-            movement: 1.15,
+            speed: 1.25,
+            movement: 1.10,
             rotation: 0.8,
+            gyro: 1.15,
             reaction: "✨"
         },
 
         {
-            name: "Sleepy",
             animation: "sleepy",
-            speed: 0.45,
-            movement: 0.50,
+            speed: 0.42,
+            movement: 0.45,
             rotation: 0.3,
+            gyro: 0.45,
             reaction: "💤"
         },
 
         {
-            name: "Shocked",
             animation: "shock",
-            speed: 0.80,
-            movement: 1.10,
+            speed: 0.78,
+            movement: 1.05,
             rotation: 0.8,
+            gyro: 1.00,
             reaction: "❕"
         },
 
         {
-            name: "Smirk",
             animation: "smirk",
-            speed: 0.60,
+            speed: 0.58,
             movement: 0.60,
-            rotation: 1.4,
+            rotation: 1.3,
+            gyro: 0.70,
             reaction: "😏"
         },
 
         {
-            name: "Angel",
             animation: "angel",
-            speed: 0.50,
-            movement: 0.55,
+            speed: 0.48,
+            movement: 0.50,
             rotation: 0.5,
+            gyro: 0.55,
             reaction: "✨"
         },
 
         {
-            name: "Pleading",
             animation: "pleading",
-            speed: 0.55,
-            movement: 0.65,
+            speed: 0.52,
+            movement: 0.60,
             rotation: 0.6,
+            gyro: 0.65,
             reaction: "🥺"
         },
 
         {
-            name: "Nerd",
             animation: "nerd",
-            speed: 0.55,
-            movement: 0.65,
-            rotation: 1.2,
+            speed: 0.52,
+            movement: 0.60,
+            rotation: 1.1,
+            gyro: 0.70,
             reaction: "🤓"
         },
 
         {
-            name: "Frustrated",
             animation: "frustrated",
-            speed: 1.00,
-            movement: 1.00,
-            rotation: 2.2,
+            speed: 0.96,
+            movement: 0.95,
+            rotation: 2.0,
+            gyro: 1.00,
             reaction: "💢"
         },
 
         {
-            name: "Yummy",
             animation: "yummy",
-            speed: 0.85,
-            movement: 0.85,
+            speed: 0.82,
+            movement: 0.80,
             rotation: 0.7,
+            gyro: 0.75,
             reaction: "😋"
         },
 
         {
-            name: "Kiss",
             animation: "kiss",
-            speed: 0.75,
-            movement: 0.70,
-            rotation: 1.0,
+            speed: 0.72,
+            movement: 0.65,
+            rotation: 0.9,
+            gyro: 0.65,
             reaction: "💋"
         },
 
         {
-            name: "Cold",
             animation: "cold",
-            speed: 1.10,
-            movement: 0.90,
-            rotation: 1.4,
+            speed: 1.05,
+            movement: 0.85,
+            rotation: 1.3,
+            gyro: 1.05,
             reaction: "❄️"
         },
 
         {
-            name: "Melting",
             animation: "melt",
-            speed: 0.40,
-            movement: 0.45,
-            rotation: 0.5,
+            speed: 0.38,
+            movement: 0.42,
+            rotation: 0.4,
+            gyro: 0.45,
             reaction: "🫠"
         },
 
         {
-            name: "Grinning",
             animation: "grin",
-            speed: 0.95,
-            movement: 0.90,
+            speed: 0.90,
+            movement: 0.85,
             rotation: 0.5,
+            gyro: 0.85,
             reaction: "😁"
         },
 
         {
-            name: "Wink",
             animation: "wink",
-            speed: 0.90,
-            movement: 0.80,
-            rotation: 1.3,
+            speed: 0.86,
+            movement: 0.75,
+            rotation: 1.2,
+            gyro: 0.75,
             reaction: "😉"
         },
 
         {
-            name: "Neutral",
             animation: "neutral",
-            speed: 0.35,
-            movement: 0.55,
-            rotation: 0.3,
+            speed: 0.32,
+            movement: 0.50,
+            rotation: 0.25,
+            gyro: 0.40,
             reaction: "..."
         },
 
         {
-            name: "Smile",
             animation: "smile",
-            speed: 0.70,
-            movement: 0.75,
+            speed: 0.68,
+            movement: 0.70,
             rotation: 0.5,
+            gyro: 0.65,
             reaction: "🙂"
         },
 
         {
-            name: "Upset",
             animation: "upset",
-            speed: 0.50,
-            movement: 0.65,
+            speed: 0.48,
+            movement: 0.60,
             rotation: 0.8,
+            gyro: 0.55,
             reaction: "💧"
         }
     ];
 
 
     /* ========================================================
-       EMOJI RUNTIME DATA
+       EMOJI STATE ARRAY
        ======================================================== */
 
     const emojis = [];
 
 
     /* ========================================================
-       UTILITY
+       UTILITY FUNCTIONS
        ======================================================== */
 
     function clamp(
@@ -397,9 +505,13 @@
         min,
         max
     ) {
+
         return Math.max(
             min,
-            Math.min(max, value)
+            Math.min(
+                max,
+                value
+            )
         );
     }
 
@@ -409,6 +521,7 @@
         target,
         amount
     ) {
+
         return current +
             (
                 target -
@@ -422,32 +535,14 @@
         min,
         max
     ) {
-        return Math.random() *
+
+        return (
+            Math.random() *
             (
                 max -
                 min
-            ) +
-            min;
-    }
-
-
-    function distanceSquared(
-        x1,
-        y1,
-        x2,
-        y2
-    ) {
-
-        const dx =
-            x2 - x1;
-
-        const dy =
-            y2 - y1;
-
-        return (
-            dx * dx +
-            dy * dy
-        );
+            )
+        ) + min;
     }
 
 
@@ -490,65 +585,60 @@
                     );
 
 
-                const platform =
-                    card.querySelector(
-                        ".glass-platform"
-                    );
+                if (
+                    !character ||
+                    !image
+                ) {
 
-
-                if (!character || !image) {
                     return;
                 }
 
 
                 /*
-                 * Correct image source.
+                 * Always use the requested asset structure.
                  */
 
                 image.src =
                     `../assets/emojis/512 (${index + 1}).webp`;
 
 
+                image.draggable =
+                    false;
+
+
                 /*
-                 * Personality.
+                 * Give each emoji a unique animation
+                 * personality.
                  */
 
                 card.dataset.animation =
                     personality.animation;
 
-                card.dataset.personality =
-                    personality.name;
-
 
                 /*
-                 * Individual animation speed.
-                 */
-
-                card.style.setProperty(
-                    "--animation-speed",
-                    personality.speed
-                );
-
-
-                /*
-                 * Slightly different size.
+                 * Small individual scale variation.
                  */
 
                 const scale =
                     random(
-                        0.95,
+                        0.96,
                         1.03
                     );
 
 
+                /*
+                 * Store initial CSS variables only once.
+                 */
+
                 card.style.setProperty(
                     "--emoji-scale",
-                    scale
+                    scale.toFixed(3)
                 );
 
 
                 /*
-                 * Random idle phase.
+                 * Random animation phases prevent
+                 * all 24 emojis from moving together.
                  */
 
                 const phase =
@@ -573,11 +663,10 @@
 
                     image,
 
-                    platform,
-
                     personality,
 
                     index,
+
 
                     /*
                      * Cached screen position.
@@ -587,12 +676,9 @@
 
                     y: 0,
 
-                    width: 0,
-
-                    height: 0,
 
                     /*
-                     * Movement.
+                     * Cursor movement.
                      */
 
                     pushX: 0,
@@ -603,6 +689,7 @@
 
                     targetPushY: 0,
 
+
                     /*
                      * Rotation.
                      */
@@ -611,16 +698,9 @@
 
                     targetRotation: 0,
 
-                    /*
-                     * Lighting.
-                     */
-
-                    shine: 0,
-
-                    targetShine: 0,
 
                     /*
-                     * Idle animation.
+                     * Idle phase.
                      */
 
                     phase,
@@ -629,25 +709,31 @@
 
                     idleSpeed:
                         random(
-                            0.65,
-                            1.15
+                            0.70,
+                            1.10
                         ),
+
 
                     /*
-                     * Interaction.
+                     * Gyroscope.
                      */
 
-                    near:
-                        false,
+                    gyroX: 0,
 
-                    reactionCooldown:
-                        random(
-                            900,
-                            1800
-                        ),
+                    gyroY: 0,
 
-                    lastReaction:
-                        0
+                    targetGyroX: 0,
+
+                    targetGyroY: 0,
+
+
+                    /*
+                     * Interaction state.
+                     */
+
+                    nearCursor: false,
+
+                    lastReaction: 0
                 });
             }
         );
@@ -656,67 +742,44 @@
 
     /* ========================================================
        CACHE POSITIONS
-       ========================================================
-
-       IMPORTANT:
-       This is called only occasionally.
-
-       NEVER call getBoundingClientRect()
-       from the main 60 FPS loop.
        ======================================================== */
 
     function cachePositions() {
 
-        const sceneRect =
-            scene.getBoundingClientRect();
+        for (
+            let i = 0;
+            i < emojis.length;
+            i++
+        ) {
+
+            const emoji =
+                emojis[i];
 
 
-        const scrollX =
-            window.scrollX;
-
-        const scrollY =
-            window.scrollY;
+            const rect =
+                emoji.card.getBoundingClientRect();
 
 
-        emojis.forEach(
-            emoji => {
-
-                const rect =
-                    emoji.card.getBoundingClientRect();
+            emoji.x =
+                rect.left +
+                rect.width * 0.5;
 
 
-                /*
-                 * Store position relative to viewport.
-                 */
-
-                emoji.x =
-                    rect.left +
-                    rect.width * 0.5;
-
-                emoji.y =
-                    rect.top +
-                    rect.height * 0.42;
-
-
-                emoji.width =
-                    rect.width;
-
-                emoji.height =
-                    rect.height;
-            }
-        );
+            emoji.y =
+                rect.top +
+                rect.height * 0.40;
+        }
     }
 
 
     /* ========================================================
-       RESIZE / POSITION CACHE
+       RESIZE
        ======================================================== */
 
-    let resizeTimer =
-        null;
+    let resizeTimer = null;
 
 
-    function schedulePositionUpdate() {
+    function schedulePositionRefresh() {
 
         clearTimeout(
             resizeTimer
@@ -730,14 +793,14 @@
                     cachePositions();
 
                 },
-                100
+                CONFIG.positionRefreshDelay
             );
     }
 
 
     window.addEventListener(
         "resize",
-        schedulePositionUpdate,
+        schedulePositionRefresh,
         {
             passive: true
         }
@@ -750,7 +813,7 @@
 
             setTimeout(
                 cachePositions,
-                250
+                350
             );
 
         },
@@ -761,10 +824,10 @@
 
 
     /* ========================================================
-       POINTER
+       POINTER INPUT
        ======================================================== */
 
-    let lastPointerEventTime =
+    let lastPointerUpdate =
         0;
 
 
@@ -777,14 +840,14 @@
 
 
         /*
-         * Avoid excessive pointer events
-         * on mobile browsers.
+         * Avoid processing excessive touch/pointer
+         * events on mobile.
          */
 
         if (
-            MOBILE &&
+            mobile &&
             now -
-            lastPointerEventTime <
+            lastPointerUpdate <
             8
         ) {
 
@@ -792,7 +855,7 @@
         }
 
 
-        lastPointerEventTime =
+        lastPointerUpdate =
             now;
 
 
@@ -802,8 +865,28 @@
         cursor.targetY =
             event.clientY;
 
-        cursor.visible =
+        cursor.active =
             true;
+
+
+        /*
+         * Touch coordinates are also stored.
+         */
+
+        if (
+            event.pointerType ===
+            "touch"
+        ) {
+
+            touch.active =
+                true;
+
+            touch.x =
+                event.clientX;
+
+            touch.y =
+                event.clientY;
+        }
     }
 
 
@@ -826,8 +909,24 @@
             cursor.targetY =
                 event.clientY;
 
-            cursor.visible =
+            cursor.active =
                 true;
+
+
+            if (
+                event.pointerType ===
+                "touch"
+            ) {
+
+                touch.active =
+                    true;
+
+                touch.x =
+                    event.clientX;
+
+                touch.y =
+                    event.clientY;
+            }
 
         },
         {
@@ -837,18 +936,344 @@
 
 
     window.addEventListener(
-        "pointerleave",
+        "pointerup",
+        event => {
+
+            if (
+                event.pointerType ===
+                "touch"
+            ) {
+
+                touch.active =
+                    false;
+            }
+
+        },
+        {
+            passive: true
+        }
+    );
+
+
+    window.addEventListener(
+        "pointercancel",
         () => {
 
-            cursor.visible =
+            touch.active =
                 false;
 
+        },
+        {
+            passive: true
         }
     );
 
 
     /* ========================================================
-       CURSOR UPDATE
+       GYROSCOPE SUPPORT
+       ======================================================== */
+
+    function supportsOrientation() {
+
+        return (
+            "DeviceOrientationEvent"
+            in window
+        );
+    }
+
+
+    /* ========================================================
+       DEVICE ORIENTATION EVENT
+       ======================================================== */
+
+    function handleOrientation(
+        event
+    ) {
+
+        if (
+            typeof event.beta !==
+            "number" ||
+            typeof event.gamma !==
+            "number"
+        ) {
+
+            return;
+        }
+
+
+        gyro.supported =
+            true;
+
+
+        gyro.lastEventTime =
+            performance.now();
+
+
+        let beta =
+            event.beta;
+
+
+        let gamma =
+            event.gamma;
+
+
+        /*
+         * First valid orientation becomes
+         * the neutral position.
+         */
+
+        if (
+            !gyro.calibrated
+        ) {
+
+            gyro.calibrationBeta =
+                beta;
+
+            gyro.calibrationGamma =
+                gamma;
+
+            gyro.calibrated =
+                true;
+        }
+
+
+        beta -=
+            gyro.calibrationBeta;
+
+
+        gamma -=
+            gyro.calibrationGamma;
+
+
+        /*
+         * Ignore extreme rotations.
+         */
+
+        beta =
+            clamp(
+                beta,
+                -25,
+                25
+            );
+
+
+        gamma =
+            clamp(
+                gamma,
+                -25,
+                25
+            );
+
+
+        gyro.targetBeta =
+            beta / 25;
+
+
+        gyro.targetGamma =
+            gamma / 25;
+
+
+        gyro.active =
+            true;
+    }
+
+
+    /* ========================================================
+       START ORIENTATION
+       ======================================================== */
+
+    function startOrientation() {
+
+        if (
+            !supportsOrientation()
+        ) {
+
+            return;
+        }
+
+
+        window.addEventListener(
+            "deviceorientation",
+            handleOrientation,
+            {
+                passive: true
+            }
+        );
+
+
+        gyro.permissionGranted =
+            true;
+    }
+
+
+    /* ========================================================
+       IOS PERMISSION
+       ======================================================== */
+
+    async function requestMotionPermission() {
+
+        if (
+            !supportsOrientation()
+        ) {
+
+            return;
+        }
+
+
+        /*
+         * Android / browsers that don't require
+         * explicit permission.
+         */
+
+        if (
+            !isIOS
+        ) {
+
+            startOrientation();
+
+            return;
+        }
+
+
+        /*
+         * Older iOS versions / browsers.
+         */
+
+        if (
+            typeof DeviceOrientationEvent
+                .requestPermission !==
+            "function"
+        ) {
+
+            startOrientation();
+
+            return;
+        }
+
+
+        try {
+
+            const permission =
+                await DeviceOrientationEvent
+                    .requestPermission();
+
+
+            if (
+                permission ===
+                "granted"
+            ) {
+
+                startOrientation();
+            }
+
+        } catch (
+            error
+        ) {
+
+            console.warn(
+                "Device orientation permission was not granted.",
+                error
+            );
+        }
+    }
+
+
+    /* ========================================================
+       ENABLE GYROSCOPE
+       ======================================================== */
+
+    if (
+        supportsOrientation()
+    ) {
+
+        if (
+            isIOS
+        ) {
+
+            /*
+             * iOS requires user interaction.
+             */
+
+            const enableMotion =
+                () => {
+
+                    requestMotionPermission();
+
+                };
+
+
+            window.addEventListener(
+                "pointerdown",
+                enableMotion,
+                {
+                    passive: true,
+                    once: true
+                }
+            );
+
+        } else {
+
+            startOrientation();
+        }
+    }
+
+
+    /* ========================================================
+       UPDATE GYROSCOPE
+       ======================================================== */
+
+    function updateGyroscope() {
+
+        /*
+         * If sensor has not produced data recently,
+         * gradually return to neutral.
+         */
+
+        if (
+            !gyro.active ||
+            performance.now() -
+            gyro.lastEventTime >
+            1200
+        ) {
+
+            gyro.beta =
+                lerp(
+                    gyro.beta,
+                    0,
+                    0.035
+                );
+
+
+            gyro.gamma =
+                lerp(
+                    gyro.gamma,
+                    0,
+                    0.035
+                );
+
+            return;
+        }
+
+
+        gyro.beta =
+            lerp(
+                gyro.beta,
+                gyro.targetBeta,
+                CONFIG.gyroSmoothing
+            );
+
+
+        gyro.gamma =
+            lerp(
+                gyro.gamma,
+                gyro.targetGamma,
+                CONFIG.gyroSmoothing
+            );
+    }
+
+
+    /* ========================================================
+       UPDATE CURSOR
        ======================================================== */
 
     function updateCursor() {
@@ -869,48 +1294,49 @@
             );
 
 
-        /*
-         * Only one DOM element follows
-         * the cursor.
-         */
-
-        if (cursorLight) {
+        if (
+            cursorLight
+        ) {
 
             cursorLight.style.transform =
                 `translate3d(
-                    ${cursor.x}px,
-                    ${cursor.y}px,
+                    ${cursor.x.toFixed(1)}px,
+                    ${cursor.y.toFixed(1)}px,
                     0
-                ) translate3d(-50%, -50%, 0)`;
+                )
+                translate3d(
+                    -50%,
+                    -50%,
+                    0
+                )`;
         }
     }
 
 
     /* ========================================================
-       EMOJI INTERACTION
+       UPDATE ONE EMOJI
        ======================================================== */
 
-    function updateEmojiInteraction(
+    function updateEmoji(
         emoji,
         time
     ) {
 
-        /*
-         * Cached position.
-         *
-         * No layout calculation.
-         */
+        /* ----------------------------------------------------
+           DISTANCE FROM CURSOR
+           ---------------------------------------------------- */
 
         const dx =
             cursor.x -
             emoji.x;
+
 
         const dy =
             cursor.y -
             emoji.y;
 
 
-        const distSq =
+        const distanceSquared =
             dx * dx +
             dy * dy;
 
@@ -919,138 +1345,103 @@
             CONFIG.interactionRadius;
 
 
-        const radiusSq =
+        const radiusSquared =
             radius * radius;
 
 
-        /*
-         * Fast rejection.
-         */
+        let interaction =
+            0;
+
 
         if (
-            distSq >
-            radiusSq
+            distanceSquared <
+            radiusSquared
         ) {
 
-            emoji.targetPushX =
-                0;
-
-            emoji.targetPushY =
-                0;
-
-            emoji.targetRotation =
-                0;
-
-            emoji.targetShine =
-                0;
-
-            if (
-                emoji.near
-            ) {
-
-                emoji.near =
-                    false;
-
-                emoji.card.classList.remove(
-                    "near-cursor"
-                );
-            }
-
-        } else {
-
-            /*
-             * Only calculate square root
-             * when cursor is actually close.
-             */
-
-            const dist =
+            const distance =
                 Math.sqrt(
-                    distSq
+                    distanceSquared
                 );
 
 
-            const intensity =
-                clamp(
-                    1 -
-                    dist /
-                    radius,
-                    0,
-                    1
+            interaction =
+                1 -
+                distance /
+                radius;
+        }
+
+
+        /* ----------------------------------------------------
+           CURSOR PUSH
+           ---------------------------------------------------- */
+
+        if (
+            interaction > 0
+        ) {
+
+            const length =
+                Math.sqrt(
+                    dx * dx +
+                    dy * dy
                 );
 
 
-            /*
-             * Direction away from cursor.
-             */
+            let directionX =
+                0;
 
-            let dirX =
-                -dx;
 
-            let dirY =
-                -dy;
+            let directionY =
+                0;
 
 
             if (
-                dist >
-                0.01
+                length >
+                0.001
             ) {
 
-                dirX /=
-                    dist;
+                directionX =
+                    -dx /
+                    length;
 
-                dirY /=
-                    dist;
+                directionY =
+                    -dy /
+                    length;
             }
 
 
-            /*
-             * Individual movement.
-             */
-
-            const movement =
-                intensity *
+            const push =
+                interaction *
                 CONFIG.maxPush *
                 emoji.personality.movement;
 
 
             emoji.targetPushX =
-                dirX *
-                movement;
+                directionX *
+                push;
 
 
             emoji.targetPushY =
-                dirY *
-                movement;
+                directionY *
+                push;
 
-
-            /*
-             * Individual tilt.
-             */
 
             emoji.targetRotation =
                 clamp(
-                    dirX *
-                    8 *
+                    directionX *
+                    7 *
                     emoji.personality.rotation,
-                    -10,
-                    10
+                    -9,
+                    9
                 );
 
 
-            /*
-             * Glow.
-             */
-
-            emoji.targetShine =
-                intensity;
-
-
             if (
-                !emoji.near
+                !emoji.nearCursor
             ) {
 
-                emoji.near =
+                emoji.nearCursor =
                     true;
+
 
                 emoji.card.classList.add(
                     "near-cursor"
@@ -1058,25 +1449,50 @@
 
 
                 /*
-                 * Very limited reactions
-                 * on mobile.
+                 * Small percentage of interactions
+                 * produce a floating reaction.
                  */
 
                 if (
                     Math.random() <
-                    CONFIG.reactionProbability
+                    CONFIG.reactionChance
                 ) {
 
-                    triggerReaction(
+                    createReaction(
                         emoji
                     );
                 }
+            }
+
+        } else {
+
+            emoji.targetPushX =
+                0;
+
+            emoji.targetPushY =
+                0;
+
+            emoji.targetRotation =
+                0;
+
+
+            if (
+                emoji.nearCursor
+            ) {
+
+                emoji.nearCursor =
+                    false;
+
+
+                emoji.card.classList.remove(
+                    "near-cursor"
+                );
             }
         }
 
 
         /* ----------------------------------------------------
-           SMOOTH MOVEMENT
+           SMOOTH CURSOR MOVEMENT
            ---------------------------------------------------- */
 
         emoji.pushX =
@@ -1095,10 +1511,6 @@
             );
 
 
-        /* ----------------------------------------------------
-           SMOOTH ROTATION
-           ---------------------------------------------------- */
-
         emoji.rotation =
             lerp(
                 emoji.rotation,
@@ -1108,19 +1520,44 @@
 
 
         /* ----------------------------------------------------
-           SMOOTH GLOW
+           GYROSCOPE PARALLAX
            ---------------------------------------------------- */
 
-        emoji.shine =
+        const gyroFactor =
+            emoji.personality.gyro *
+            CONFIG.gyroStrength;
+
+
+        emoji.targetGyroX =
+            gyro.gamma *
+            CONFIG.gyroMax *
+            gyroFactor;
+
+
+        emoji.targetGyroY =
+            gyro.beta *
+            CONFIG.gyroMax *
+            gyroFactor;
+
+
+        emoji.gyroX =
             lerp(
-                emoji.shine,
-                emoji.targetShine,
-                CONFIG.glowSmoothing
+                emoji.gyroX,
+                emoji.targetGyroX,
+                0.055
+            );
+
+
+        emoji.gyroY =
+            lerp(
+                emoji.gyroY,
+                emoji.targetGyroY,
+                0.055
             );
 
 
         /* ----------------------------------------------------
-           LOW-COST IDLE MOTION
+           INDIVIDUAL IDLE ANIMATION
            ---------------------------------------------------- */
 
         let idleY =
@@ -1130,10 +1567,6 @@
         let idleRotation =
             0;
 
-
-        /*
-         * Reduced idle calculations on mobile.
-         */
 
         if (
             !reducedMotion
@@ -1151,76 +1584,86 @@
                 Math.sin(
                     time *
                     emoji.idleSpeed *
-                    0.7 +
+                    0.72 +
                     emoji.phase2
                 );
 
 
             idleY =
                 wave *
-                (
-                    MOBILE
-                        ? 1.1
-                        : 1.6
-                );
+                CONFIG.idleStrength;
 
 
             idleRotation =
                 wave2 *
                 (
-                    MOBILE
-                        ? 0.5
-                        : 0.8
+                    mobile
+                        ? 0.30
+                        : 0.65
                 );
         }
 
 
         /* ----------------------------------------------------
-           CSS VARIABLES
+           COMBINE ALL MOVEMENT
+           ---------------------------------------------------- */
+
+        const finalX =
+            emoji.pushX +
+            emoji.gyroX;
+
+
+        const finalY =
+            emoji.pushY +
+            emoji.gyroY;
+
+
+        const finalRotation =
+            emoji.rotation +
+            idleRotation;
+
+
+        /* ----------------------------------------------------
+           WRITE TRANSFORM VARIABLES
            ---------------------------------------------------- */
 
         emoji.card.style.setProperty(
             "--push-x",
-            `${emoji.pushX}px`
+            `${finalX.toFixed(2)}px`
         );
 
 
         emoji.card.style.setProperty(
             "--push-y",
-            `${emoji.pushY}px`
-        );
-
-
-        emoji.card.style.setProperty(
-            "--emoji-rotation",
-            `${emoji.rotation + idleRotation}deg`
-        );
-
-
-        emoji.card.style.setProperty(
-            "--shine",
-            emoji.shine
+            `${finalY.toFixed(2)}px`
         );
 
 
         emoji.card.style.setProperty(
             "--breath",
-            `${idleY}px`
+            `${idleY.toFixed(2)}px`
+        );
+
+
+        emoji.card.style.setProperty(
+            "--emoji-rotation",
+            `${finalRotation.toFixed(2)}deg`
         );
     }
 
 
     /* ========================================================
-       REACTIONS
+       REACTION EFFECT
        ======================================================== */
 
-    function triggerReaction(
+    function createReaction(
         emoji
     ) {
 
         if (
             !reactionLayer
         ) {
+
             return;
         }
 
@@ -1232,7 +1675,7 @@
         if (
             now -
             emoji.lastReaction <
-            emoji.reactionCooldown
+            CONFIG.reactionCooldown
         ) {
 
             return;
@@ -1243,141 +1686,79 @@
             now;
 
 
-        /*
-         * Don't spam reactions.
-         */
-
-        const element =
+        const reaction =
             document.createElement(
                 "div"
             );
 
 
-        element.className =
+        reaction.className =
             "reaction";
 
 
-        element.textContent =
+        reaction.textContent =
             emoji.personality.reaction;
 
 
-        element.style.setProperty(
+        reaction.style.setProperty(
             "--reaction-x",
             `${emoji.x}px`
         );
 
 
-        element.style.setProperty(
+        reaction.style.setProperty(
             "--reaction-y",
-            `${emoji.y - 35}px`
+            `${emoji.y - 30}px`
         );
 
 
-        element.style.setProperty(
+        reaction.style.setProperty(
             "--reaction-dx",
             `${random(
-                -20,
-                20
+                -16,
+                16
             )}px`
         );
 
 
-        element.style.setProperty(
+        reaction.style.setProperty(
             "--reaction-dy",
             `${random(
-                -35,
+                -32,
                 -18
             )}px`
         );
 
 
         reactionLayer.appendChild(
-            element
+            reaction
         );
 
 
         /*
-         * Remove quickly.
+         * Remove after animation.
          */
 
         setTimeout(
             () => {
 
-                element.remove();
+                reaction.remove();
 
             },
-            950
+            900
         );
     }
 
 
     /* ========================================================
-       MOBILE OPTIMIZATION
-       ======================================================== */
-
-    let lastInteractionUpdate =
-        0;
-
-
-    function updateInteractions(
-        time
-    ) {
-
-        /*
-         * On mobile, process interaction
-         * at a controlled rate.
-         */
-
-        if (
-            MOBILE
-        ) {
-
-            const now =
-                performance.now();
-
-
-            if (
-                now -
-                lastInteractionUpdate <
-                16
-            ) {
-
-                return;
-            }
-
-
-            lastInteractionUpdate =
-                now;
-        }
-
-
-        /*
-         * Update all emojis.
-         */
-
-        for (
-            let i = 0;
-            i < emojis.length;
-            i++
-        ) {
-
-            updateEmojiInteraction(
-                emojis[i],
-                time
-            );
-        }
-    }
-
-
-    /* ========================================================
-       ANIMATION LOOP
+       MAIN ANIMATION LOOP
        ======================================================== */
 
     let running =
         true;
 
 
-    let lastTime =
+    let lastFrameTime =
         performance.now();
 
 
@@ -1385,28 +1766,38 @@
         timestamp
     ) {
 
-        if (!running) {
+        if (
+            !running
+        ) {
+
             return;
         }
 
 
+        const delta =
+            timestamp -
+            lastFrameTime;
+
+
         /*
-         * Prevent huge time jumps
-         * after browser throttling.
+         * Mobile frame pacing.
          */
 
         if (
-            timestamp -
-            lastTime >
-            100
+            mobile &&
+            delta <
+            CONFIG.frameInterval
         ) {
 
-            lastTime =
-                timestamp;
+            requestAnimationFrame(
+                animationLoop
+            );
+
+            return;
         }
 
 
-        lastTime =
+        lastFrameTime =
             timestamp;
 
 
@@ -1415,25 +1806,36 @@
             1000;
 
 
-        /*
-         * Cursor.
-         */
+        /* ----------------------------------------------------
+           INPUT
+           ---------------------------------------------------- */
 
         updateCursor();
 
 
-        /*
-         * Emoji interaction.
-         */
+        /* ----------------------------------------------------
+           SENSOR
+           ---------------------------------------------------- */
 
-        updateInteractions(
-            time
-        );
+        updateGyroscope();
 
 
-        /*
-         * Continue.
-         */
+        /* ----------------------------------------------------
+           EMOJIS
+           ---------------------------------------------------- */
+
+        for (
+            let i = 0;
+            i < emojis.length;
+            i++
+        ) {
+
+            updateEmoji(
+                emojis[i],
+                time
+            );
+        }
+
 
         requestAnimationFrame(
             animationLoop
@@ -1442,23 +1844,28 @@
 
 
     /* ========================================================
-       PAGE VISIBILITY
+       VISIBILITY OPTIMIZATION
        ======================================================== */
 
     document.addEventListener(
         "visibilitychange",
         () => {
 
-            running =
-                !document.hidden;
-
-
             if (
-                running
+                document.hidden
             ) {
 
-                lastTime =
+                running =
+                    false;
+
+            } else {
+
+                running =
+                    true;
+
+                lastFrameTime =
                     performance.now();
+
 
                 requestAnimationFrame(
                     animationLoop
@@ -1469,37 +1876,16 @@
 
 
     /* ========================================================
-       TOUCH RELEASE
-       ======================================================== */
-
-    window.addEventListener(
-        "pointerup",
-        () => {
-
-            /*
-             * Keep the final cursor position
-             * instead of forcing all emojis
-             * back immediately.
-             */
-
-        },
-        {
-            passive: true
-        }
-    );
-
-
-    /* ========================================================
        INITIALIZATION
        ======================================================== */
 
-    function init() {
+    function initialize() {
 
         initializeEmojis();
 
 
         /*
-         * Wait until layout is ready.
+         * Wait for layout before caching positions.
          */
 
         requestAnimationFrame(
@@ -1509,7 +1895,8 @@
 
 
                 /*
-                 * Start animation.
+                 * Give the browser one frame to
+                 * finish initial image/layout work.
                  */
 
                 requestAnimationFrame(
@@ -1519,23 +1906,35 @@
         );
 
 
-        /*
-         * Status.
-         */
+        /* ----------------------------------------------------
+           STATUS
+           ---------------------------------------------------- */
 
         if (
             interactionStatus
         ) {
 
-            interactionStatus.textContent =
-                MOBILE
-                    ? "Touch and move around the emojis"
-                    : "Move your cursor around the emojis";
+            if (
+                mobile
+            ) {
+
+                interactionStatus.textContent =
+                    "Tilt, touch or move around the emojis";
+
+            } else {
+
+                interactionStatus.textContent =
+                    "Move your cursor around the emojis";
+            }
         }
 
 
+        /* ----------------------------------------------------
+           DEBUG INFO
+           ---------------------------------------------------- */
+
         console.log(
-            "✨ Emoji World initialized"
+            "✨ Interactive Emoji World initialized"
         );
 
 
@@ -1545,7 +1944,14 @@
 
 
         console.log(
-            `📱 Mobile optimization: ${MOBILE}`
+            `📱 Mobile optimized: ${mobile}`
+        );
+
+
+        console.log(
+            `🧭 Device orientation: ${
+                supportsOrientation()
+            }`
         );
     }
 
@@ -1554,6 +1960,7 @@
        START
        ======================================================== */
 
-    init();
+    initialize();
+
 
 })();

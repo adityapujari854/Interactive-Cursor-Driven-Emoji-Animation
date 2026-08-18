@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
 
     <meta charset="UTF-8">
@@ -16,13 +17,30 @@
 
     <meta
         name="description"
-        content="Interactive 3D Emoji World"
+        content="Interactive 3D Emoji World with cursor and motion interaction"
+    >
+
+    <meta
+        name="mobile-web-app-capable"
+        content="yes"
+    >
+
+    <meta
+        name="apple-mobile-web-app-capable"
+        content="yes"
     >
 
     <title>Interactive 3D Emoji World</title>
 
-    <!-- Performance hints -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
+
+    <!-- =========================================================
+         PERFORMANCE / FONT
+         ========================================================= -->
+
+    <link
+        rel="preconnect"
+        href="https://fonts.googleapis.com"
+    >
 
     <link
         rel="preconnect"
@@ -40,15 +58,16 @@
 
 <body>
 
+
 <main
     id="scene"
     class="scene"
 >
 
 
-    <!-- =====================================================
+    <!-- =========================================================
          STATIC BACKGROUND
-         ===================================================== -->
+         ========================================================= -->
 
     <div
         id="backgroundGlow"
@@ -57,23 +76,47 @@
     ></div>
 
 
-    <!-- =====================================================
+    <!-- =========================================================
          HEADER
-         ===================================================== -->
+         ========================================================= -->
 
     <header
         class="world-header"
     >
 
+
+        <!-- =====================================================
+             ANIMATION VERSION BUTTON
+
+             Switches between:
+             Full animation
+             Reduced/mobile animation
+             ===================================================== -->
+
         <button
             id="animationToggle"
             class="theme-toggle"
             type="button"
-            aria-label="Switch to full animation view"
+            aria-label="Switch to reduced animation version"
         >
-            <span class="theme-toggle-icon" aria-hidden="true">✨</span>
-            <span>Reduced animation</span>
+
+            <span
+                class="theme-toggle-icon"
+                aria-hidden="true"
+            >
+                ✨
+            </span>
+
+            <span>
+                Reduced animation
+            </span>
+
         </button>
+
+
+        <!-- =====================================================
+             BRAND
+             ===================================================== -->
 
         <div
             class="brand"
@@ -106,15 +149,17 @@
     </header>
 
 
-    <!-- =====================================================
+
+    <!-- =========================================================
          EMOJI WORLD
-         ===================================================== -->
+         ========================================================= -->
 
     <section
         id="emojiWorld"
         class="emoji-world"
         aria-label="Interactive emoji characters"
     >
+
 
         <div
             id="emojiGrid"
@@ -123,7 +168,7 @@
 
 
             <!-- =================================================
-                 01
+                 01 — HAPPY
                  ================================================= -->
 
             <article
@@ -158,8 +203,9 @@
             </article>
 
 
+
             <!-- =================================================
-                 02
+                 02 — LAUGHING
                  ================================================= -->
 
             <article
@@ -194,8 +240,9 @@
             </article>
 
 
+
             <!-- =================================================
-                 03
+                 03 — LOVE
                  ================================================= -->
 
             <article
@@ -230,8 +277,9 @@
             </article>
 
 
+
             <!-- =================================================
-                 04
+                 04 — COOL
                  ================================================= -->
 
             <article
@@ -266,8 +314,9 @@
             </article>
 
 
+
             <!-- =================================================
-                 05
+                 05 — THINKING
                  ================================================= -->
 
             <article
@@ -302,8 +351,9 @@
             </article>
 
 
+
             <!-- =================================================
-                 06
+                 06 — ANGRY
                  ================================================= -->
 
             <article
@@ -338,8 +388,9 @@
             </article>
 
 
+
             <!-- =================================================
-                 07
+                 07 — PARTY
                  ================================================= -->
 
             <article
@@ -374,8 +425,9 @@
             </article>
 
 
+
             <!-- =================================================
-                 08
+                 08 — EXCITED
                  ================================================= -->
 
             <article
@@ -410,8 +462,9 @@
             </article>
 
 
+
             <!-- =================================================
-                 09
+                 09 — SLEEPY
                  ================================================= -->
 
             <article
@@ -446,8 +499,9 @@
             </article>
 
 
+
             <!-- =================================================
-                 10
+                 10 — SHOCKED
                  ================================================= -->
 
             <article
@@ -482,8 +536,9 @@
             </article>
 
 
+
             <!-- =================================================
-                 11
+                 11 — SMIRK
                  ================================================= -->
 
             <article
@@ -502,7 +557,7 @@
                         alt="Smirking emoji"
                         width="108"
                         height="108"
-                        loading="eager"
+                        loading="lazy"
                         decoding="async"
                         draggable="false"
                     >
@@ -518,8 +573,9 @@
             </article>
 
 
+
             <!-- =================================================
-                 12
+                 12 — ANGEL
                  ================================================= -->
 
             <article
@@ -538,7 +594,7 @@
                         alt="Angel emoji"
                         width="108"
                         height="108"
-                        loading="eager"
+                        loading="lazy"
                         decoding="async"
                         draggable="false"
                     >
@@ -554,8 +610,9 @@
             </article>
 
 
+
             <!-- =================================================
-                 13
+                 13 — PLEADING
                  ================================================= -->
 
             <article
@@ -574,7 +631,7 @@
                         alt="Pleading emoji"
                         width="108"
                         height="108"
-                        loading="eager"
+                        loading="lazy"
                         decoding="async"
                         draggable="false"
                     >
@@ -590,8 +647,9 @@
             </article>
 
 
+
             <!-- =================================================
-                 14
+                 14 — NERD
                  ================================================= -->
 
             <article
@@ -610,7 +668,7 @@
                         alt="Nerd emoji"
                         width="108"
                         height="108"
-                        loading="eager"
+                        loading="lazy"
                         decoding="async"
                         draggable="false"
                     >
@@ -626,8 +684,9 @@
             </article>
 
 
+
             <!-- =================================================
-                 15
+                 15 — FRUSTRATED
                  ================================================= -->
 
             <article
@@ -662,8 +721,9 @@
             </article>
 
 
+
             <!-- =================================================
-                 16
+                 16 — YUMMY
                  ================================================= -->
 
             <article
@@ -698,8 +758,9 @@
             </article>
 
 
+
             <!-- =================================================
-                 17
+                 17 — KISS
                  ================================================= -->
 
             <article
@@ -734,8 +795,9 @@
             </article>
 
 
+
             <!-- =================================================
-                 18
+                 18 — COLD
                  ================================================= -->
 
             <article
@@ -770,8 +832,9 @@
             </article>
 
 
+
             <!-- =================================================
-                 19
+                 19 — MELTING
                  ================================================= -->
 
             <article
@@ -806,8 +869,9 @@
             </article>
 
 
+
             <!-- =================================================
-                 20
+                 20 — GRINNING
                  ================================================= -->
 
             <article
@@ -842,8 +906,9 @@
             </article>
 
 
+
             <!-- =================================================
-                 21
+                 21 — WINK
                  ================================================= -->
 
             <article
@@ -878,8 +943,9 @@
             </article>
 
 
+
             <!-- =================================================
-                 22
+                 22 — NEUTRAL
                  ================================================= -->
 
             <article
@@ -914,8 +980,9 @@
             </article>
 
 
+
             <!-- =================================================
-                 23
+                 23 — SMILE
                  ================================================= -->
 
             <article
@@ -950,8 +1017,9 @@
             </article>
 
 
+
             <!-- =================================================
-                 24
+                 24 — UPSET
                  ================================================= -->
 
             <article
@@ -991,9 +1059,10 @@
     </section>
 
 
-    <!-- =====================================================
+
+    <!-- =========================================================
          CURSOR LIGHT
-         ===================================================== -->
+         ========================================================= -->
 
     <div
         id="cursorLight"
@@ -1012,9 +1081,10 @@
     </div>
 
 
-    <!-- =====================================================
+
+    <!-- =========================================================
          REACTION LAYER
-         ===================================================== -->
+         ========================================================= -->
 
     <div
         id="reactionLayer"
@@ -1023,9 +1093,10 @@
     ></div>
 
 
-    <!-- =====================================================
-         BOTTOM STATUS
-         ===================================================== -->
+
+    <!-- =========================================================
+         INTERACTION STATUS
+         ========================================================= -->
 
     <div
         id="interactionStatus"
@@ -1038,8 +1109,9 @@
 </main>
 
 
+
 <!-- =========================================================
-     JAVASCRIPT
+     MAIN JAVASCRIPT
      ========================================================= -->
 
 <script
@@ -1047,22 +1119,92 @@
     defer
 ></script>
 
+
+
+<!-- =========================================================
+     ANIMATION VERSION SWITCHER
+
+     Full version:
+         index.html
+
+     Reduced/mobile version:
+         mobile-optimised/index.html
+
+     This preserves your previous button behavior.
+     ========================================================= -->
+
 <script>
-    (() => {
-        const toggle = document.getElementById("animationToggle");
+(() => {
 
-        if (!toggle) {
-            return;
-        }
+    "use strict";
 
-        const targetPath = window.location.pathname.includes("/mobile-optimised/")
+
+    const toggle =
+        document.getElementById(
+            "animationToggle"
+        );
+
+
+    if (!toggle) {
+        return;
+    }
+
+
+    const isMobileOptimised =
+        window.location.pathname.includes(
+            "/mobile-optimised/"
+        );
+
+
+    const targetPath =
+        isMobileOptimised
             ? "../index.html"
             : "mobile-optimised/index.html";
 
-        toggle.addEventListener("click", () => {
-            window.location.href = targetPath;
-        });
-    })();
+
+    toggle.setAttribute(
+        "aria-label",
+        isMobileOptimised
+            ? "Switch to full animation"
+            : "Switch to reduced animation"
+    );
+
+
+    toggle.addEventListener(
+        "click",
+        () => {
+
+            /*
+             * Prevent double taps/clicks.
+             */
+
+            if (
+                toggle.dataset.switching === "true"
+            ) {
+                return;
+            }
+
+
+            toggle.dataset.switching =
+                "true";
+
+
+            toggle.disabled =
+                true;
+
+
+            /*
+             * Navigate to the other version.
+             */
+
+            window.location.href =
+                targetPath;
+
+        }
+    );
+
+
+})();
 </script>
 
 
