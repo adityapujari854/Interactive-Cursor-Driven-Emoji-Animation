@@ -1,20 +1,959 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Sleeping Emoji Cursor Animation</title>
-    <link rel="stylesheet" href="style.css">
-  </head>
-  <body>
-    <main class="page" aria-label="Interactive sleeping emoji cursor animation">
-      <section class="scene" id="scene" aria-label="Sleeping green characters reacting to pointer light">
-        <div class="scene__atmosphere" aria-hidden="true"></div>
-        <div class="scene__grid" id="emojiGrid" aria-hidden="true"></div>
-        <div class="snooze-layer" id="snoozeLayer" aria-hidden="true"></div>
-        <div class="cursor-light" id="cursorLight" aria-hidden="true"></div>
-      </section>
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <meta
+        name="description"
+        content="Interactive 3D Emoji World with cursor-driven animations"
+    >
+
+    <title>Interactive 3D Emoji World</title>
+
+    <link
+        rel="stylesheet"
+        href="style.css"
+    >
+</head>
+
+<body>
+
+    <!-- =====================================================
+         MAIN INTERACTIVE WORLD
+         ===================================================== -->
+
+    <main
+        id="scene"
+        class="scene"
+    >
+
+        <!-- =================================================
+             BACKGROUND
+             ================================================= -->
+
+        <div
+            id="backgroundGlow"
+            class="background-glow"
+            aria-hidden="true"
+        ></div>
+
+
+        <div
+            id="particlesLayer"
+            class="particles-layer"
+            aria-hidden="true"
+        ></div>
+
+
+        <!-- =================================================
+             HEADER
+             ================================================= -->
+
+        <header class="world-header">
+
+            <div class="brand">
+
+                <div
+                    class="brand-icon"
+                    aria-hidden="true"
+                >
+                    ✨
+                </div>
+
+                <div class="brand-text">
+
+                    <h1>
+                        Emoji World
+                    </h1>
+
+                    <p>
+                        INTERACTIVE 3D CHARACTERS
+                    </p>
+
+                </div>
+
+            </div>
+
+        </header>
+
+
+        <!-- =================================================
+             CURSOR LIGHT
+             ================================================= -->
+
+        <div
+            id="cursorLight"
+            class="cursor-light"
+            aria-hidden="true"
+        >
+
+            <div
+                class="cursor-light-halo"
+            ></div>
+
+            <div
+                class="cursor-light-core"
+            ></div>
+
+        </div>
+
+
+        <!-- =================================================
+             EMOJI WORLD
+             ================================================= -->
+
+        <section
+            id="emojiWorld"
+            class="emoji-world"
+            aria-label="Interactive emoji characters"
+        >
+
+            <div
+                id="emojiGrid"
+                class="emoji-grid"
+            >
+
+
+                <!-- =========================================
+                     EMOJI 01
+                     ========================================= -->
+
+                <article
+                    class="emoji-card"
+                    data-index="0"
+                    data-animation="bounce"
+                >
+
+                    <div class="emoji-character">
+
+                        <div class="emoji-glow"></div>
+
+                        <img
+                            class="emoji-visual"
+                            src="assets/emojis/512 (1).webp"
+                            alt="Happy emoji"
+                            draggable="false"
+                        >
+
+                    </div>
+
+                    <div class="glass-platform">
+
+                        <div class="platform-highlight"></div>
+
+                    </div>
+
+                </article>
+
+
+                <!-- =========================================
+                     EMOJI 02
+                     ========================================= -->
+
+                <article
+                    class="emoji-card"
+                    data-index="1"
+                    data-animation="laugh"
+                >
+
+                    <div class="emoji-character">
+
+                        <div class="emoji-glow"></div>
+
+                        <img
+                            class="emoji-visual"
+                            src="assets/emojis/512 (2).webp"
+                            alt="Laughing emoji"
+                            draggable="false"
+                        >
+
+                    </div>
+
+                    <div class="glass-platform">
+
+                        <div class="platform-highlight"></div>
+
+                    </div>
+
+                </article>
+
+
+                <!-- =========================================
+                     EMOJI 03
+                     ========================================= -->
+
+                <article
+                    class="emoji-card"
+                    data-index="2"
+                    data-animation="heart-pulse"
+                >
+
+                    <div class="emoji-character">
+
+                        <div class="emoji-glow"></div>
+
+                        <img
+                            class="emoji-visual"
+                            src="assets/emojis/512 (3).webp"
+                            alt="Love emoji"
+                            draggable="false"
+                        >
+
+                    </div>
+
+                    <div class="glass-platform">
+
+                        <div class="platform-highlight"></div>
+
+                    </div>
+
+                </article>
+
+
+                <!-- =========================================
+                     EMOJI 04
+                     ========================================= -->
+
+                <article
+                    class="emoji-card"
+                    data-index="3"
+                    data-animation="sway"
+                >
+
+                    <div class="emoji-character">
+
+                        <div class="emoji-glow"></div>
+
+                        <img
+                            class="emoji-visual"
+                            src="assets/emojis/512 (4).webp"
+                            alt="Cool emoji"
+                            draggable="false"
+                        >
+
+                    </div>
+
+                    <div class="glass-platform">
+
+                        <div class="platform-highlight"></div>
+
+                    </div>
+
+                </article>
+
+
+                <!-- =========================================
+                     EMOJI 05
+                     ========================================= -->
+
+                <article
+                    class="emoji-card"
+                    data-index="4"
+                    data-animation="peek"
+                >
+
+                    <div class="emoji-character">
+
+                        <div class="emoji-glow"></div>
+
+                        <img
+                            class="emoji-visual"
+                            src="assets/emojis/512 (5).webp"
+                            alt="Thinking emoji"
+                            draggable="false"
+                        >
+
+                    </div>
+
+                    <div class="glass-platform">
+
+                        <div class="platform-highlight"></div>
+
+                    </div>
+
+                </article>
+
+
+                <!-- =========================================
+                     EMOJI 06
+                     ========================================= -->
+
+                <article
+                    class="emoji-card"
+                    data-index="5"
+                    data-animation="angry-shake"
+                >
+
+                    <div class="emoji-character">
+
+                        <div class="emoji-glow"></div>
+
+                        <img
+                            class="emoji-visual"
+                            src="assets/emojis/512 (6).webp"
+                            alt="Angry emoji"
+                            draggable="false"
+                        >
+
+                    </div>
+
+                    <div class="glass-platform">
+
+                        <div class="platform-highlight"></div>
+
+                    </div>
+
+                </article>
+
+
+                <!-- =========================================
+                     EMOJI 07
+                     ========================================= -->
+
+                <article
+                    class="emoji-card"
+                    data-index="6"
+                    data-animation="happy-bounce"
+                >
+
+                    <div class="emoji-character">
+
+                        <div class="emoji-glow"></div>
+
+                        <img
+                            class="emoji-visual"
+                            src="assets/emojis/512 (7).webp"
+                            alt="Party emoji"
+                            draggable="false"
+                        >
+
+                    </div>
+
+                    <div class="glass-platform">
+
+                        <div class="platform-highlight"></div>
+
+                    </div>
+
+                </article>
+
+
+                <!-- =========================================
+                     EMOJI 08
+                     ========================================= -->
+
+                <article
+                    class="emoji-card"
+                    data-index="7"
+                    data-animation="surprise"
+                >
+
+                    <div class="emoji-character">
+
+                        <div class="emoji-glow"></div>
+
+                        <img
+                            class="emoji-visual"
+                            src="assets/emojis/512 (8).webp"
+                            alt="Excited emoji"
+                            draggable="false"
+                        >
+
+                    </div>
+
+                    <div class="glass-platform">
+
+                        <div class="platform-highlight"></div>
+
+                    </div>
+
+                </article>
+
+
+                <!-- =========================================
+                     EMOJI 09
+                     ========================================= -->
+
+                <article
+                    class="emoji-card"
+                    data-index="8"
+                    data-animation="breathe"
+                >
+
+                    <div class="emoji-character">
+
+                        <div class="emoji-glow"></div>
+
+                        <img
+                            class="emoji-visual"
+                            src="assets/emojis/512 (9).webp"
+                            alt="Sleepy emoji"
+                            draggable="false"
+                        >
+
+                    </div>
+
+                    <div class="glass-platform">
+
+                        <div class="platform-highlight"></div>
+
+                    </div>
+
+                </article>
+
+
+                <!-- =========================================
+                     EMOJI 10
+                     ========================================= -->
+
+                <article
+                    class="emoji-card"
+                    data-index="9"
+                    data-animation="surprise"
+                >
+
+                    <div class="emoji-character">
+
+                        <div class="emoji-glow"></div>
+
+                        <img
+                            class="emoji-visual"
+                            src="assets/emojis/512 (10).webp"
+                            alt="Shocked emoji"
+                            draggable="false"
+                        >
+
+                    </div>
+
+                    <div class="glass-platform">
+
+                        <div class="platform-highlight"></div>
+
+                    </div>
+
+                </article>
+
+
+                <!-- =========================================
+                     EMOJI 11
+                     ========================================= -->
+
+                <article
+                    class="emoji-card"
+                    data-index="10"
+                    data-animation="sway"
+                >
+
+                    <div class="emoji-character">
+
+                        <div class="emoji-glow"></div>
+
+                        <img
+                            class="emoji-visual"
+                            src="assets/emojis/512 (11).webp"
+                            alt="Smirking emoji"
+                            draggable="false"
+                        >
+
+                    </div>
+
+                    <div class="glass-platform">
+
+                        <div class="platform-highlight"></div>
+
+                    </div>
+
+                </article>
+
+
+                <!-- =========================================
+                     EMOJI 12
+                     ========================================= -->
+
+                <article
+                    class="emoji-card"
+                    data-index="11"
+                    data-animation="float"
+                >
+
+                    <div class="emoji-character">
+
+                        <div class="emoji-glow"></div>
+
+                        <img
+                            class="emoji-visual"
+                            src="assets/emojis/512 (12).webp"
+                            alt="Angel emoji"
+                            draggable="false"
+                        >
+
+                    </div>
+
+                    <div class="glass-platform">
+
+                        <div class="platform-highlight"></div>
+
+                    </div>
+
+                </article>
+
+
+                <!-- =========================================
+                     EMOJI 13
+                     ========================================= -->
+
+                <article
+                    class="emoji-card"
+                    data-index="12"
+                    data-animation="sad-float"
+                >
+
+                    <div class="emoji-character">
+
+                        <div class="emoji-glow"></div>
+
+                        <img
+                            class="emoji-visual"
+                            src="assets/emojis/512 (13).webp"
+                            alt="Pleading emoji"
+                            draggable="false"
+                        >
+
+                    </div>
+
+                    <div class="glass-platform">
+
+                        <div class="platform-highlight"></div>
+
+                    </div>
+
+                </article>
+
+
+                <!-- =========================================
+                     EMOJI 14
+                     ========================================= -->
+
+                <article
+                    class="emoji-card"
+                    data-index="13"
+                    data-animation="adjust-glasses"
+                >
+
+                    <div class="emoji-character">
+
+                        <div class="emoji-glow"></div>
+
+                        <img
+                            class="emoji-visual"
+                            src="assets/emojis/512 (14).webp"
+                            alt="Nerd emoji"
+                            draggable="false"
+                        >
+
+                    </div>
+
+                    <div class="glass-platform">
+
+                        <div class="platform-highlight"></div>
+
+                    </div>
+
+                </article>
+
+
+                <!-- =========================================
+                     EMOJI 15
+                     ========================================= -->
+
+                <article
+                    class="emoji-card"
+                    data-index="14"
+                    data-animation="ghost-float"
+                >
+
+                    <div class="emoji-character">
+
+                        <div class="emoji-glow"></div>
+
+                        <img
+                            class="emoji-visual"
+                            src="assets/emojis/512 (15).webp"
+                            alt="Ghost emoji"
+                            draggable="false"
+                        >
+
+                    </div>
+
+                    <div class="glass-platform">
+
+                        <div class="platform-highlight"></div>
+
+                    </div>
+
+                </article>
+
+
+                <!-- =========================================
+                     EMOJI 16
+                     ========================================= -->
+
+                <article
+                    class="emoji-card"
+                    data-index="15"
+                    data-animation="adjust-glasses"
+                >
+
+                    <div class="emoji-character">
+
+                        <div class="emoji-glow"></div>
+
+                        <img
+                            class="emoji-visual"
+                            src="assets/emojis/512 (16).webp"
+                            alt="Nerd glasses emoji"
+                            draggable="false"
+                        >
+
+                    </div>
+
+                    <div class="glass-platform">
+
+                        <div class="platform-highlight"></div>
+
+                    </div>
+
+                </article>
+
+
+                <!-- =========================================
+                     EMOJI 17
+                     ========================================= -->
+
+                <article
+                    class="emoji-card"
+                    data-index="16"
+                    data-animation="surprise"
+                >
+
+                    <div class="emoji-character">
+
+                        <div class="emoji-glow"></div>
+
+                        <img
+                            class="emoji-visual"
+                            src="assets/emojis/512 (17).webp"
+                            alt="Surprised emoji"
+                            draggable="false"
+                        >
+
+                    </div>
+
+                    <div class="glass-platform">
+
+                        <div class="platform-highlight"></div>
+
+                    </div>
+
+                </article>
+
+
+                <!-- =========================================
+                     EMOJI 18
+                     ========================================= -->
+
+                <article
+                    class="emoji-card"
+                    data-index="17"
+                    data-animation="shiver"
+                >
+
+                    <div class="emoji-character">
+
+                        <div class="emoji-glow"></div>
+
+                        <img
+                            class="emoji-visual"
+                            src="assets/emojis/512 (18).webp"
+                            alt="Cold emoji"
+                            draggable="false"
+                        >
+
+                    </div>
+
+                    <div class="glass-platform">
+
+                        <div class="platform-highlight"></div>
+
+                    </div>
+
+                </article>
+
+
+                <!-- =========================================
+                     EMOJI 19
+                     ========================================= -->
+
+                <article
+                    class="emoji-card"
+                    data-index="18"
+                    data-animation="melt"
+                >
+
+                    <div class="emoji-character">
+
+                        <div class="emoji-glow"></div>
+
+                        <img
+                            class="emoji-visual"
+                            src="assets/emojis/512 (19).webp"
+                            alt="Melting emoji"
+                            draggable="false"
+                        >
+
+                    </div>
+
+                    <div class="glass-platform">
+
+                        <div class="platform-highlight"></div>
+
+                    </div>
+
+                </article>
+
+
+                <!-- =========================================
+                     EMOJI 20
+                     ========================================= -->
+
+                <article
+                    class="emoji-card"
+                    data-index="19"
+                    data-animation="teeth-bounce"
+                >
+
+                    <div class="emoji-character">
+
+                        <div class="emoji-glow"></div>
+
+                        <img
+                            class="emoji-visual"
+                            src="assets/emojis/512 (20).webp"
+                            alt="Grinning emoji"
+                            draggable="false"
+                        >
+
+                    </div>
+
+                    <div class="glass-platform">
+
+                        <div class="platform-highlight"></div>
+
+                    </div>
+
+                </article>
+
+
+                <!-- =========================================
+                     EMOJI 21
+                     ========================================= -->
+
+                <article
+                    class="emoji-card"
+                    data-index="20"
+                    data-animation="slow-float"
+                >
+
+                    <div class="emoji-character">
+
+                        <div class="emoji-glow"></div>
+
+                        <img
+                            class="emoji-visual"
+                            src="assets/emojis/512 (21).webp"
+                            alt="Simple emoji"
+                            draggable="false"
+                        >
+
+                    </div>
+
+                    <div class="glass-platform">
+
+                        <div class="platform-highlight"></div>
+
+                    </div>
+
+                </article>
+
+
+                <!-- =========================================
+                     EMOJI 22
+                     ========================================= -->
+
+                <article
+                    class="emoji-card"
+                    data-index="21"
+                    data-animation="facepalm"
+                >
+
+                    <div class="emoji-character">
+
+                        <div class="emoji-glow"></div>
+
+                        <img
+                            class="emoji-visual"
+                            src="assets/emojis/512 (22).webp"
+                            alt="Facepalm emoji"
+                            draggable="false"
+                        >
+
+                    </div>
+
+                    <div class="glass-platform">
+
+                        <div class="platform-highlight"></div>
+
+                    </div>
+
+                </article>
+
+
+                <!-- =========================================
+                     EMOJI 23
+                     ========================================= -->
+
+                <article
+                    class="emoji-card"
+                    data-index="22"
+                    data-animation="idle"
+                >
+
+                    <div class="emoji-character">
+
+                        <div class="emoji-glow"></div>
+
+                        <img
+                            class="emoji-visual"
+                            src="assets/emojis/512 (23).webp"
+                            alt="Neutral emoji"
+                            draggable="false"
+                        >
+
+                    </div>
+
+                    <div class="glass-platform">
+
+                        <div class="platform-highlight"></div>
+
+                    </div>
+
+                </article>
+
+
+                <!-- =========================================
+                     EMOJI 24
+                     ========================================= -->
+
+                <article
+                    class="emoji-card"
+                    data-index="23"
+                    data-animation="happy-bounce"
+                >
+
+                    <div class="emoji-character">
+
+                        <div class="emoji-glow"></div>
+
+                        <img
+                            class="emoji-visual"
+                            src="assets/emojis/512 (24).webp"
+                            alt="Happy emoji"
+                            draggable="false"
+                        >
+
+                    </div>
+
+                    <div class="glass-platform">
+
+                        <div class="platform-highlight"></div>
+
+                    </div>
+
+                </article>
+
+
+            </div>
+
+        </section>
+
+
+        <!-- =================================================
+             FLASHLIGHT / CURSOR
+             ================================================= -->
+
+        <div
+            id="reactionLayer"
+            class="reaction-layer"
+            aria-hidden="true"
+        ></div>
+
+
+        <div
+            id="snoozeLayer"
+            class="snooze-layer"
+            aria-hidden="true"
+        ></div>
+
+
+        <!-- =================================================
+             STATUS
+             ================================================= -->
+
+        <div
+            id="interactionStatus"
+            class="interaction-status"
+        >
+            Move your cursor around the emojis
+        </div>
+
+
+        <div
+            id="modeIndicator"
+            class="mode-indicator"
+        >
+
+            <span
+                id="modeIndicatorIcon"
+                class="mode-indicator-icon"
+            >
+                ✨
+            </span>
+
+            <span
+                id="modeIndicatorText"
+                class="mode-indicator-text"
+            >
+                Interactive Emoji World
+            </span>
+
+        </div>
+
     </main>
-    <script src="script.js"></script>
-  </body>
+
+
+    <!-- =====================================================
+         JAVASCRIPT
+         ===================================================== -->
+
+    <script
+        src="script.js"
+        defer
+    ></script>
+
+</body>
 </html>
