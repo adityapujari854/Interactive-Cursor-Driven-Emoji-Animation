@@ -185,7 +185,11 @@ The project is designed as an interactive showcase of:
 
 ## 📄 License
 
-MIT License — see `LICENSE` for details.
+## License
+
+Copyright © 2026 Aditya Pujari. All Rights Reserved.
+
+This project is proprietary. You may view the source code for reference, but copying, modifying, redistributing, or using the project or its original code/assets without permission is not permitted.
 
 ---
 
