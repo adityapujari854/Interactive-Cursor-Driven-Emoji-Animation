@@ -11,7 +11,7 @@ const COPY_DURATION = 10000;
  * Mobile/tablet keyboard animation budget.
  * Desktop remains unchanged: every keyboard WebP can animate.
  */
-const MOBILE_KEYBOARD_ANIMATION_LIMIT = 6;
+const MOBILE_KEYBOARD_ANIMATION_LIMIT = 0;
 const MOBILE_KEYBOARD_ANIMATION_CHECK_MS = 180;
 const MOBILE_KEYBOARD_ANIMATION_MIN_MS = 2600;
 const MOBILE_KEYBOARD_ANIMATION_MAX_MS = 5200;
