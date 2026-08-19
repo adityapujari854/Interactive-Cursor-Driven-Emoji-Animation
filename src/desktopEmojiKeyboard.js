@@ -1,9 +1,4 @@
-const EMOJIS = [
-  ['😀','Happy'],['😄','Grinning'],['😁','Beaming'],['😆','Laughing'],['😅','Sweat Smile'],['😂','Joy'],
-  ['🤣','Rolling Laugh'],['😭','Crying'],['😠','Angry'],['😱','Screaming'],['😮','Astonished'],['🥳','Party'],
-  ['😍','Heart Eyes'],['😈','Devil'],['👻','Ghost'],['🤓','Nerd'],['😏','Smirk'],['🥶','Freezing'],
-  ['😇','Angel'],['😬','Grimace'],['😎','Sunglasses'],['🙈','Peekaboo'],['🤯','Mind Blown'],['🙄','Eye Roll']
-].map(([char, name]) => ({ char, name }));
+import { NOTO_EMOJI_LIBRARY } from './emojiWorld.js';
 
 const SCAN_DURATION = 2200;
 const COPY_DURATION = 10000;
@@ -33,6 +28,7 @@ export class DesktopEmojiKeyboard {
     this.resizeHandler = () => this._syncVisibility();
     this.themeObserver = null;
     this.tutorialLocked = false;
+    this.emojiSetHandler = (event) => this._replaceEmojiKeys(event.detail?.emojis);
   }
 
   mount() {
@@ -51,6 +47,7 @@ export class DesktopEmojiKeyboard {
     });
 
     this._syncTheme();
+    window.addEventListener('emoji-set-change', this.emojiSetHandler);
   }
 
   destroy() {
@@ -60,6 +57,7 @@ export class DesktopEmojiKeyboard {
     window.removeEventListener('resize', this.resizeHandler);
     window.removeEventListener('orientationchange', this.resizeHandler);
     this.themeObserver?.disconnect();
+    window.removeEventListener('emoji-set-change', this.emojiSetHandler);
     this.root?.remove();
     this.backdrop?.remove();
     this.toggleButton?.remove();
@@ -164,24 +162,7 @@ export class DesktopEmojiKeyboard {
     this._buildScanParticles();
   }
 
-  _buildKeys() {
-    EMOJIS.forEach((emoji, index) => {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'emoji-deck-key';
-      button.setAttribute('role', 'gridcell');
-      button.setAttribute('aria-label', `${emoji.name}: copy ${emoji.char}`);
-      button.title = `${emoji.name} · scan & copy`;
-      button.innerHTML = `<span class="key-rim"></span><span class="key-emoji">${emoji.char}</span><span class="key-glint"></span>`;
-      button.addEventListener('click', (event) => {
-        if (this.tutorialLocked) { event.preventDefault(); event.stopPropagation(); return; }
-        this._select(index, button);
-      });
-      this.keyGrid.appendChild(button);
-      this.keys.push(button);
-    });
-  }
-
+  _buildKeys(emojis = this.world?.currentEmojiSet || NOTO_EMOJI_LIBRARY.slice(0, 24)) {\n    if (!this.keyGrid) return;\n\n    this.keyGrid.replaceChildren();\n    this.keys = [];\n\n    emojis.slice(0, 24).forEach((emoji, index) => {\n      const button = document.createElement('button');\n      button.type = 'button';\n      button.className = 'emoji-deck-key';\n      button.setAttribute('role', 'gridcell');\n      button.setAttribute('aria-label', `${emoji.name}: copy ${emoji.char}`);\n      button.title = `${emoji.name} · scan & copy`;\n      button.innerHTML = `\n        <span class="key-rim"></span>\n        <img class="key-emoji" src="${emoji.url}" alt="${emoji.char}" draggable="false" decoding="async">\n        <span class="key-glint"></span>\n      `;\n      button.addEventListener('click', (event) => {\n        if (this.tutorialLocked) { event.preventDefault(); event.stopPropagation(); return; }\n        this._select(index, button);\n      });\n      this.keyGrid.appendChild(button);\n      this.keys.push(button);\n    });\n  }\n\n  _replaceEmojiKeys(emojis) {\n    if (!Array.isArray(emojis) || emojis.length !== 24 || this.busy) return;\n    this.selected = null;\n    this.selectedIndex = -1;\n    this._setState('ready');\n    this._buildKeys(emojis);\n  }\n
   _buildScanParticles() {
     const layer = this.root.querySelector('.emoji-deck-scan-particles');
     for (let i = 0; i < 18; i += 1) {
@@ -232,6 +213,7 @@ export class DesktopEmojiKeyboard {
     if (!item || !worldEmoji) return;
 
     this.busy = true;
+    this.world.refreshLocked = true;
     this.selected = item;
     this.selectedIndex = index;
     this.keys.forEach((key) => key.classList.remove('is-selected'));
@@ -271,6 +253,7 @@ export class DesktopEmojiKeyboard {
 
     if (!started) {
       this.busy = false;
+      this.world.refreshLocked = false;
       this._setState('ready');
       this.keys.forEach((key) => key.classList.remove('is-selected'));
       return;
@@ -338,6 +321,7 @@ export class DesktopEmojiKeyboard {
 
     this.copyTimer = window.setTimeout(() => {
       this.busy = false;
+      this.world.refreshLocked = false;
       this.scanner.classList.remove('is-complete');
       this._setState('ready');
       this.keys.forEach((key) => key.classList.remove('is-selected'));

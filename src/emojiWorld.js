@@ -26,6 +26,92 @@
 
 import * as PIXI from 'pixi.js';
 
+/* ==========================================================================
+   REMOTE NOTO EMOJI LIBRARY
+   Source: Google Noto Emoji Animation
+   ========================================================================== */
+
+export const NOTO_EMOJI_LIBRARY = [
+  { char: '😀', name: 'Smile', code: '1f600', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f600/512.webp' },
+  { char: '😃', name: 'Grinning Face', code: '1f603', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f603/512.webp' },
+  { char: '😄', name: 'Smiling Face', code: '1f604', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f604/512.webp' },
+  { char: '😁', name: 'Beaming Face', code: '1f601', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f601/512.webp' },
+  { char: '😆', name: 'Laughing Face', code: '1f606', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f606/512.webp' },
+  { char: '😅', name: 'Grinning Sweat', code: '1f605', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f605/512.webp' },
+  { char: '😂', name: 'Joy', code: '1f602', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f602/512.webp' },
+  { char: '🤣', name: 'Rolling Laugh', code: '1f923', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f923/512.webp' },
+  { char: '😉', name: 'Wink', code: '1f609', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f609/512.webp' },
+  { char: '😍', name: 'Heart Eyes', code: '1f60d', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f60d/512.webp' },
+  { char: '😘', name: 'Kiss', code: '1f618', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f618/512.webp' },
+  { char: '🥰', name: 'Smiling Hearts', code: '1f970', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f970/512.webp' },
+  { char: '😎', name: 'Sunglasses', code: '1f60e', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f60e/512.webp' },
+  { char: '🤓', name: 'Nerd', code: '1f913', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f913/512.webp' },
+  { char: '🥳', name: 'Party', code: '1f973', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f973/512.webp' },
+  { char: '🤩', name: 'Star Struck', code: '1f929', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f929/512.webp' },
+  { char: '😏', name: 'Smirk', code: '1f60f', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f60f/512.webp' },
+  { char: '🤔', name: 'Thinking', code: '1f914', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f914/512.webp' },
+  { char: '😮', name: 'Astonished', code: '1f62e', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f62e/512.webp' },
+  { char: '😱', name: 'Screaming', code: '1f631', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f631/512.webp' },
+  { char: '😡', name: 'Angry', code: '1f621', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f621/512.webp' },
+  { char: '😠', name: 'Angry Face', code: '1f620', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f620/512.webp' },
+  { char: '😭', name: 'Crying', code: '1f62d', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f62d/512.webp' },
+  { char: '😢', name: 'Crying Face', code: '1f622', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f622/512.webp' },
+  { char: '😴', name: 'Sleeping', code: '1f634', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f634/512.webp' },
+  { char: '🥶', name: 'Freezing', code: '1f976', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f976/512.webp' },
+  { char: '🤢', name: 'Nauseated', code: '1f922', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f922/512.webp' },
+  { char: '🤯', name: 'Mind Blown', code: '1f92f', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f92f/512.webp' },
+  { char: '😈', name: 'Devil', code: '1f608', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f608/512.webp' },
+  { char: '👻', name: 'Ghost', code: '1f47b', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f47b/512.webp' },
+  { char: '🤖', name: 'Robot', code: '1f916', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f916/512.webp' },
+  { char: '👽', name: 'Alien', code: '1f47d', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f47d/512.webp' },
+  { char: '💩', name: 'Poop', code: '1f4a9', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f4a9/512.webp' },
+  { char: '🔥', name: 'Fire', code: '1f525', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f525/512.webp' },
+  { char: '✨', name: 'Sparkles', code: '2728', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/2728/512.webp' },
+  { char: '🌟', name: 'Glowing Star', code: '1f31f', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f31f/512.webp' },
+  { char: '💥', name: 'Collision', code: '1f4a5', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f4a5/512.webp' },
+  { char: '🎉', name: 'Party Popper', code: '1f389', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f389/512.webp' },
+  { char: '🎊', name: 'Confetti Ball', code: '1f38a', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f38a/512.webp' },
+  { char: '🎁', name: 'Gift', code: '1f381', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f381/512.webp' },
+  { char: '🚀', name: 'Rocket', code: '1f680', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f680/512.webp' },
+  { char: '🛸', name: 'Flying Saucer', code: '1f6f8', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f6f8/512.webp' },
+  { char: '💎', name: 'Gem', code: '1f48e', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f48e/512.webp' },
+  { char: '❤️', name: 'Red Heart', code: '2764-fe0f', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/2764-fe0f/512.webp' },
+  { char: '💜', name: 'Purple Heart', code: '1f49c', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f49c/512.webp' },
+  { char: '💙', name: 'Blue Heart', code: '1f499', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f499/512.webp' },
+  { char: '💚', name: 'Green Heart', code: '1f49a', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f49a/512.webp' },
+  { char: '💛', name: 'Yellow Heart', code: '1f49b', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f49b/512.webp' },
+  { char: '👍', name: 'Thumbs Up', code: '1f44d', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f44d/512.webp' },
+  { char: '👎', name: 'Thumbs Down', code: '1f44e', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f44e/512.webp' },
+  { char: '👏', name: 'Clap', code: '1f44f', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f44f/512.webp' },
+  { char: '🙌', name: 'Raising Hands', code: '1f64c', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f64c/512.webp' },
+  { char: '🙏', name: 'Folded Hands', code: '1f64f', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f64f/512.webp' },
+  { char: '👋', name: 'Wave', code: '1f44b', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f44b/512.webp' },
+  { char: '🤝', name: 'Handshake', code: '1f91d', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f91d/512.webp' },
+  { char: '💪', name: 'Flexed Biceps', code: '1f4aa', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f4aa/512.webp' },
+  { char: '👀', name: 'Eyes', code: '1f440', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f440/512.webp' },
+  { char: '🧠', name: 'Brain', code: '1f9e0', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f9e0/512.webp' },
+  { char: '🌈', name: 'Rainbow', code: '1f308', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f308/512.webp' },
+  { char: '🌸', name: 'Cherry Blossom', code: '1f338', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f338/512.webp' },
+  { char: '🌻', name: 'Sunflower', code: '1f33b', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f33b/512.webp' },
+  { char: '🍕', name: 'Pizza', code: '1f355', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f355/512.webp' },
+  { char: '🍔', name: 'Hamburger', code: '1f354', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f354/512.webp' },
+  { char: '🍩', name: 'Doughnut', code: '1f369', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f369/512.webp' },
+  { char: '🍓', name: 'Strawberry', code: '1f353', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f353/512.webp' },
+  { char: '🍉', name: 'Watermelon', code: '1f349', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f349/512.webp' },
+  { char: '🍌', name: 'Banana', code: '1f34c', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f34c/512.webp' },
+  { char: '🍎', name: 'Red Apple', code: '1f34e', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f34e/512.webp' },
+  { char: '⚡', name: 'High Voltage', code: '26a1', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/26a1/512.webp' },
+  { char: '☀️', name: 'Sun', code: '2600-fe0f', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/2600-fe0f/512.webp' },
+  { char: '🌙', name: 'Crescent Moon', code: '1f319', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/1f319/512.webp' },
+  { char: '⭐', name: 'Star', code: '2b50', url: 'https://fonts.gstatic.com/s/e/notoemoji/latest/2b50/512.webp' },
+];
+
+const NOTO_EMOJI_MAP = new Map(NOTO_EMOJI_LIBRARY.map(item => [item.code, item]));
+
+export function notoEmojiUrl(code) {
+  return NOTO_EMOJI_MAP.get(code)?.url || `https://fonts.gstatic.com/s/e/notoemoji/latest/${code}/512.webp`;
+}
+
 
 export class EmojiWorld {
 
@@ -141,6 +227,12 @@ export class EmojiWorld {
 
     this.emojiConfigs =
       this._getEmojiConfigs();
+
+    /* Remote Noto Emoji selection. Exactly 24 are rendered at once. */
+    this.currentEmojiSet = [];
+    this.refreshButton = null;
+    this.refreshGeneration = 0;
+    this.refreshLocked = false;
 
 
     /* ============================================================
@@ -1149,6 +1241,10 @@ export class EmojiWorld {
       layout;
 
 
+    if (!this.currentEmojiSet.length) {
+      this.currentEmojiSet = this._getInitialEmojiSet();
+    }
+
     for (
       let i = 0;
       i < 24;
@@ -1181,8 +1277,8 @@ export class EmojiWorld {
         );
 
 
-      const src =
-        `/assets/emojis/512 (${i + 1}).webp`;
+      const remoteEmoji = this.currentEmojiSet[i] || NOTO_EMOJI_LIBRARY[i];
+      const src = remoteEmoji.url;
 
 
       element.className =
@@ -1306,6 +1402,9 @@ export class EmojiWorld {
         index:
           i,
 
+        catalog:
+          remoteEmoji,
+
         element:
           element,
 
@@ -1399,6 +1498,88 @@ export class EmojiWorld {
       `[Emoji World] ✓ ${this.emojis.length} emoji elements created`
     );
 
+  }
+
+
+  /* ================================================================
+     REMOTE EMOJI SETS
+     ================================================================ */
+
+  _getInitialEmojiSet() {
+    /* A balanced first frame: expressions, characters, symbols and food. */
+    const preferredCodes = [
+      '1f600','1f603','1f604','1f601','1f606','1f605',
+      '1f602','1f923','1f620','1f631','1f62e','1f973',
+      '1f60d','1f608','1f47b','1f913','1f60f','1f976',
+      '1f607','1f62c','1f60e','1f648','1f92f','1f644'
+    ];
+    const map = new Map(NOTO_EMOJI_LIBRARY.map(item => [item.code, item]));
+    return preferredCodes.map(code => map.get(code)).filter(Boolean);
+  }
+
+  _shuffleEmojiLibrary() {
+    const pool = [...NOTO_EMOJI_LIBRARY];
+    for (let i = pool.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    return pool.slice(0, 24);
+  }
+
+  _emitEmojiSetChange() {
+    window.dispatchEvent(new CustomEvent('emoji-set-change', {
+      detail: {
+        emojis: this.currentEmojiSet.map(item => ({ ...item }))
+      }
+    }));
+  }
+
+  refreshEmojiSet() {
+    if (!this.emojis?.length || this.refreshLocked) return false;
+
+    const nextSet = this._shuffleEmojiLibrary();
+    if (nextSet.length !== 24) return false;
+
+    this.currentEmojiSet = nextSet;
+    this.refreshGeneration += 1;
+
+    /* Stop mobile slot rotation while the 24 remote sources are replaced. */
+    this._stopMobileAnimationScheduler();
+    this.mobileActiveEmojis.clear();
+    this.mobileStaticFramePromises.clear();
+    this.mobileStaticFrameReady.clear();
+    this.mobileStaticFrameLoading.clear();
+    this.mobileAnimatedReady?.clear?.();
+    this.mobileAnimatedLoading?.clear?.();
+
+    this.emojis.forEach((emoji, index) => {
+      const item = this.currentEmojiSet[index];
+      if (!emoji || !emoji.element || !item) return;
+
+      emoji.catalog = item;
+      emoji.staticReady = false;
+      emoji.staticURL = null;
+      emoji.animatedReady = false;
+      emoji.element.dataset.src = item.url;
+      emoji.element.src = item.url;
+      emoji.element.alt = item.char;
+      emoji.element.setAttribute('aria-label', item.name);
+      emoji.element.style.visibility = 'visible';
+      emoji.element.style.opacity = '1';
+    });
+
+    this._emitEmojiSetChange();
+    this._updateRefreshButton();
+
+    if (this.isMobileOrTablet) {
+      this._prepareMobileStaticFrames().then(() => {
+        if (this.isMobileOrTablet) this._startMobileAnimationScheduler();
+      });
+    } else {
+      this._restoreDesktopAnimations();
+    }
+
+    return true;
   }
 
 
@@ -5255,6 +5436,47 @@ export class EmojiWorld {
 
 
   /* ================================================================
+     REFRESH / SHUFFLE BUTTON
+     ================================================================ */
+
+  _createRefreshButton() {
+    if (this.refreshButton) return;
+
+    const button = document.createElement('button');
+    button.id = 'emoji-refresh-toggle';
+    button.type = 'button';
+    button.className = 'emoji-refresh-toggle';
+    button.setAttribute('aria-label', 'Show a new set of 24 emojis');
+    button.title = 'Shuffle 24 emojis';
+    button.innerHTML = '<span aria-hidden="true">↻</span>';
+
+    button.addEventListener('click', event => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (this.refreshEmojiSet()) {
+        button.classList.remove('is-refreshing');
+        void button.offsetWidth;
+        button.classList.add('is-refreshing');
+      }
+    });
+
+    document.body.appendChild(button);
+    this.refreshButton = button;
+    this._updateRefreshButton();
+  }
+
+  _updateRefreshButton() {
+    if (!this.refreshButton) return;
+    const dark = this.theme === 'dark';
+    this.refreshButton.classList.toggle('is-dark', dark);
+    this.refreshButton.setAttribute(
+      'aria-label',
+      `Show a new set of 24 emojis (${this.currentEmojiSet.length || 24} loaded)`
+    );
+  }
+
+
+  /* ================================================================
      THEME BUTTON
      ================================================================ */
 
@@ -5475,6 +5697,7 @@ export class EmojiWorld {
   );
 
   this._updateThemeButton();
+  this._updateRefreshButton();
 
 }
 
@@ -8890,6 +9113,11 @@ export class EmojiWorld {
     this.themeButton =
       null;
 
+    if (this.refreshButton && this.refreshButton.parentNode) {
+      this.refreshButton.parentNode.removeChild(this.refreshButton);
+    }
+    this.refreshButton = null;
+
 
     /*
      * Audio cleanup.
@@ -9013,6 +9241,7 @@ export class EmojiWorld {
      */
 
     this._createThemeButton();
+    this._createRefreshButton();
 
 
     /*
