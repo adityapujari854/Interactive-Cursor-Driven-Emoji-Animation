@@ -20,31 +20,26 @@
    ROOT
    ============================================================ */
 
-:root {
-    --background: #ffffff;
-    --text: #111111;
-
-    --safe-top: env(
-        safe-area-inset-top,
-        0px
-    );
-
-    --safe-right: env(
-        safe-area-inset-right,
-        0px
-    );
-
-    --safe-bottom: env(
-        safe-area-inset-bottom,
-        0px
-    );
-
-    --safe-left: env(
-        safe-area-inset-left,
-        0px
-    );
+ :root {
+    --background: #f4f7fb;
+    --text: #111827;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
 }
 
+html[data-theme="dark"] {
+    --background: #090d16;
+    --text: #f4f7fb;
+    color-scheme: dark;
+}
+
+html[data-theme="light"] {
+    --background: #f4f7fb;
+    --text: #111827;
+    color-scheme: light;
+}
 
 /* ============================================================
    HTML
@@ -882,13 +877,9 @@ body {
 
 
 /* ============================================================
-   SMALL LIGHT-BALL CURSOR
+   CUSTOM ORB CURSOR
+   Small, precise, theme-aware — no sun/moon icon and no giant halo.
    ============================================================ */
-
-/*
- * Hide the normal browser cursor.
- * The Pixi cursor light becomes the visible cursor.
- */
 
 html,
 body,
@@ -897,60 +888,81 @@ body,
     cursor: none !important;
 }
 
-
-/*
- * Keep the theme button clickable without showing
- * the normal browser arrow.
- */
-
 #emoji-theme-toggle {
     cursor: none !important;
 }
 
+.emoji-cinematic-cursor {
+    --cursor-x: 50vw;
+    --cursor-y: 50vh;
+    --cursor-core: #18212c;
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 1px;
+    height: 1px;
+    z-index: 2147483647;
+    pointer-events: none;
+    transform: translate3d(var(--cursor-x), var(--cursor-y), 0);
+    transition: transform 55ms linear;
+    contain: layout style paint;
+}
 
-/* ============================================================
-   END
-   ============================================================ */
+.emoji-cinematic-cursor__core {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 10px;
+    height: 10px;
+    transform:
+        translate(-50%, -50%)
+        scale(var(--cursor-pulse, 1));
+    border-radius: 50%;
+    background: var(--cursor-core);
+    border: 1px solid rgba(255,255,255,.42);
+    box-shadow:
+        0 0 0 2px rgba(255,255,255,.10),
+        0 0 9px rgba(24,33,44,.42),
+        0 2px 7px rgba(0,0,0,.28);
+}
 
-/* ============================================================
-   CURSOR / ASSET DETERRENCE
-   ============================================================ */
+.emoji-cinematic-cursor.is-night .emoji-cinematic-cursor__core {
+    width: 11px;
+    height: 11px;
+    background: #ffffff;
+    border-color: rgba(255,255,255,.95);
+    box-shadow:
+        0 0 0 2px rgba(255,255,255,.10),
+        0 0 10px rgba(255,255,255,.80),
+        0 0 22px rgba(184,220,255,.32),
+        0 2px 8px rgba(0,0,0,.45);
+}
 
-html, body, #app, img, canvas {
-    -webkit-user-drag: none !important;
-    user-select: none !important;
-    -webkit-user-select: none !important;
+.emoji-cinematic-cursor.is-day .emoji-cinematic-cursor__core {
+    background: #18212c;
+    border-color: rgba(255,255,255,.72);
+    box-shadow:
+        0 0 0 2px rgba(24,33,44,.08),
+        0 0 9px rgba(24,33,44,.34),
+        0 2px 7px rgba(0,0,0,.24);
 }
 
 @media (pointer: coarse) {
-    body {
-        cursor: auto;
+    .emoji-cinematic-cursor {
+        display: none !important;
     }
 }
 
-/* Keep the dark scene lifted enough for shadows to remain visible. */
-html[data-theme="dark"],
-html[data-theme="dark"] body,
-html[data-theme="dark"] #app {
-    background: #101319;
-}
-
-
-/* ============================================================
-   MOBILE EMOJI RENDERING
-   ============================================================ */
-
-@media (pointer: coarse) {
-    .emoji-webp {
-        backface-visibility: hidden;
-        -webkit-backface-visibility: hidden;
-        transform: translate3d(-50%, -50%, 0);
+@media (prefers-reduced-motion: reduce) {
+    .emoji-cinematic-cursor {
+        transition: none;
     }
 }
 
-
 /* ============================================================
-   CINEMATIC VISUAL UPGRADE
+   FRESH DYNAMIC AMBIENT BACKGROUND
+   CSS-driven: no old marble layer, no old cursor halo, no giant
+   circular spotlight. The Pixi canvas remains transparent.
    ============================================================ */
 
 #app {
@@ -963,78 +975,121 @@ html[data-theme="dark"] #app {
     z-index: 0;
     overflow: hidden;
     pointer-events: none;
-    background: #fff;
     isolation: isolate;
     opacity: var(--scene-intro, 1);
     transform: translate3d(0, 0, 0);
-    transition: background 700ms ease;
-}
-
-#cinematic-scene::before {
-    content: "";
-    position: absolute;
-    inset: -12%;
-    z-index: 0;
-    background:
-        radial-gradient(
-            circle at var(--light-x, 50%) var(--light-y, 35%),
-            rgba(255,255,255,.20),
-            transparent 22%
-        ),
-        radial-gradient(
-            ellipse at 50% 72%,
-            rgba(133,196,255,.10),
-            transparent 52%
-        );
-    transform: translate3d(var(--scene-x, 0px), var(--scene-y, 0px), 0) scale(1.08);
-    transition: opacity 700ms ease;
+    background: #f4f7fb;
 }
 
 .scene-atmosphere,
-.scene-horizon,
-.scene-floor-glow,
+.scene-aurora,
+.scene-orb,
+.scene-grid,
 .scene-particles,
-.scene-title-halo,
-.scene-vignette,
-.scene-grain {
+.scene-sheen,
+.scene-vignette {
     position: absolute;
     inset: 0;
     pointer-events: none;
 }
 
 .scene-atmosphere {
+    z-index: 0;
+    background:
+        radial-gradient(circle at 50% -10%, #ffffff 0%, rgba(255,255,255,.88) 28%, transparent 58%),
+        linear-gradient(135deg, #f8fafc 0%, #eef4f8 45%, #e3edf4 100%);
+    transform:
+        translate3d(
+            calc(var(--scene-x, 0px) * .28),
+            calc(var(--scene-y, 0px) * .20),
+            0
+        )
+        scale(1.04);
+}
+
+.scene-aurora {
     z-index: 1;
+    inset: -25%;
     background:
-        radial-gradient(circle at 50% 18%, rgba(255,255,255,.96) 0%, rgba(245,249,252,.88) 34%, rgba(228,237,244,.76) 70%, rgba(219,230,238,.72) 100%),
-        linear-gradient(180deg, #ffffff 0%, #edf4f8 100%);
-    transform: translate3d(calc(var(--scene-x, 0px) * .45), calc(var(--scene-y, 0px) * .45), 0) scale(1.025);
+        conic-gradient(
+            from 215deg at 50% 50%,
+            transparent 0deg,
+            rgba(92,181,255,.10) 55deg,
+            rgba(151,120,255,.12) 105deg,
+            transparent 155deg,
+            rgba(75,205,191,.08) 220deg,
+            transparent 285deg
+        );
+    filter: blur(42px) saturate(1.15);
+    opacity: .95;
+    animation: ambientAurora 22s ease-in-out infinite alternate;
 }
 
-.scene-horizon {
+.scene-orb {
     z-index: 2;
-    top: 7%;
-    height: 48%;
-    inset-inline: 5%;
     border-radius: 50%;
-    background: radial-gradient(ellipse at center, rgba(255,255,255,.60), transparent 68%);
-    filter: blur(18px);
-    opacity: .8;
-    transform: translate3d(calc(var(--scene-x, 0px) * .7), calc(var(--scene-y, 0px) * .7), 0);
+    filter: blur(34px);
+    will-change: transform;
 }
 
-.scene-floor-glow {
+.scene-orb-a {
+    width: 36vw;
+    height: 36vw;
+    left: -8vw;
+    top: 9vh;
+    background: rgba(90,185,255,.12);
+    animation: ambientOrbA 18s ease-in-out infinite alternate;
+}
+
+.scene-orb-b {
+    width: 31vw;
+    height: 31vw;
+    right: -6vw;
+    top: 26vh;
+    background: rgba(155,118,255,.11);
+    animation: ambientOrbB 21s ease-in-out infinite alternate;
+}
+
+.scene-orb-c {
+    width: 28vw;
+    height: 28vw;
+    left: 37vw;
+    bottom: -15vw;
+    background: rgba(77,202,180,.08);
+    animation: ambientOrbC 24s ease-in-out infinite alternate;
+}
+
+.scene-grid {
     z-index: 3;
-    top: 48%;
-    background:
-        radial-gradient(ellipse at 50% 100%, rgba(148,193,222,.18), transparent 54%),
-        linear-gradient(180deg, transparent 0%, rgba(255,255,255,.10) 100%);
-    transform: translate3d(calc(var(--scene-x, 0px) * .25), calc(var(--scene-y, 0px) * .25), 0);
+    opacity: .22;
+    background-image:
+        linear-gradient(rgba(90,119,143,.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(90,119,143,.06) 1px, transparent 1px);
+    background-size: 80px 80px;
+    mask-image: linear-gradient(
+        to bottom,
+        transparent 0%,
+        rgba(0,0,0,.75) 30%,
+        rgba(0,0,0,.38) 72%,
+        transparent 100%
+    );
+    transform:
+        translate3d(
+            calc(var(--scene-x, 0px) * -.35),
+            calc(var(--scene-y, 0px) * -.25),
+            0
+        );
 }
 
 .scene-particles {
     z-index: 4;
-    opacity: .65;
-    transform: translate3d(calc(var(--scene-x, 0px) * .9), calc(var(--scene-y, 0px) * .9), 0);
+    opacity: .55;
+    transform:
+        translate3d(
+            calc(var(--scene-x, 0px) * .55),
+            calc(var(--scene-y, 0px) * .55),
+            0
+        );
 }
 
 .scene-particle {
@@ -1044,99 +1099,154 @@ html[data-theme="dark"] #app {
     width: var(--size);
     height: var(--size);
     border-radius: 50%;
-    background: rgba(255,255,255,.85);
-    box-shadow: 0 0 12px rgba(170,215,244,.30);
-    opacity: .08;
-    animation: sceneParticleFloat var(--duration) ease-in-out var(--delay) infinite;
+    background: rgba(83,133,167,.30);
+    box-shadow: 0 0 9px rgba(95,171,221,.16);
+    opacity: .16;
+    animation:
+        sceneParticleFloat
+        var(--duration)
+        ease-in-out
+        var(--delay)
+        infinite;
 }
 
-.scene-title-halo {
+.scene-sheen {
     z-index: 5;
-    height: 36%;
-    background: radial-gradient(ellipse at 50% 42%, rgba(255,255,255,.34), transparent 56%);
-    transform: translate3d(calc(var(--scene-x, 0px) * .35), calc(var(--scene-y, 0px) * .35), 0);
+    inset: -20%;
+    background:
+        linear-gradient(
+            115deg,
+            transparent 0%,
+            transparent 38%,
+            rgba(255,255,255,.22) 48%,
+            transparent 57%,
+            transparent 100%
+        );
+    transform: translate3d(-12%, 0, 0);
+    animation: ambientSheen 16s ease-in-out infinite;
+    mix-blend-mode: screen;
 }
 
 .scene-vignette {
     z-index: 6;
-    background: radial-gradient(ellipse at center, transparent 48%, rgba(20,35,48,.075) 100%);
-    opacity: .75;
+    background:
+        radial-gradient(
+            ellipse at center,
+            transparent 44%,
+            rgba(34,52,68,.08) 100%
+        );
 }
 
-.scene-grain {
-    z-index: 7;
-    opacity: .035;
-    background-image:
-        repeating-linear-gradient(0deg, rgba(0,0,0,.18) 0, rgba(0,0,0,.18) 1px, transparent 1px, transparent 3px),
-        repeating-linear-gradient(90deg, rgba(255,255,255,.12) 0, rgba(255,255,255,.12) 1px, transparent 1px, transparent 4px);
-    mix-blend-mode: soft-light;
+#cinematic-scene[data-theme="dark"] {
+    background: #090d16;
 }
 
 #cinematic-scene[data-theme="dark"] .scene-atmosphere {
     background:
-        radial-gradient(circle at 50% 20%, rgba(48,56,72,.98) 0%, rgba(26,31,41,.98) 42%, rgba(13,17,24,.99) 76%, #090c12 100%),
-        linear-gradient(180deg, #1b2230 0%, #090c12 100%);
+        radial-gradient(circle at 50% -12%, rgba(61,82,115,.52) 0%, rgba(25,35,51,.28) 30%, transparent 60%),
+        linear-gradient(135deg, #111927 0%, #0b111d 45%, #070b13 100%);
 }
 
-#cinematic-scene[data-theme="dark"]::before {
+#cinematic-scene[data-theme="dark"] .scene-aurora {
     background:
-        radial-gradient(
-            circle at var(--light-x, 50%) var(--light-y, 35%),
-            rgba(255,184,91,.18),
-            transparent 18%
-        ),
-        radial-gradient(
-            ellipse at 50% 72%,
-            rgba(86,126,170,.13),
-            transparent 56%
+        conic-gradient(
+            from 205deg at 50% 50%,
+            transparent 0deg,
+            rgba(68,152,255,.14) 48deg,
+            rgba(139,89,255,.16) 104deg,
+            transparent 160deg,
+            rgba(47,211,194,.11) 226deg,
+            transparent 292deg
         );
+    opacity: 1;
 }
 
-#cinematic-scene[data-theme="dark"] .scene-horizon {
-    background: radial-gradient(ellipse at center, rgba(255,186,103,.12), transparent 68%);
-    opacity: .95;
+#cinematic-scene[data-theme="dark"] .scene-orb-a {
+    background: rgba(41,139,255,.13);
 }
 
-#cinematic-scene[data-theme="dark"] .scene-floor-glow {
-    background:
-        radial-gradient(ellipse at 50% 100%, rgba(255,171,91,.10), transparent 52%),
-        linear-gradient(180deg, transparent 0%, rgba(255,186,103,.035) 100%);
+#cinematic-scene[data-theme="dark"] .scene-orb-b {
+    background: rgba(128,82,255,.14);
+}
+
+#cinematic-scene[data-theme="dark"] .scene-orb-c {
+    background: rgba(28,207,187,.09);
+}
+
+#cinematic-scene[data-theme="dark"] .scene-grid {
+    opacity: .30;
+    background-image:
+        linear-gradient(rgba(115,154,194,.065) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(115,154,194,.065) 1px, transparent 1px);
 }
 
 #cinematic-scene[data-theme="dark"] .scene-particle {
-    background: #ffd49d;
-    box-shadow: 0 0 13px rgba(255,174,88,.48);
-    opacity: .11;
-}
-
-#cinematic-scene[data-theme="dark"] .scene-title-halo {
-    background: radial-gradient(ellipse at 50% 42%, rgba(255,192,112,.12), transparent 58%);
+    background: rgba(168,215,255,.56);
+    box-shadow: 0 0 10px rgba(97,183,255,.42);
+    opacity: .20;
 }
 
 #cinematic-scene[data-theme="dark"] .scene-vignette {
-    background: radial-gradient(ellipse at center, transparent 42%, rgba(0,0,0,.40) 100%);
-    opacity: .85;
+    background:
+        radial-gradient(
+            ellipse at center,
+            transparent 42%,
+            rgba(0,0,0,.44) 100%
+        );
+}
+
+@keyframes ambientAurora {
+    0% {
+        transform: translate3d(-4%, 2%, 0) rotate(-2deg) scale(1.02);
+    }
+    50% {
+        transform: translate3d(4%, -3%, 0) rotate(3deg) scale(1.08);
+    }
+    100% {
+        transform: translate3d(-2%, 4%, 0) rotate(-1deg) scale(1.04);
+    }
+}
+
+@keyframes ambientOrbA {
+    0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+    50% { transform: translate3d(8vw, 4vh, 0) scale(1.10); }
+}
+
+@keyframes ambientOrbB {
+    0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+    50% { transform: translate3d(-7vw, -5vh, 0) scale(1.08); }
+}
+
+@keyframes ambientOrbC {
+    0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+    50% { transform: translate3d(4vw, -6vh, 0) scale(1.12); }
+}
+
+@keyframes ambientSheen {
+    0%, 20% { transform: translate3d(-38%, -2%, 0) rotate(0deg); opacity: 0; }
+    35% { opacity: .42; }
+    60% { opacity: .22; }
+    82%, 100% { transform: translate3d(38%, 2%, 0) rotate(2deg); opacity: 0; }
 }
 
 @keyframes sceneParticleFloat {
     0%, 100% {
-        transform: translate3d(0, 8px, 0) scale(.75);
+        transform: translate3d(0, 10px, 0) scale(.72);
         opacity: .04;
     }
     45% {
-        transform: translate3d(6px, -16px, 0) scale(1);
-        opacity: .15;
+        transform: translate3d(8px, -18px, 0) scale(1);
+        opacity: .22;
     }
     70% {
-        transform: translate3d(-4px, -4px, 0) scale(.85);
-        opacity: .08;
+        transform: translate3d(-5px, -5px, 0) scale(.84);
+        opacity: .10;
     }
 }
 
-/* Premium glass/platform presentation */
 [data-theme="light"] #emoji-layer,
 [data-theme="dark"] #emoji-layer {
-    perspective: 900px;
+    perspective: 1100px;
 }
 
 .emoji-webp {
@@ -1144,184 +1254,43 @@ html[data-theme="dark"] #app {
     -webkit-backface-visibility: hidden;
     transform-style: preserve-3d;
     -webkit-transform-style: preserve-3d;
+    will-change: transform, filter;
 }
 
 @media (max-width: 700px) {
-    #cinematic-scene::before {
-        opacity: .82;
+    .scene-aurora {
+        filter: blur(30px) saturate(1.05);
+    }
+
+    .scene-grid {
+        background-size: 58px 58px;
+        opacity: .16;
+    }
+
+    .scene-orb-a,
+    .scene-orb-b,
+    .scene-orb-c {
+        filter: blur(28px);
     }
 
     .scene-particles {
-        opacity: .42;
-    }
-
-    .scene-grain {
-        opacity: .018;
-    }
-
-    .scene-vignette {
-        opacity: .58;
+        opacity: .38;
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
+    .scene-aurora,
+    .scene-orb,
+    .scene-sheen,
     .scene-particle {
-        animation: none;
-        opacity: .06;
-    }
-}
-
-/* ============================================================
-   CINEMATIC SUN / MOON CURSOR
-   ============================================================ */
-
-.emoji-cinematic-cursor {
-    --cursor-x: 50vw;
-    --cursor-y: 50vh;
-    --cursor-transition: transform 55ms linear;
-    position: fixed;
-    left: 0;
-    top: 0;
-    width: 1px;
-    height: 1px;
-    z-index: 2147483647;
-    display: block;
-    visibility: visible;
-    opacity: 1;
-    pointer-events: none;
-    transform: translate3d(var(--cursor-x), var(--cursor-y), 0);
-    transition: var(--cursor-transition);
-    contain: layout style paint;
-    isolation: isolate;
-}
-
-.emoji-cinematic-cursor__icon {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 68px;
-    height: 68px;
-    transform: translate(-50%, -50%);
-    display: block;
-    pointer-events: none;
-    user-select: none;
-    -webkit-user-select: none;
-}
-
-.emoji-cinematic-cursor__icon svg {
-    display: block;
-    width: 100%;
-    height: 100%;
-    overflow: visible;
-}
-
-/* Light mode: clearly visible golden sun + warm solar halo. */
-.emoji-cinematic-cursor.is-day::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 290px;
-    height: 290px;
-    transform: translate(-50%, -50%);
-    border-radius: 50%;
-    background: radial-gradient(circle,
-        rgba(255, 224, 91, .30) 0%,
-        rgba(255, 181, 31, .20) 15%,
-        rgba(255, 165, 24, .10) 34%,
-        rgba(255, 181, 65, .035) 62%,
-        transparent 78%);
-    filter: blur(2px);
-    z-index: -2;
-}
-
-.emoji-cinematic-cursor.is-day::after {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 105px;
-    height: 105px;
-    transform: translate(-50%, -50%);
-    border-radius: 50%;
-    background: radial-gradient(circle,
-        rgba(255, 250, 205, .60) 0%,
-        rgba(255, 213, 63, .30) 28%,
-        rgba(255, 164, 22, .11) 56%,
-        transparent 75%);
-    filter: blur(1px);
-    z-index: -1;
-}
-
-.emoji-cinematic-cursor.is-day .emoji-cinematic-cursor__icon {
-    filter:
-        drop-shadow(0 0 3px rgba(255,255,210,.95))
-        drop-shadow(0 0 9px rgba(255,193,43,.95))
-        drop-shadow(0 0 22px rgba(255,147,20,.78))
-        drop-shadow(0 0 38px rgba(255,150,20,.42));
-}
-
-/* Dark mode: clearly visible crescent moon + cool moonlight halo. */
-.emoji-cinematic-cursor.is-night::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 310px;
-    height: 310px;
-    transform: translate(-50%, -50%);
-    border-radius: 50%;
-    background: radial-gradient(circle,
-        rgba(225, 242, 255, .23) 0%,
-        rgba(177, 215, 255, .15) 17%,
-        rgba(137, 190, 255, .075) 38%,
-        rgba(120, 178, 255, .025) 63%,
-        transparent 80%);
-    filter: blur(2px);
-    z-index: -2;
-}
-
-.emoji-cinematic-cursor.is-night::after {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 110px;
-    height: 110px;
-    transform: translate(-50%, -50%);
-    border-radius: 50%;
-    background: radial-gradient(circle,
-        rgba(255,255,255,.42) 0%,
-        rgba(207,233,255,.24) 30%,
-        rgba(154,204,255,.08) 60%,
-        transparent 77%);
-    z-index: -1;
-}
-
-.emoji-cinematic-cursor.is-night .emoji-cinematic-cursor__icon {
-    filter:
-        drop-shadow(0 0 4px rgba(255,255,255,1))
-        drop-shadow(0 0 10px rgba(215,239,255,.95))
-        drop-shadow(0 0 24px rgba(145,202,255,.80))
-        drop-shadow(0 0 42px rgba(113,177,255,.48));
-}
-
-/* Keep the cinematic sun/moon cursor visible on touch-capable devices too. */
-@media (pointer: coarse) {
-    .emoji-cinematic-cursor {
-        display: block;
-    }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .emoji-cinematic-cursor {
-        transition: none;
+        animation: none !important;
     }
 }
 
 /* ============================================================
    DESKTOP EMOJI SCANNER DECK
    ============================================================ */
+
 .desktop-emoji-deck{--deck-text:#18212c;--deck-muted:#6f7d8c;--accent:#4ca8ff;position:fixed;right:22px;bottom:20px;width:300px;z-index:10000;padding:12px;border:1px solid rgba(255,255,255,.72);border-radius:24px;background:linear-gradient(145deg,rgba(255,255,255,.78),rgba(239,246,252,.54));box-shadow:0 24px 70px rgba(47,76,103,.18),0 6px 22px rgba(70,100,130,.1),inset 0 1px 0 rgba(255,255,255,.95);backdrop-filter:blur(22px) saturate(1.25);-webkit-backdrop-filter:blur(22px) saturate(1.25);color:var(--deck-text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;transform:translateZ(0);transition:opacity .28s ease,transform .35s cubic-bezier(.22,1,.36,1);animation:emojiDeckIn .8s cubic-bezier(.22,1,.36,1) both}
 .desktop-emoji-deck::before{content:"";position:absolute;inset:1px;border-radius:23px;pointer-events:none;background:linear-gradient(135deg,rgba(255,255,255,.48),transparent 35%,rgba(255,255,255,.18));opacity:.9}
 .desktop-emoji-deck::after{content:"";position:absolute;width:170px;height:90px;right:-38px;bottom:-28px;border-radius:50%;background:radial-gradient(circle,rgba(86,169,255,.18),transparent 70%);filter:blur(18px);pointer-events:none}
@@ -1790,120 +1759,6 @@ body.dark-mode .emoji-tutorial-card {
     .emoji-tutorial-next { padding: 0 10px; }
     .emoji-tutorial-hand { font-size: 30px; }
     .emoji-tutorial-target { border-radius: 14px; box-shadow: 0 0 0 5px rgba(103,201,255,.09), 0 0 20px rgba(103,201,255,.36); }
-}
-
-/* ============================================================
-   PREMIUM MARBLE + GLASS FINISH
-   ============================================================ */
-
-/* ============================================================
-   PREMIUM LIGHT MARBLE BACKGROUND
-   Applied to the actual cinematic-scene rendered by EmojiWorld.
-   ============================================================ */
-
-html[data-theme="light"],
-html[data-theme="light"] body,
-html[data-theme="light"] #app {
-    background:
-        radial-gradient(circle at 50% 6%, rgba(255,255,255,.99) 0%, rgba(250,252,254,.97) 24%, rgba(239,245,249,.96) 58%, rgba(221,232,240,.98) 100%),
-        linear-gradient(135deg, #ffffff 0%, #edf3f7 48%, #dce8ef 100%) !important;
-}
-
-/* Base depth behind the transparent Pixi canvas. */
-#cinematic-scene {
-    background:
-        radial-gradient(circle at 50% 5%, #ffffff 0%, #f8fbfd 23%, #edf4f8 54%, #dce8ef 100%),
-        linear-gradient(135deg, #ffffff 0%, #edf3f7 50%, #dce8ef 100%) !important;
-}
-
-/* Soft, visible marble veins — intentionally subtle rather than noisy. */
-#cinematic-scene::after {
-    content: "";
-    position: absolute;
-    inset: -20%;
-    z-index: 8;
-    pointer-events: none;
-    opacity: .72;
-    background:
-        radial-gradient(ellipse at 12% 24%, transparent 0 14%, rgba(116,145,164,.095) 15%, transparent 19%),
-        radial-gradient(ellipse at 78% 70%, transparent 0 16%, rgba(116,145,164,.075) 17%, transparent 22%),
-        radial-gradient(ellipse at 45% 48%, transparent 0 24%, rgba(255,255,255,.42) 25%, transparent 29%),
-        repeating-linear-gradient(
-            112deg,
-            transparent 0 58px,
-            rgba(104,137,158,.055) 60px,
-            rgba(255,255,255,.18) 63px,
-            transparent 67px 150px
-        ),
-        repeating-linear-gradient(
-            68deg,
-            transparent 0 92px,
-            rgba(105,137,158,.042) 95px,
-            rgba(255,255,255,.20) 99px,
-            transparent 104px 210px
-        );
-    filter: blur(6px) saturate(.78);
-    mix-blend-mode: multiply;
-    transform: translate3d(
-        calc(var(--scene-x, 0px) * .12),
-        calc(var(--scene-y, 0px) * .12),
-        0
-    ) scale(1.04);
-}
-
-/* The atmosphere is the layer actually covering the page.
-   Give it enough tonal variation for the marble to remain visible. */
-#cinematic-scene .scene-atmosphere {
-    background:
-        radial-gradient(
-            circle at 50% 10%,
-            rgba(255,255,255,.985) 0%,
-            rgba(249,252,254,.94) 25%,
-            rgba(238,245,249,.88) 58%,
-            rgba(218,231,239,.82) 100%
-        ),
-        linear-gradient(
-            145deg,
-            rgba(255,255,255,.96) 0%,
-            rgba(239,246,250,.88) 48%,
-            rgba(219,231,239,.92) 100%
-        ) !important;
-}
-
-/* Additional low-contrast flowing marble highlights. */
-html[data-theme="light"] #cinematic-scene .scene-horizon {
-    background:
-        radial-gradient(
-            ellipse at 50% 42%,
-            rgba(255,255,255,.62) 0%,
-            rgba(255,255,255,.24) 34%,
-            transparent 70%
-        );
-    opacity: .92;
-}
-
-html[data-theme="light"] #cinematic-scene .scene-floor-glow {
-    background:
-        radial-gradient(
-            ellipse at 50% 100%,
-            rgba(145,184,207,.22),
-            transparent 56%
-        ),
-        linear-gradient(
-            180deg,
-            transparent 0%,
-            rgba(255,255,255,.16) 100%
-        );
-}
-
-html[data-theme="light"] #cinematic-scene .scene-vignette {
-    background:
-        radial-gradient(
-            ellipse at center,
-            transparent 46%,
-            rgba(93,120,137,.095) 100%
-        );
-    opacity: .55;
 }
 
 /* ============================================================
