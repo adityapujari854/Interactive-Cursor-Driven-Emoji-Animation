@@ -2204,81 +2204,62 @@ body.tutorial-input-locked #pixi-canvas {
 }
 
 
-/* ==========================================================================
-   REMOTE NOTO EMOJI KEYS + SHUFFLE CONTROL
-   ========================================================================== */
+/* ============================================================
+   Noto Emoji CDN / REFRESH CONTROL
+   ============================================================ */
+
+.emoji-set-refresh {
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.emoji-set-refresh span {
+    display: block;
+    transform-origin: 50% 50%;
+}
+
+@keyframes emojiSetRefreshSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
 
 .emoji-deck-key .key-emoji {
-    width: 23px;
-    height: 23px;
-    margin: 0 auto;
-    object-fit: contain;
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 100%;
+}
+
+.emoji-deck-key .key-emoji-image {
     display: block;
-    line-height: 1;
+    width: 30px;
+    height: 30px;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
     pointer-events: none;
     user-select: none;
     -webkit-user-drag: none;
-    transition: transform .2s cubic-bezier(.22,1,.36,1), filter .2s ease;
 }
 
-.emoji-deck-key:hover .key-emoji {
-    transform: translateY(-1px) scale(1.12) rotate(-2deg);
-    filter: drop-shadow(0 4px 4px rgba(30,65,95,.14));
-}
-
-.emoji-refresh-toggle {
-    position: fixed;
-    top: 18px;
-    left: 18px;
-    z-index: 1001;
-    width: 42px;
-    height: 42px;
-    display: grid;
-    place-items: center;
-    padding: 0;
-    border: 1px solid rgba(255,255,255,.68);
-    border-radius: 50%;
-    background: rgba(255,255,255,.72);
-    color: #263746;
-    box-shadow: 0 8px 24px rgba(30,55,75,.14), inset 0 1px 0 rgba(255,255,255,.9);
-    backdrop-filter: blur(14px) saturate(140%);
-    -webkit-backdrop-filter: blur(14px) saturate(140%);
-    cursor: pointer !important;
-    font: 700 24px/1 system-ui, sans-serif;
-    transition: transform .2s ease, background .2s ease, color .2s ease, box-shadow .2s ease;
-}
-
-.emoji-refresh-toggle:hover {
-    transform: rotate(24deg) scale(1.08);
-    box-shadow: 0 12px 28px rgba(30,55,75,.18), inset 0 1px 0 rgba(255,255,255,.95);
-}
-
-.emoji-refresh-toggle:active {
-    transform: rotate(90deg) scale(.94);
-}
-
-.emoji-refresh-toggle.is-dark {
-    background: rgba(23,31,42,.72);
-    border-color: rgba(255,255,255,.16);
-    color: #f5f9ff;
-    box-shadow: 0 10px 26px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.10);
-}
-
-.emoji-refresh-toggle.is-refreshing span {
-    animation: emojiRefreshSpin .55s cubic-bezier(.22,1,.36,1);
-}
-
-@keyframes emojiRefreshSpin {
-    from { transform: rotate(0deg) scale(.86); opacity: .65; }
-    to { transform: rotate(360deg) scale(1); opacity: 1; }
+.emoji-deck-key .key-emoji-fallback {
+    font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+    font-size: 24px;
+    line-height: 1;
 }
 
 @media (max-width: 700px) {
-    .emoji-refresh-toggle {
-        top: 12px;
-        left: 12px;
-        width: 38px;
-        height: 38px;
-        font-size: 22px;
+    .emoji-set-refresh {
+        left: 16px !important;
+        top: 16px !important;
+        width: 46px !important;
+        height: 46px !important;
+        font-size: 24px !important;
+    }
+
+    .emoji-deck-key .key-emoji-image {
+        width: 26px;
+        height: 26px;
     }
 }

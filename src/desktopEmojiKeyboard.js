@@ -1,5 +1,3 @@
-import { NOTO_EMOJI_LIBRARY } from './emojiWorld.js';
-
 const SCAN_DURATION = 2200;
 const COPY_DURATION = 10000;
 
@@ -19,6 +17,7 @@ export class DesktopEmojiKeyboard {
     this.progressTime = null;
     this.keyGrid = null;
     this.keys = [];
+    this.items = [];
     this.selected = null;
     this.selectedIndex = -1;
     this.busy = false;
@@ -28,7 +27,6 @@ export class DesktopEmojiKeyboard {
     this.resizeHandler = () => this._syncVisibility();
     this.themeObserver = null;
     this.tutorialLocked = false;
-    this.emojiSetHandler = (event) => this._replaceEmojiKeys(event.detail?.emojis);
   }
 
   mount() {
@@ -39,6 +37,8 @@ export class DesktopEmojiKeyboard {
 
     window.addEventListener('resize', this.resizeHandler, { passive: true });
     window.addEventListener('orientationchange', this.resizeHandler, { passive: true });
+    this.emojiSetChangeHandler = () => this._rebuildKeysFromWorld();
+    window.addEventListener('emoji-set-changed', this.emojiSetChangeHandler);
 
     this.themeObserver = new MutationObserver(() => this._syncTheme());
     this.themeObserver.observe(document.documentElement, {
@@ -47,7 +47,6 @@ export class DesktopEmojiKeyboard {
     });
 
     this._syncTheme();
-    window.addEventListener('emoji-set-change', this.emojiSetHandler);
   }
 
   destroy() {
@@ -56,8 +55,11 @@ export class DesktopEmojiKeyboard {
     cancelAnimationFrame(this.progressRaf);
     window.removeEventListener('resize', this.resizeHandler);
     window.removeEventListener('orientationchange', this.resizeHandler);
+    if (this.emojiSetChangeHandler) {
+      window.removeEventListener('emoji-set-changed', this.emojiSetChangeHandler);
+      this.emojiSetChangeHandler = null;
+    }
     this.themeObserver?.disconnect();
-    window.removeEventListener('emoji-set-change', this.emojiSetHandler);
     this.root?.remove();
     this.backdrop?.remove();
     this.toggleButton?.remove();
@@ -162,39 +164,75 @@ export class DesktopEmojiKeyboard {
     this._buildScanParticles();
   }
 
-  _buildKeys(emojis = this.world?.currentEmojiSet || NOTO_EMOJI_LIBRARY.slice(0, 24)) {
+  _getKeyboardItems() {
+    return (this.world?.emojis || [])
+      .filter((emoji) => emoji?.url && emoji?.char)
+      .slice(0, 24)
+      .map((emoji, index) => ({
+        index,
+        char: emoji.char,
+        name: emoji.name || `Emoji ${index + 1}`,
+        codePoint: emoji.codePoint,
+        url: emoji.url
+      }));
+  }
+
+  _buildKeys() {
+    this._rebuildKeysFromWorld();
+  }
+
+  _rebuildKeysFromWorld() {
     if (!this.keyGrid) return;
 
-    this.keyGrid.replaceChildren();
+    this.items = this._getKeyboardItems();
     this.keys = [];
+    this.keyGrid.replaceChildren();
 
-    emojis.slice(0, 24).forEach((emoji, index) => {
+    this.items.forEach((item, index) => {
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'emoji-deck-key';
       button.setAttribute('role', 'gridcell');
-      button.setAttribute('aria-label', `${emoji.name}: copy ${emoji.char}`);
-      button.title = `${emoji.name} · scan & copy`;
+      button.setAttribute('aria-label', `${item.name}: copy ${item.char}`);
+      button.title = `${item.name} · scan & copy`;
+
       button.innerHTML = `
         <span class="key-rim"></span>
-        <img class="key-emoji" src="${emoji.url}" alt="${emoji.char}" draggable="false" decoding="async">
+        <span class="key-emoji" aria-hidden="true">
+          <img class="key-emoji-image" src="${item.url}" alt="" draggable="false" decoding="async">
+          <span class="key-emoji-fallback">${item.char}</span>
+        </span>
         <span class="key-glint"></span>
       `;
+
+      const image = button.querySelector('.key-emoji-image');
+      const fallback = button.querySelector('.key-emoji-fallback');
+      fallback.style.display = 'none';
+      image.addEventListener('error', () => {
+        image.style.display = 'none';
+        fallback.style.display = 'inline';
+      }, { once: true });
+
       button.addEventListener('click', (event) => {
-        if (this.tutorialLocked) { event.preventDefault(); event.stopPropagation(); return; }
+        if (this.tutorialLocked) {
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
         this._select(index, button);
       });
+
       this.keyGrid.appendChild(button);
       this.keys.push(button);
     });
-  }
 
-  _replaceEmojiKeys(emojis) {
-    if (!Array.isArray(emojis) || emojis.length !== 24 || this.busy) return;
-    this.selected = null;
-    this.selectedIndex = -1;
-    this._setState('ready');
-    this._buildKeys(emojis);
+    const countNode = this.root?.querySelector('.emoji-deck-count');
+    if (countNode) countNode.textContent = String(this.items.length);
+
+    if (this.selectedIndex >= this.items.length) {
+      this.selectedIndex = -1;
+      this.selected = null;
+    }
   }
 
   _buildScanParticles() {
@@ -242,12 +280,11 @@ export class DesktopEmojiKeyboard {
     if (this.busy || !this._isAvailable()) return;
     if (this._isTouchDevice() && !this.root.classList.contains('is-mobile-open')) return;
 
-    const item = EMOJIS[index];
+    const item = this.items[index];
     const worldEmoji = this.world?.emojis?.[index];
     if (!item || !worldEmoji) return;
 
     this.busy = true;
-    this.world.refreshLocked = true;
     this.selected = item;
     this.selectedIndex = index;
     this.keys.forEach((key) => key.classList.remove('is-selected'));
@@ -287,7 +324,6 @@ export class DesktopEmojiKeyboard {
 
     if (!started) {
       this.busy = false;
-      this.world.refreshLocked = false;
       this._setState('ready');
       this.keys.forEach((key) => key.classList.remove('is-selected'));
       return;
@@ -355,7 +391,6 @@ export class DesktopEmojiKeyboard {
 
     this.copyTimer = window.setTimeout(() => {
       this.busy = false;
-      this.world.refreshLocked = false;
       this.scanner.classList.remove('is-complete');
       this._setState('ready');
       this.keys.forEach((key) => key.classList.remove('is-selected'));
