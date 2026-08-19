@@ -73,15 +73,15 @@ export class EmojiWorld {
 
     /*
      * Mobile animation balance:
-     * 12 active WebPs gives noticeably richer animation than the
-     * old 8-slot system, while batch activation prevents decode
-     * spikes that cause stutter/flicker.
+     * Exactly 8 animated WebPs are active at once.
+     * Animation slots are warmed and activated one at a time to
+     * avoid decoder spikes and visible source-switch flicker.
      */
     this.mobileAnimationLimit =
       8;
 
     this.mobileActivationBatchSize =
-      3;
+      1;
 
     this.mobileActiveEmojis =
       new Set();
@@ -121,6 +121,14 @@ export class EmojiWorld {
 
     this.mobileStaticFrameGeneration =
       0;
+
+    /* Mobile animated-WebP readiness cache.  The same <img> element is
+     * reused; we never create a visual duplicate/overlay. */
+    this.mobileAnimatedReady =
+      new Set();
+
+    this.mobileAnimatedLoading =
+      new Map();
 
 
     /* ============================================================
@@ -853,157 +861,91 @@ export class EmojiWorld {
     const isSmallScreen =
       this.width < 700;
 
-
     const cols =
       isSmallScreen
         ? 4
         : 6;
 
-
     const rows =
-      Math.ceil(
-        24 / cols
-      );
+      Math.ceil(24 / cols);
 
-
+    /* Keep the complete platform + emoji safely inside the viewport.
+     * The old 20px mobile padding put the first/last platform partly
+     * outside narrow screens. */
     const sidePadding =
       isSmallScreen
-        ? 20
+        ? Math.min(64, Math.max(46, this.width * 0.14))
         : 70;
-
 
     const top =
       isSmallScreen
-        ? 115
+        ? Math.max(108, this.height * 0.15)
         : 170;
-
 
     const bottom =
       Math.min(
-        this.height - 45,
-        this.height * 0.90
+        this.height - (isSmallScreen ? 28 : 45),
+        this.height * (isSmallScreen ? 0.94 : 0.90)
       );
-
 
     const availableWidth =
       Math.max(
-        260,
-        this.width -
-        sidePadding * 2
+        220,
+        this.width - sidePadding * 2
       );
-
 
     const availableHeight =
       Math.max(
-        280,
+        260,
         bottom - top
       );
 
-
     const xSpacing =
       cols > 1
-        ? availableWidth /
-          (cols - 1)
+        ? availableWidth / (cols - 1)
         : availableWidth;
-
 
     const ySpacing =
       rows > 1
-        ? availableHeight /
-          (rows - 1)
+        ? availableHeight / (rows - 1)
         : availableHeight;
 
-
     const spacing =
-      Math.min(
-        xSpacing,
-        ySpacing
-      );
-
+      Math.min(xSpacing, ySpacing);
 
     const gridWidth =
-      spacing *
-      (cols - 1);
-
+      spacing * (cols - 1);
 
     const gridHeight =
-      spacing *
-      (rows - 1);
-
+      spacing * (rows - 1);
 
     const startX =
-      this.width / 2 -
-      gridWidth / 2;
+      this.width / 2 - gridWidth / 2;
+
     const startY =
-      top +
-      (
-        availableHeight -
-        gridHeight
-      ) / 2;
+      top + (availableHeight - gridHeight) / 2;
 
-
+    /* Smaller, more consistent mobile sizing prevents the emoji and
+     * glass platform from touching the viewport edges. */
     const emojiSize =
-      Math.max(
-        isSmallScreen
-          ? 52
-          : 60,
-
-        Math.min(
-          isSmallScreen
-            ? 82
-            : 110,
-
-          spacing * 0.70
-        )
-      );
-
+      isSmallScreen
+        ? Math.max(50, Math.min(76, spacing * 0.62))
+        : Math.max(60, Math.min(110, spacing * 0.70));
 
     const cubeSize =
-      Math.max(
-        isSmallScreen
-          ? 58
-          : 68,
-
-        Math.min(
-          isSmallScreen
-            ? 84
-            : 120,
-
-          spacing * 0.82
-        )
-      );
-
+      isSmallScreen
+        ? Math.max(58, Math.min(78, spacing * 0.76))
+        : Math.max(68, Math.min(120, spacing * 0.82));
 
     return {
-
-      cols,
-      rows,
-
-      sidePadding,
-      top,
-      bottom,
-
-      availableWidth,
-      availableHeight,
-
-      xSpacing,
-      ySpacing,
-
-      spacing,
-
-      gridWidth,
-      gridHeight,
-
-      startX,
-      startY,
-
-      emojiSize,
-      cubeSize
-
+      cols, rows, sidePadding, top, bottom,
+      availableWidth, availableHeight,
+      xSpacing, ySpacing, spacing,
+      gridWidth, gridHeight, startX, startY,
+      emojiSize, cubeSize
     };
 
   }
-
 
   /* ================================================================
      CREATE 24 EMOJI ELEMENTS
@@ -1272,6 +1214,12 @@ export class EmojiWorld {
           false,
 
         staticURL:
+          null,
+
+        animatedReady:
+          false,
+
+        animatedPreloadPromise:
           null,
 
         physicsBody:
@@ -1637,32 +1585,13 @@ export class EmojiWorld {
       emoji.staticURL =
         staticURL;
 
-      /*
-       * Keep the finished static frame underneath the animated
-       * WebP. Source transitions therefore never expose a blank
-       * frame while the animated decoder starts.
-       */
-      if (
-        emoji.element
-      ) {
-
-        emoji.element.style.backgroundImage =
-          `url("${staticURL}")`;
-
-        emoji.element.style.backgroundRepeat =
-          'no-repeat';
-
-        emoji.element.style.backgroundPosition =
-          'center';
-
-        emoji.element.style.backgroundSize =
-          'contain';
-
-      }
-
 
       emoji.staticReady =
         true;
+
+      /* Pre-decode the animation before ever switching the same <img>
+       * element from the static frame to the animated WebP. */
+      this._preloadMobileAnimated(emoji);
 
 
       this.mobileStaticFrameReady.add(
@@ -4104,6 +4033,74 @@ export class EmojiWorld {
 
 
   /* ================================================================
+     PRELOAD ONE MOBILE ANIMATED WEBP
+     ================================================================ */
+
+  _preloadMobileAnimated(emoji) {
+
+    if (
+      !emoji ||
+      !emoji.element ||
+      !emoji.element.dataset.src
+    ) {
+      return Promise.resolve(false);
+    }
+
+    if (this.mobileAnimatedReady.has(emoji.index)) {
+      emoji.animatedReady = true;
+      return Promise.resolve(true);
+    }
+
+    if (this.mobileAnimatedLoading.has(emoji.index)) {
+      return this.mobileAnimatedLoading.get(emoji.index);
+    }
+
+    const promise = new Promise(resolve => {
+      const image = new Image();
+      image.decoding = 'async';
+      image.onload = async () => {
+        try {
+          if (typeof image.decode === 'function') {
+            await image.decode();
+          }
+        } catch {}
+        this.mobileAnimatedReady.add(emoji.index);
+        emoji.animatedReady = true;
+        this.mobileAnimatedLoading.delete(emoji.index);
+        resolve(true);
+      };
+      image.onerror = () => {
+        this.mobileAnimatedLoading.delete(emoji.index);
+        resolve(false);
+      };
+      image.src = emoji.element.dataset.src;
+    });
+
+    this.mobileAnimatedLoading.set(emoji.index, promise);
+    return promise;
+  }
+
+
+  /* ================================================================
+     PRELOAD MOBILE ANIMATIONS IN SMALL BATCHES
+     ================================================================ */
+
+  async _prepareMobileAnimatedFrames() {
+
+    if (!this.isMobileOrTablet || !this.emojis.length) {
+      return;
+    }
+
+    for (let start = 0; start < this.emojis.length; start += 2) {
+      const batch = this.emojis.slice(start, start + 2);
+      await Promise.all(batch.map(emoji => this._preloadMobileAnimated(emoji)));
+      await new Promise(resolve => requestAnimationFrame(resolve));
+    }
+
+  }
+
+
+  /* ================================================================
      MOBILE ANIMATION SCHEDULER
      ================================================================ */
 
@@ -4133,6 +4130,9 @@ export class EmojiWorld {
      */
 
     this._stopMobileAnimationScheduler();
+
+    /* Warm the browser's image decoder in tiny batches. */
+    this._prepareMobileAnimatedFrames();
 
 
     const generation =
@@ -4320,19 +4320,21 @@ export class EmojiWorld {
       const emoji =
         this._getNextMobileEmoji();
 
-
-      if (
-        !emoji
-      ) {
-
+      if (!emoji) {
         break;
-
       }
 
+      if (!emoji.staticReady) {
+        continue;
+      }
 
-      this._activateMobileEmoji(
-        emoji
-      );
+      /* Only activate after the animated WebP has been decoded. */
+      if (!emoji.animatedReady && !this.mobileAnimatedReady.has(emoji.index)) {
+        this._preloadMobileAnimated(emoji);
+        continue;
+      }
+
+      this._activateMobileEmoji(emoji);
 
     }
 
@@ -4625,31 +4627,31 @@ export class EmojiWorld {
 
 
     /*
-     * Make sure the element remains
-     * visible before assigning the
-     * animated source.
+     * Decode first, then switch the SAME <img> element. No duplicate
+     * image or background overlay is used. This removes the blank
+     * frame/flicker caused by switching to a WebP that is still decoding.
      */
-
     emoji.element.style.visibility =
       'visible';
-
-
     emoji.element.style.opacity =
       '1';
-
-
-    /*
-     * Start the actual animated WebP.
-     */
-
-    emoji.element.src =
-      animatedURL;
-
-    /*
-     * Only active mobile emojis get their own compositor hint.
-     */
     emoji.element.style.willChange =
       'transform';
+
+    if (emoji.animatedReady || this.mobileAnimatedReady.has(emoji.index)) {
+      emoji.element.src = animatedURL;
+    } else {
+      this._preloadMobileAnimated(emoji).then(ready => {
+        if (
+          ready &&
+          emoji.isMobileActive &&
+          !emoji.isFlying &&
+          emoji.element
+        ) {
+          emoji.element.src = animatedURL;
+        }
+      });
+    }
 
   }
 
@@ -9016,10 +9018,9 @@ export class EmojiWorld {
       Math.max(
         1,
         Math.min(
+          8,
           this.emojis.length,
-          Math.floor(
-            limit
-          )
+          Math.floor(limit)
         )
       );
 
