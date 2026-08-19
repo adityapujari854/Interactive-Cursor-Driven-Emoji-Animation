@@ -78,7 +78,7 @@ export class EmojiWorld {
      * avoid decoder spikes and visible source-switch flicker.
      */
     this.mobileAnimationLimit =
-      7;
+      8;
 
     this.mobileActivationBatchSize =
       1;
@@ -1351,6 +1351,17 @@ export class EmojiWorld {
 
         isFlying:
           false,
+
+        /* Clipboard scanner state. The SAME emoji DOM node is
+         * temporarily portaled to <body>; no duplicate is created. */
+        scannerState:
+          null,
+
+        scannerOriginalParent:
+          null,
+
+        scannerOriginalNextSibling:
+          null,
 
         shakePhase:
           'idle',
@@ -4003,6 +4014,137 @@ export class EmojiWorld {
   /* ================================================================
      APPLY EMOJI TRANSFORM
      ================================================================ */
+
+
+  /* ================================================================
+     CLIPBOARD SCANNER TRANSFER
+     ================================================================ */
+
+  startScannerTransfer(index, targetX, targetY, options = {}) {
+    const emoji = this.emojis?.[index];
+    if (!emoji || !emoji.element || emoji.scannerState || emoji.isFlying || this.isShaking || this.isRecovering) return false;
+
+    const element = emoji.element;
+    const now = performance.now();
+    const duration = Math.max(650, options.duration || 950);
+    const targetScale = Math.max(0.24, Math.min(0.55, options.targetScale || 0.38));
+
+    emoji.scannerOriginalParent = element.parentNode;
+    emoji.scannerOriginalNextSibling = element.nextSibling;
+    emoji.scannerState = {
+      phase: 'out', startedAt: now, duration,
+      startX: emoji.x, startY: emoji.y,
+      startRotation: emoji.rotation || 0,
+      startScale: emoji.scale || 1,
+      targetX, targetY, targetScale,
+      arc: options.arc || 88,
+      returnStartedAt: 0,
+      returnDuration: Math.max(650, options.returnDuration || 900),
+      returnStartX: 0, returnStartY: 0
+    };
+
+    /* Portal the SAME DOM node so the scanner never renders a duplicate. */
+    document.body.appendChild(element);
+    element.classList.add('emoji-scanner-transfer');
+    element.style.position = 'fixed';
+    element.style.left = '0px';
+    element.style.top = '0px';
+    element.style.zIndex = '10050';
+    element.style.pointerEvents = 'none';
+    element.style.willChange = 'transform, filter';
+
+    if (emoji.physicsBody) {
+      emoji.physicsBody.isActive = false;
+      emoji.physicsBody.vx = 0;
+      emoji.physicsBody.vy = 0;
+    }
+
+    this._applyEmojiTransform(emoji);
+    return true;
+  }
+
+  updateScannerTarget(index, targetX, targetY) {
+    const emoji = this.emojis?.[index];
+    if (!emoji?.scannerState) return false;
+    emoji.scannerState.targetX = targetX;
+    emoji.scannerState.targetY = targetY;
+    return true;
+  }
+
+  finishScannerTransfer(index) {
+    const emoji = this.emojis?.[index];
+    if (!emoji?.scannerState) return false;
+    const state = emoji.scannerState;
+    if (state.phase === 'return') return true;
+    state.phase = 'return';
+    state.returnStartedAt = performance.now();
+    state.returnStartX = emoji.x;
+    state.returnStartY = emoji.y;
+    return true;
+  }
+
+  _updateScannerEmoji(emoji, dtMs) {
+    const state = emoji.scannerState;
+    if (!state) return;
+    const now = performance.now();
+
+    if (state.phase === 'out') {
+      const progress = Math.min(1, Math.max(0, (now - state.startedAt) / state.duration));
+      const eased = progress < 0.5 ? 4 * progress * progress * progress : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+      const arc = Math.sin(progress * Math.PI) * state.arc;
+      emoji.x = state.startX + (state.targetX - state.startX) * eased;
+      emoji.y = state.startY + (state.targetY - state.startY) * eased - arc;
+      emoji.rotation = state.startRotation + Math.sin(progress * Math.PI * 2) * 0.10;
+      emoji.scale = state.startScale + (state.targetScale - state.startScale) * eased;
+      if (progress >= 1) state.phase = 'hold';
+    } else if (state.phase === 'hold') {
+      const pulse = Math.sin(now * 0.0042);
+      emoji.x = state.targetX;
+      emoji.y = state.targetY + pulse * 3.5;
+      emoji.rotation = pulse * 0.025;
+      emoji.scale = state.targetScale * (1 + pulse * 0.025);
+    } else if (state.phase === 'return') {
+      const progress = Math.min(1, Math.max(0, (now - state.returnStartedAt) / state.returnDuration));
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const arc = Math.sin(progress * Math.PI) * 52;
+      emoji.x = state.returnStartX + (emoji.originalX - state.returnStartX) * eased;
+      emoji.y = state.returnStartY + (emoji.originalY - state.returnStartY) * eased - arc;
+      emoji.rotation = 0;
+      emoji.scale = state.targetScale + (1 - state.targetScale) * eased;
+      if (progress >= 1) {
+        this._restoreScannerEmoji(emoji);
+        return;
+      }
+    }
+
+    this._applyEmojiTransform(emoji);
+  }
+
+  _restoreScannerEmoji(emoji) {
+    const element = emoji.element;
+    const parent = emoji.scannerOriginalParent || this.emojiLayer;
+    const nextSibling = emoji.scannerOriginalNextSibling;
+    if (parent) {
+      if (nextSibling && nextSibling.parentNode === parent) parent.insertBefore(element, nextSibling);
+      else parent.appendChild(element);
+    }
+    element.classList.remove('emoji-scanner-transfer');
+    element.style.position = 'fixed';
+    element.style.left = '0px';
+    element.style.top = '0px';
+    element.style.zIndex = '';
+    element.style.pointerEvents = 'none';
+    element.style.willChange = 'transform';
+    element.style.filter = '';
+    emoji.scannerState = null;
+    emoji.scannerOriginalParent = null;
+    emoji.scannerOriginalNextSibling = null;
+    emoji.x = emoji.originalX;
+    emoji.y = emoji.originalY;
+    emoji.rotation = 0;
+    emoji.scale = 1;
+    this._applyEmojiTransform(emoji);
+  }
 
   _applyEmojiTransform(emoji) {
 
@@ -7285,6 +7427,20 @@ export class EmojiWorld {
         if (
           !emoji
         ) {
+
+          continue;
+
+        }
+
+
+        if (
+          emoji.scannerState
+        ) {
+
+          this._updateScannerEmoji(
+            emoji,
+            dtMs
+          );
 
           continue;
 

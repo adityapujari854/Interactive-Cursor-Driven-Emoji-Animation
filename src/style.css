@@ -1353,3 +1353,209 @@ html[data-theme="dark"] #app {
 .emoji-deck-status{position:relative;z-index:2;display:flex;align-items:center;gap:6px;min-height:20px;padding:5px 3px 1px;font-size:8px;font-weight:650;color:var(--deck-muted)}.status-icon{display:inline-grid;place-items:center;width:13px;height:13px;color:var(--accent);font-size:9px}.desktop-emoji-deck[data-state="copied"] .status-icon,.desktop-emoji-deck[data-state="copied"] .status-text{color:#20a86b}.desktop-emoji-deck[data-state="failed"] .status-icon,.desktop-emoji-deck[data-state="failed"] .status-text{color:#e06b61}
 .emoji-deck-burst{position:absolute;left:50%;top:50%;width:4px;height:4px;border-radius:50%;background:#73caff;box-shadow:0 0 8px rgba(83,191,255,.9);animation:scannerBurst .75s cubic-bezier(.16,1,.3,1) both}@keyframes scannerBurst{from{transform:translate(-50%,-50%) scale(.3);opacity:1}to{transform:translate(calc(-50% + var(--bx)),calc(-50% + var(--by))) scale(0);opacity:0}}
 @media (max-width:899px),(pointer:coarse){.desktop-emoji-deck{display:none!important}}@media (prefers-reduced-motion:reduce){.desktop-emoji-deck,.desktop-emoji-deck *{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}}
+
+
+/* ============================================================
+   SMART SINGLE-EMOJI SCANNER PORTAL
+   ============================================================ */
+
+/* The scanner uses the real emoji DOM node from EmojiWorld.
+   It is temporarily portaled above this UI; no duplicate emoji is drawn. */
+.emoji-scanner-transfer {
+    transform-origin: 50% 50%;
+    pointer-events: none !important;
+    z-index: 10050 !important;
+    filter: drop-shadow(0 12px 10px rgba(24, 58, 84, .20));
+    animation: scannerRealEmojiGlow 1.25s ease-in-out infinite;
+}
+
+@keyframes scannerRealEmojiGlow {
+    0%, 100% { filter: drop-shadow(0 12px 10px rgba(24,58,84,.20)) drop-shadow(0 0 4px rgba(84,190,255,.08)); }
+    50% { filter: drop-shadow(0 14px 12px rgba(24,58,84,.24)) drop-shadow(0 0 13px rgba(84,190,255,.25)); }
+}
+
+/* The old scanner placeholder is intentionally empty. */
+.emoji-deck-selected {
+    display: none !important;
+}
+
+/* ============================================================
+   MOBILE / TABLET EMOJI KEYBOARD
+   ============================================================ */
+
+.emoji-deck-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 9997;
+    border: 0;
+    padding: 0;
+    background: rgba(5, 12, 20, .38);
+    backdrop-filter: blur(7px);
+    -webkit-backdrop-filter: blur(7px);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity .28s ease, visibility .28s ease;
+}
+
+.emoji-deck-backdrop.is-visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+.emoji-deck-mobile-toggle {
+    display: none;
+    position: fixed;
+    top: calc(16px + var(--safe-top));
+    right: calc(72px + var(--safe-right));
+    z-index: 10002;
+    width: 43px;
+    height: 43px;
+    border: 1px solid rgba(255,255,255,.72);
+    border-radius: 50%;
+    padding: 0;
+    background: rgba(255,255,255,.82);
+    color: #17212c;
+    box-shadow: 0 10px 28px rgba(35,65,90,.16), inset 0 1px 0 rgba(255,255,255,.95);
+    backdrop-filter: blur(18px) saturate(1.25);
+    -webkit-backdrop-filter: blur(18px) saturate(1.25);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform .2s ease, box-shadow .2s ease, background .2s ease;
+}
+
+.emoji-deck-mobile-toggle.is-mobile-visible {
+    display: grid;
+    place-items: center;
+}
+
+.emoji-deck-mobile-toggle:active {
+    transform: scale(.92);
+}
+
+.emoji-deck-mobile-toggle:hover {
+    transform: translateY(-2px) scale(1.04);
+    box-shadow: 0 14px 32px rgba(35,65,90,.20), 0 0 0 4px rgba(76,168,255,.08), inset 0 1px 0 rgba(255,255,255,.95);
+}
+
+.emoji-deck-toggle-icon {
+    position: relative;
+    z-index: 2;
+    font-size: 20px;
+    line-height: 1;
+}
+
+.emoji-deck-toggle-pulse {
+    position: absolute;
+    inset: 5px;
+    border-radius: 50%;
+    border: 1px solid rgba(76,168,255,.25);
+    opacity: 0;
+}
+
+.emoji-deck-mobile-toggle:not(.is-open) .emoji-deck-toggle-pulse {
+    animation: keyboardTogglePulse 2.4s ease-out infinite;
+}
+
+@keyframes keyboardTogglePulse {
+    0% { transform: scale(.75); opacity: .6; }
+    70%, 100% { transform: scale(1.45); opacity: 0; }
+}
+
+.emoji-deck-mobile-toggle.is-open {
+    background: rgba(31,42,55,.90);
+    color: #fff;
+    border-color: rgba(255,255,255,.18);
+}
+
+/* Mobile popup keeps the exact same 24-key deck used on desktop. */
+@media (max-width: 899px), (pointer: coarse) {
+    .desktop-emoji-deck.is-mobile-mode {
+        display: block !important;
+        position: fixed;
+        left: 50%;
+        right: auto;
+        bottom: calc(12px + var(--safe-bottom));
+        width: min(92vw, 390px);
+        max-height: min(78vh, 610px);
+        overflow: auto;
+        transform: translate3d(-50%, 22px, 0) scale(.96);
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        z-index: 10000;
+        border-radius: 25px;
+        padding: 12px;
+        scrollbar-width: none;
+    }
+
+    .desktop-emoji-deck.is-mobile-mode::-webkit-scrollbar {
+        display: none;
+    }
+
+    .desktop-emoji-deck.is-mobile-mode.is-mobile-open {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+        transform: translate3d(-50%, 0, 0) scale(1);
+        animation: emojiMobileDeckIn .38s cubic-bezier(.22,1,.36,1) both;
+    }
+
+    @keyframes emojiMobileDeckIn {
+        from { opacity: 0; transform: translate3d(-50%, 24px, 0) scale(.94); }
+        to { opacity: 1; transform: translate3d(-50%, 0, 0) scale(1); }
+    }
+
+    .desktop-emoji-deck.is-mobile-mode .emoji-deck-scanfield {
+        height: 132px;
+        margin-bottom: 10px;
+    }
+
+    .desktop-emoji-deck.is-mobile-mode .emoji-deck-keys {
+        gap: 5px;
+    }
+
+    .desktop-emoji-deck.is-mobile-mode .emoji-deck-key {
+        height: 38px;
+        border-radius: 10px;
+    }
+
+    .desktop-emoji-deck.is-mobile-mode .key-emoji {
+        font-size: 21px;
+        line-height: 36px;
+    }
+
+    .desktop-emoji-deck.is-mobile-mode .emoji-deck-title {
+        font-size: 13px;
+    }
+
+    .desktop-emoji-deck.is-mobile-mode .emoji-deck-status {
+        padding-bottom: 2px;
+    }
+}
+
+@media (max-width: 430px) {
+    .emoji-deck-mobile-toggle {
+        width: 40px;
+        height: 40px;
+        right: calc(67px + var(--safe-right));
+    }
+
+    .desktop-emoji-deck.is-mobile-mode {
+        width: calc(100vw - 20px);
+        bottom: calc(8px + var(--safe-bottom));
+        padding: 10px;
+        border-radius: 22px;
+    }
+
+    .desktop-emoji-deck.is-mobile-mode .emoji-deck-scanfield {
+        height: 124px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .emoji-scanner-transfer {
+        animation: none !important;
+    }
+}
