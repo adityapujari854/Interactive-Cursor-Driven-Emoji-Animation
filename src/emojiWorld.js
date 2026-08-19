@@ -2672,10 +2672,10 @@ export class EmojiWorld {
       .fill({
 
         color:
-          0xf7fbff,
+          0xffffff,
 
         alpha:
-          0.70
+          0.58
 
       })
       .stroke({
@@ -2684,10 +2684,10 @@ export class EmojiWorld {
           0xcbdbe8,
 
         alpha:
-          0.76,
+          0.88,
 
         width:
-          1.35
+          1.5
 
       });
 
@@ -2721,7 +2721,7 @@ export class EmojiWorld {
           0xffffff,
 
         alpha:
-          0.30
+          0.52
 
       });
 
@@ -2755,7 +2755,7 @@ export class EmojiWorld {
           0xffffff,
 
         alpha:
-          0.66
+          0.82
 
       });
 
@@ -2823,10 +2823,10 @@ export class EmojiWorld {
           0xffffff,
 
         alpha:
-          0.42,
+          0.62,
 
         width:
-          0.8
+          1.0
 
       });
 

@@ -18,6 +18,8 @@ export class FirstRunTutorial {
     this.totalSteps = 3;
     this.started = false;
     this.resizeHandler = () => this._renderStep();
+    this.lockHandler = (event) => this._handleLockedInteraction(event);
+    this.lockedEvents = ['pointerdown', 'pointerup', 'click', 'dblclick', 'touchstart', 'touchmove', 'touchend', 'wheel', 'contextmenu', 'keydown'];
   }
 
   startIfNeeded() {
@@ -45,6 +47,32 @@ export class FirstRunTutorial {
     window.addEventListener('resize', this.resizeHandler, { passive: true });
     window.addEventListener('orientationchange', this.resizeHandler, { passive: true });
     this._renderStep();
+    this._setInteractionLock(true);
+  }
+
+  _setInteractionLock(enabled) {
+    if (enabled) {
+      for (const type of this.lockedEvents) {
+        document.addEventListener(type, this.lockHandler, { capture: true, passive: false });
+      }
+      document.body.classList.add('tutorial-input-locked');
+      this.keyboard?.setTutorialLock?.(true);
+    } else {
+      for (const type of this.lockedEvents) {
+        document.removeEventListener(type, this.lockHandler, { capture: true });
+      }
+      document.body.classList.remove('tutorial-input-locked');
+      this.keyboard?.setTutorialLock?.(false);
+    }
+  }
+
+  _handleLockedInteraction(event) {
+    if (!this.overlay || !document.body.classList.contains('tutorial-active')) return;
+    const tutorialControl = event.target?.closest?.('.emoji-tutorial-card button');
+    if (tutorialControl) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
   }
 
   _build() {
@@ -170,10 +198,32 @@ export class FirstRunTutorial {
     this.target.style.width = `${target.width + targetPad * 2}px`;
     this.target.style.height = `${target.height + targetPad * 2}px`;
 
-    const handOffsetX = mobile ? 30 : 46;
-    const handOffsetY = mobile ? 32 : 44;
-    this.hand.style.left = `${target.right + handOffsetX}px`;
-    this.hand.style.top = `${target.bottom + handOffsetY}px`;
+    /*
+     * Position the hand away from the target and rotate it so the
+     * finger points directly at the highlighted control. This is
+     * especially important on phones where the keyboard button sits
+     * in the upper-right corner.
+     */
+    const targetCx = target.centerX;
+    const targetCy = target.centerY;
+    let handCx;
+    let handCy;
+
+    if (mobile && this.step === 1) {
+      handCx = targetCx + 72;
+      handCy = targetCy + 78;
+    } else if (mobile) {
+      handCx = targetCx + 62;
+      handCy = targetCy + 62;
+    } else {
+      handCx = targetCx + 74;
+      handCy = targetCy + 58;
+    }
+
+    const angle = Math.atan2(targetCy - handCy, targetCx - handCx) * 180 / Math.PI;
+    this.hand.style.left = `${handCx}px`;
+    this.hand.style.top = `${handCy}px`;
+    this.hand.style.setProperty('--hand-angle', `${angle}deg`);
 
     const content = this.card.querySelector('.emoji-tutorial-copy');
     const title = this.card.querySelector('.emoji-tutorial-title');
@@ -223,6 +273,7 @@ export class FirstRunTutorial {
     this._remember();
     window.removeEventListener('resize', this.resizeHandler);
     window.removeEventListener('orientationchange', this.resizeHandler);
+    this._setInteractionLock(false);
     this.overlay?.classList.add('is-closing');
 
     window.setTimeout(() => {

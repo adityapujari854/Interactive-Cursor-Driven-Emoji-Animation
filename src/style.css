@@ -1791,3 +1791,305 @@ body.dark-mode .emoji-tutorial-card {
     .emoji-tutorial-hand { font-size: 30px; }
     .emoji-tutorial-target { border-radius: 14px; box-shadow: 0 0 0 5px rgba(103,201,255,.09), 0 0 20px rgba(103,201,255,.36); }
 }
+
+/* ============================================================
+   PREMIUM MARBLE + GLASS FINISH
+   ============================================================ */
+
+html[data-theme="light"],
+html[data-theme="light"] body,
+html[data-theme="light"] #app {
+    background:
+        radial-gradient(circle at 50% 8%, rgba(255,255,255,.98) 0%, rgba(250,252,253,.96) 26%, rgba(239,245,249,.92) 63%, rgba(225,235,242,.96) 100%) !important;
+}
+
+#cinematic-scene {
+    background:
+        radial-gradient(circle at 50% 5%, #ffffff 0%, #f9fbfd 27%, #eef4f7 66%, #dfeaf0 100%) !important;
+}
+
+#cinematic-scene::after {
+    content: "";
+    position: absolute;
+    inset: -18%;
+    z-index: 8;
+    pointer-events: none;
+    opacity: .34;
+    background:
+        radial-gradient(ellipse at 16% 28%, transparent 0 17%, rgba(143,166,182,.075) 18%, transparent 22%),
+        radial-gradient(ellipse at 72% 72%, transparent 0 20%, rgba(126,153,171,.06) 21%, transparent 25%),
+        repeating-linear-gradient(112deg, transparent 0 70px, rgba(122,151,169,.035) 72px, transparent 76px 150px),
+        repeating-linear-gradient(68deg, transparent 0 110px, rgba(255,255,255,.28) 112px, transparent 116px 230px);
+    filter: blur(8px) saturate(.8);
+    mix-blend-mode: multiply;
+    transform: translate3d(calc(var(--scene-x, 0px) * .12), calc(var(--scene-y, 0px) * .12), 0) scale(1.03);
+}
+
+#cinematic-scene .scene-atmosphere {
+    background:
+        radial-gradient(circle at 50% 13%, rgba(255,255,255,.99) 0%, rgba(248,251,253,.95) 32%, rgba(233,241,246,.86) 69%, rgba(220,231,238,.82) 100%),
+        linear-gradient(145deg, #ffffff 0%, #edf4f8 100%) !important;
+}
+
+/* ============================================================
+   TUTORIAL — GLASS CARD + HARD INPUT LOCK
+   ============================================================ */
+
+.emoji-tutorial {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483000;
+    display: block;
+    pointer-events: auto;
+    isolation: isolate;
+}
+
+.emoji-tutorial-wash {
+    position: absolute;
+    inset: 0;
+    background: rgba(245,249,252,.28);
+    backdrop-filter: blur(2.5px) saturate(1.05);
+    -webkit-backdrop-filter: blur(2.5px) saturate(1.05);
+}
+
+.emoji-tutorial-card {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    width: min(520px, calc(100vw - 36px));
+    min-height: 260px;
+    transform: translate(-50%, -50%);
+    padding: 28px 30px 24px;
+    border: 1px solid rgba(255,255,255,.72);
+    border-radius: 26px;
+    background:
+        linear-gradient(145deg, rgba(255,255,255,.82), rgba(244,249,253,.68));
+    box-shadow:
+        0 30px 90px rgba(37,65,86,.20),
+        0 10px 32px rgba(52,87,112,.12),
+        inset 0 1px 0 rgba(255,255,255,.96),
+        inset 0 -1px 0 rgba(170,198,216,.18);
+    backdrop-filter: blur(28px) saturate(1.22);
+    -webkit-backdrop-filter: blur(28px) saturate(1.22);
+    color: #14202b;
+    overflow: hidden;
+}
+
+.emoji-tutorial-card::before {
+    content: "";
+    position: absolute;
+    inset: 1px;
+    border-radius: 25px;
+    pointer-events: none;
+    background:
+        linear-gradient(125deg, rgba(255,255,255,.55), transparent 34%, rgba(255,255,255,.12) 70%, rgba(108,183,235,.07));
+}
+
+.emoji-tutorial-close {
+    position: absolute;
+    top: 13px;
+    right: 13px;
+    width: 34px;
+    height: 34px;
+    border: 1px solid rgba(102,133,157,.16);
+    border-radius: 50%;
+    background: rgba(255,255,255,.55);
+    color: #273746;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 5px 14px rgba(55,84,105,.08);
+}
+
+.emoji-tutorial-step {
+    position: relative;
+    z-index: 1;
+    margin-bottom: 11px;
+    color: #4ca8ff;
+    font-size: 11px;
+    font-weight: 850;
+    letter-spacing: .18em;
+}
+
+.emoji-tutorial-icon {
+    position: relative;
+    z-index: 1;
+    width: 48px;
+    height: 48px;
+    display: grid;
+    place-items: center;
+    margin-bottom: 13px;
+    border: 1px solid rgba(255,255,255,.72);
+    border-radius: 15px;
+    background: rgba(255,255,255,.54);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.95), 0 9px 24px rgba(68,113,143,.10);
+    font-size: 25px;
+}
+
+.emoji-tutorial-title,
+.emoji-tutorial-copy,
+.emoji-tutorial-actions {
+    position: relative;
+    z-index: 1;
+}
+
+.emoji-tutorial-title {
+    margin: 0 44px 8px 0;
+    font-size: clamp(22px, 3vw, 31px);
+    line-height: 1.12;
+    letter-spacing: -.025em;
+}
+
+.emoji-tutorial-copy {
+    max-width: 450px;
+    color: #526474;
+    font-size: 15px;
+    line-height: 1.58;
+}
+
+.emoji-tutorial-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.emoji-tutorial-skip,
+.emoji-tutorial-next {
+    border-radius: 14px;
+    padding: 11px 17px;
+    cursor: pointer !important;
+}
+
+.emoji-tutorial-skip {
+    border: 0;
+    background: transparent;
+    color: #647484;
+}
+
+.emoji-tutorial-next {
+    border: 1px solid rgba(102,187,255,.28);
+    background: linear-gradient(135deg, #5daeff, #6e91ff);
+    color: white;
+    font-weight: 750;
+    box-shadow: 0 10px 24px rgba(73,146,231,.22), inset 0 1px 0 rgba(255,255,255,.34);
+}
+
+.emoji-tutorial-next span {
+    margin-left: 7px;
+}
+
+.emoji-tutorial-target {
+    position: fixed;
+    z-index: 2147483001;
+    border: 2px solid rgba(76,184,255,.78);
+    border-radius: 18px;
+    box-shadow:
+        0 0 0 7px rgba(76,184,255,.10),
+        0 0 28px rgba(76,184,255,.34),
+        inset 0 0 18px rgba(255,255,255,.20);
+    pointer-events: none;
+    animation: tutorialTargetPulse 1.35s ease-in-out infinite;
+}
+
+.emoji-tutorial-hand {
+    position: fixed;
+    z-index: 2147483003;
+    width: 58px;
+    height: 58px;
+    display: grid;
+    place-items: center;
+    transform: translate(-50%, -50%) rotate(var(--hand-angle, 0deg));
+    transform-origin: 50% 50%;
+    font-size: 45px;
+    line-height: 1;
+    pointer-events: none;
+    filter: drop-shadow(0 8px 7px rgba(28,54,75,.18));
+    animation: tutorialHandFloat 1.05s ease-in-out infinite;
+}
+
+.emoji-tutorial-hand.is-pointing {
+    animation: tutorialHandPoint 1.05s ease-in-out infinite;
+}
+
+@keyframes tutorialTargetPulse {
+    0%, 100% { transform: scale(1); opacity: .86; }
+    50% { transform: scale(1.025); opacity: 1; }
+}
+
+@keyframes tutorialHandPoint {
+    0%, 100% { transform: translate(-50%, -50%) rotate(var(--hand-angle, 0deg)) translate3d(0, 0, 0); }
+    50% { transform: translate(-50%, -50%) rotate(var(--hand-angle, 0deg)) translate3d(-7px, -7px, 0); }
+}
+
+body.tutorial-input-locked .desktop-emoji-deck,
+body.tutorial-input-locked .emoji-deck-mobile-toggle,
+body.tutorial-input-locked #emoji-theme-toggle {
+    pointer-events: none !important;
+}
+
+body.tutorial-input-locked #pixi-canvas {
+    pointer-events: none !important;
+}
+
+.desktop-emoji-deck.tutorial-locked,
+.emoji-deck-mobile-toggle.tutorial-locked {
+    pointer-events: none !important;
+}
+
+.emoji-tutorial.is-closing {
+    opacity: 0;
+    transition: opacity .22s ease;
+}
+
+@media (max-width: 899px), (pointer: coarse) {
+    .emoji-tutorial-card {
+        width: min(540px, calc(100vw - 30px));
+        min-height: 315px;
+        padding: 24px 22px 20px;
+        border-radius: 24px;
+        background: linear-gradient(145deg, rgba(255,255,255,.78), rgba(244,249,253,.68));
+        backdrop-filter: blur(25px) saturate(1.18);
+        -webkit-backdrop-filter: blur(25px) saturate(1.18);
+    }
+
+    .emoji-tutorial-copy {
+        font-size: 14px;
+    }
+
+    .emoji-tutorial-target {
+        border-radius: 15px;
+    }
+
+    .emoji-tutorial-hand {
+        width: 52px;
+        height: 52px;
+        font-size: 41px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .emoji-tutorial-target,
+    .emoji-tutorial-hand {
+        animation: none !important;
+    }
+}
+
+/* ============================================================
+   EXTRA GLOSS ON THE HTML SCANNER GLASS
+   ============================================================ */
+
+.desktop-emoji-deck,
+.emoji-deck-key,
+.emoji-deck-scanfield {
+    background-clip: padding-box;
+}
+
+.desktop-emoji-deck {
+    box-shadow:
+        0 28px 85px rgba(47,76,103,.18),
+        0 8px 26px rgba(70,100,130,.10),
+        inset 0 1px 0 rgba(255,255,255,.98),
+        inset 0 -1px 0 rgba(123,166,195,.12) !important;
+}

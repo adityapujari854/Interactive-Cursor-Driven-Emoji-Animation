@@ -32,6 +32,7 @@ export class DesktopEmojiKeyboard {
     this.progressRaf = 0;
     this.resizeHandler = () => this._syncVisibility();
     this.themeObserver = null;
+    this.tutorialLocked = false;
   }
 
   mount() {
@@ -100,7 +101,8 @@ export class DesktopEmojiKeyboard {
     toggle.className = 'emoji-deck-mobile-toggle';
     toggle.setAttribute('aria-label', 'Open emoji keyboard');
     toggle.innerHTML = '<span class="emoji-deck-toggle-icon">⌨</span><span class="emoji-deck-toggle-pulse"></span>';
-    toggle.addEventListener('click', () => {
+    toggle.addEventListener('click', (event) => {
+      if (this.tutorialLocked) { event.preventDefault(); event.stopPropagation(); return; }
       this._setMobileOpen(!this.root?.classList.contains('is-mobile-open'));
     });
     document.body.appendChild(toggle);
@@ -171,7 +173,10 @@ export class DesktopEmojiKeyboard {
       button.setAttribute('aria-label', `${emoji.name}: copy ${emoji.char}`);
       button.title = `${emoji.name} · scan & copy`;
       button.innerHTML = `<span class="key-rim"></span><span class="key-emoji">${emoji.char}</span><span class="key-glint"></span>`;
-      button.addEventListener('click', () => this._select(index, button));
+      button.addEventListener('click', (event) => {
+        if (this.tutorialLocked) { event.preventDefault(); event.stopPropagation(); return; }
+        this._select(index, button);
+      });
       this.keyGrid.appendChild(button);
       this.keys.push(button);
     });
@@ -190,6 +195,12 @@ export class DesktopEmojiKeyboard {
     }
   }
 
+  setTutorialLock(locked) {
+    this.tutorialLocked = Boolean(locked);
+    this.root?.classList.toggle('tutorial-locked', this.tutorialLocked);
+    this.toggleButton?.classList.toggle('tutorial-locked', this.tutorialLocked);
+  }
+
   openForTutorial() {
     if (this._isTouchDevice()) {
       this._setMobileOpen(true);
@@ -198,6 +209,7 @@ export class DesktopEmojiKeyboard {
 
   _setMobileOpen(open) {
     if (!this._isTouchDevice() || !this.root) return;
+    if (this.tutorialLocked && !open) return;
     if (this.busy && !open) return;
 
     this.root.classList.toggle('is-mobile-open', open);
@@ -211,6 +223,7 @@ export class DesktopEmojiKeyboard {
   }
 
   _select(index, button) {
+    if (this.tutorialLocked) return;
     if (this.busy || !this._isAvailable()) return;
     if (this._isTouchDevice() && !this.root.classList.contains('is-mobile-open')) return;
 
