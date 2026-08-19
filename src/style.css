@@ -1459,6 +1459,13 @@ body * {
 
 /* Mobile popup keeps the exact same 24-key deck used on desktop. */
 @media (max-width: 899px), (pointer: coarse) {
+    /* Mobile/tablet: place the keyboard toggle directly below the light/dark button.
+       Desktop positioning remains unchanged. */
+    .emoji-deck-mobile-toggle.is-mobile-visible {
+        top: calc(18px + 42px + 10px + var(--safe-top));
+        right: calc(18px + var(--safe-right));
+    }
+
     .desktop-emoji-deck.is-mobile-mode {
         display: block !important;
         position: fixed;
@@ -1527,7 +1534,8 @@ body * {
     .emoji-deck-mobile-toggle {
         width: 40px;
         height: 40px;
-        right: calc(67px + var(--safe-right));
+        top: calc(18px + 42px + 10px + var(--safe-top));
+        right: calc(18px + var(--safe-right));
     }
 
     .desktop-emoji-deck.is-mobile-mode {
