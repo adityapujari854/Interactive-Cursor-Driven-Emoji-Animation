@@ -39,9 +39,11 @@ export class GyroHandler {
     this.previousAx = 0;
     this.previousAy = 0;
     this.previousAz = 0;
+    this.hasMotionBaseline = false;
 
     /* Smoothed acceleration */
     this.filteredAcceleration = 0;
+    this.filteredRotation = 0;
 
     /* ==========================================================
        SHAKE SETTINGS
@@ -53,23 +55,33 @@ export class GyroHandler {
      * This makes normal real-world phone shakes easier to detect
      * while still filtering normal hand movement.
      */
+    /*
+     * Hysteresis-based shake detection. There is deliberately NO
+     * time cooldown: once motion falls below shakeReleaseThreshold,
+     * the detector is armed again and the next distinct shake can
+     * trigger another drop even while earlier emojis are falling.
+     */
     this.shakeThreshold =
       Number.isFinite(options.shakeThreshold)
         ? options.shakeThreshold
-        : 11;
+        : 7.0;
 
-    /*
-     * Prevent multiple shake events from firing from
-     * one physical shake.
-     */
-    this.shakeCooldown =
-      Number.isFinite(options.shakeCooldown)
-        ? options.shakeCooldown
-        : 1200;
+    this.hardShakeThreshold =
+      Number.isFinite(options.hardShakeThreshold)
+        ? options.hardShakeThreshold
+        : 18.0;
 
+    this.shakeReleaseThreshold =
+      Number.isFinite(options.shakeReleaseThreshold)
+        ? options.shakeReleaseThreshold
+        : 4.5;
+
+    this.shakeArmed = true;
     this.lastShakeTime = 0;
-
     this.shakeDetected = false;
+    this.lastShakeForce = 0;
+    this.shakeSequence = 0;
+    this.lastPolledShakeSequence = 0;
 
     /* Callback invoked when a valid shake is detected. */
     this.onShake =
@@ -305,7 +317,7 @@ export class GyroHandler {
       this.az =
         acceleration.z || 0;
 
-      this._detectShakeFromAcceleration();
+      this._detectShakeFromAcceleration(event.rotationRate);
 
       return;
     }
@@ -340,20 +352,31 @@ export class GyroHandler {
     this.ay = ay;
     this.az = az;
 
-    this._detectShakeWithGravity();
+    this._detectShakeWithGravity(event.rotationRate);
   }
 
   /* ============================================================
      SHAKE DETECTION
      ============================================================ */
 
-  _detectShakeFromAcceleration() {
+  _detectShakeFromAcceleration(rotationRate = null) {
     const magnitude =
       Math.sqrt(
         this.ax * this.ax +
         this.ay * this.ay +
         this.az * this.az
       );
+
+    /* The first sensor sample establishes a baseline. Never treat
+     * the jump from initial zeros as a real shake. */
+    if (!this.hasMotionBaseline) {
+      this.filteredAcceleration = magnitude;
+      this.previousAx = this.ax;
+      this.previousAy = this.ay;
+      this.previousAz = this.az;
+      this.hasMotionBaseline = true;
+      return;
+    }
 
     /*
      * Low-pass filtering.
@@ -380,10 +403,27 @@ export class GyroHandler {
      * Combine acceleration magnitude and sudden movement.
      */
 
+    const rotationMagnitude =
+      rotationRate &&
+      Number.isFinite(rotationRate.alpha) &&
+      Number.isFinite(rotationRate.beta) &&
+      Number.isFinite(rotationRate.gamma)
+        ? Math.sqrt(
+            rotationRate.alpha * rotationRate.alpha +
+            rotationRate.beta * rotationRate.beta +
+            rotationRate.gamma * rotationRate.gamma
+          )
+        : 0;
+
+    this.filteredRotation +=
+      (rotationMagnitude - this.filteredRotation) *
+      0.25;
+
     const shakeForce =
       Math.max(
         magnitude,
-        delta * 2.5
+        delta * 2.5,
+        Math.max(0, rotationMagnitude - this.filteredRotation) * 0.55
       );
 
     this._triggerShakeIfNeeded(
@@ -395,7 +435,7 @@ export class GyroHandler {
      SHAKE DETECTION WITH GRAVITY
      * ============================================================ */
 
-  _detectShakeWithGravity() {
+  _detectShakeWithGravity(rotationRate = null) {
     /*
      * Calculate total acceleration.
      */
@@ -406,6 +446,17 @@ export class GyroHandler {
         this.ay * this.ay +
         this.az * this.az
       );
+
+    /* Ignore the first sensor packet: it establishes the baseline
+     * instead of looking like a huge jump from zero. */
+    if (!this.hasMotionBaseline) {
+      this.filteredAcceleration = magnitude;
+      this.previousAx = this.ax;
+      this.previousAy = this.ay;
+      this.previousAz = this.az;
+      this.hasMotionBaseline = true;
+      return;
+    }
 
     /*
      * Gravity is approximately 9.81 m/s².
@@ -459,10 +510,27 @@ export class GyroHandler {
      * total acceleration.
      */
 
+    const rotationMagnitude =
+      rotationRate &&
+      Number.isFinite(rotationRate.alpha) &&
+      Number.isFinite(rotationRate.beta) &&
+      Number.isFinite(rotationRate.gamma)
+        ? Math.sqrt(
+            rotationRate.alpha * rotationRate.alpha +
+            rotationRate.beta * rotationRate.beta +
+            rotationRate.gamma * rotationRate.gamma
+          )
+        : 0;
+
+    this.filteredRotation +=
+      (rotationMagnitude - this.filteredRotation) *
+      0.25;
+
     const shakeForce =
       Math.max(
         gravityRemoved,
-        delta
+        delta,
+        Math.max(0, rotationMagnitude - this.filteredRotation) * 0.55
       );
 
     this._triggerShakeIfNeeded(
@@ -477,59 +545,46 @@ export class GyroHandler {
   _triggerShakeIfNeeded(
     shakeForce
   ) {
+    if (!Number.isFinite(shakeForce)) {
+      return;
+    }
+
+    /* Re-arm only after the motion has genuinely settled. */
     if (
-      !Number.isFinite(shakeForce)
+      !this.shakeArmed &&
+      shakeForce <= this.shakeReleaseThreshold
+    ) {
+      this.shakeArmed = true;
+      return;
+    }
+
+    if (
+      !this.shakeArmed ||
+      shakeForce < this.shakeThreshold
     ) {
       return;
     }
 
-    const now =
-      performance.now();
+    this.shakeArmed = false;
+    this.lastShakeTime = performance.now();
+    this.lastShakeForce = shakeForce;
+    this.shakeDetected = true;
+    this.shakeSequence += 1;
 
-    /*
-     * Ignore small movements.
-     */
-
-    if (
-      shakeForce <
-      this.shakeThreshold
-    ) {
-      return;
-    }
-
-    /*
-     * Prevent repeated events from one shake.
-     */
-
-    if (
-      now -
-        this.lastShakeTime <
-      this.shakeCooldown
-    ) {
-      return;
-    }
-
-    this.lastShakeTime =
-      now;
-
-    this.shakeDetected =
-      true;
+    const payload = {
+      force: shakeForce,
+      hard: shakeForce >= this.hardShakeThreshold,
+      sequence: this.shakeSequence,
+      timestamp: this.lastShakeTime
+    };
 
     console.log(
-      `[Gyro] 📱 SHAKE DETECTED (${shakeForce.toFixed(1)})`
+      `[Gyro] 📱 SHAKE ${payload.hard ? 'HARD' : 'LIGHT'} (${shakeForce.toFixed(1)})`
     );
 
-    /*
-     * Notify the application immediately.
-     * EmojiWorld also polls pollShake() as a safety net, so a
-     * browser/device timing difference cannot lose the event.
-     */
     if (typeof this.onShake === 'function') {
       try {
-        this.onShake({
-          force: shakeForce,
-          timestamp: now
-        });
+        this.onShake(payload);
       } catch (error) {
         console.warn('[Gyro] Shake callback failed:', error);
       }
@@ -710,19 +765,24 @@ export class GyroHandler {
      ============================================================ */
 
   pollShake() {
-    const detected =
-      this.shakeDetected;
+    if (!this.shakeDetected) {
+      return null;
+    }
 
-    /*
-     * Clear immediately.
-     *
-     * EmojiWorld receives the event once.
-     */
+    this.shakeDetected = false;
 
-    this.shakeDetected =
-      false;
+    if (this.lastPolledShakeSequence === this.shakeSequence) {
+      return null;
+    }
 
-    return detected;
+    this.lastPolledShakeSequence = this.shakeSequence;
+
+    return {
+      force: this.lastShakeForce,
+      hard: this.lastShakeForce >= this.hardShakeThreshold,
+      sequence: this.shakeSequence,
+      timestamp: this.lastShakeTime
+    };
   }
 
   /* ============================================================

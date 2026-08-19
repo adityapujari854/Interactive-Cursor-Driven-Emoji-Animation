@@ -233,6 +233,9 @@ export class EmojiWorld {
     this._permissionRequested =
       false;
 
+    this.lastHandledShakeSequence =
+      0;
+
 
     /* ============================================================
        RESIZE
@@ -383,18 +386,18 @@ export class EmojiWorld {
         this.isMobileOrTablet
       ) {
 
-        this._startMobileAnimationScheduler();
-
         /*
-         * IMPORTANT:
-         *
-         * Static frame preparation runs in
-         * the background.
-         *
-         * It MUST NOT block initialization.
+         * Prepare stable first frames before the first animation slot
+         * is allowed to start. This removes the initial static→WebP
+         * decoder race that caused the first few emojis to flicker.
          */
+        await this._prepareMobileStaticFrames();
 
-        this._prepareMobileStaticFrames();
+        /* Warm all animated WebPs before the first visible slot.
+         * They are decoded in tiny batches, so startup remains stable. */
+        await this._prepareMobileAnimatedFrames();
+
+        this._startMobileAnimationScheduler();
 
       }
 
@@ -1203,6 +1206,15 @@ export class EmojiWorld {
 
         isFlying:
           false,
+
+        shakePhase:
+          'idle',
+
+        shakeSettledAt:
+          0,
+
+        shakeDropStartedAt:
+          0,
 
         isMobileActive:
           false,
@@ -2941,8 +2953,7 @@ export class EmojiWorld {
      */
 
     if (
-      !this.isShaking &&
-      !this.isRecovering
+      !this._hasActiveShakeMotion()
     ) {
 
       this._repositionEmojisAndCubes();
@@ -3210,11 +3221,19 @@ export class EmojiWorld {
       if (
         this.isMobileOrTablet &&
         this.gyro &&
-        typeof this.gyro.pollShake === 'function' &&
-        this.gyro.pollShake()
+        typeof this.gyro.pollShake === 'function'
       ) {
 
-        this._handleShake();
+        const shake =
+          this.gyro.pollShake();
+
+        if (shake) {
+          this._handleShake(
+            shake.force,
+            shake.hard,
+            shake.sequence
+          );
+        }
 
       }
 
@@ -3245,7 +3264,7 @@ export class EmojiWorld {
           ) {
 
             if (
-              this.isRecovering
+              emoji.shakePhase === 'recovering'
             ) {
 
               this._updateFlyingBackAnimation(
@@ -4138,8 +4157,7 @@ export class EmojiWorld {
 
 
     if (
-      this.isShaking ||
-      this.isRecovering
+      this._hasActiveShakeMotion()
     ) {
 
       return;
@@ -4240,8 +4258,7 @@ export class EmojiWorld {
 
     if (
       !this.isMobileOrTablet ||
-      this.isShaking ||
-      this.isRecovering
+      this._hasActiveShakeMotion()
     ) {
 
       return;
@@ -4304,8 +4321,7 @@ export class EmojiWorld {
 
     if (
       !this.isMobileOrTablet ||
-      this.isShaking ||
-      this.isRecovering
+      this._hasActiveShakeMotion()
     ) {
 
       return;
@@ -4860,7 +4876,7 @@ export class EmojiWorld {
      ENABLE MOBILE ANIMATION MODE
      ================================================================ */
 
-  _enableMobileAnimationMode() {
+  async _enableMobileAnimationMode() {
 
     console.log(
       '📱 Switching to mobile/tablet animation mode'
@@ -4952,10 +4968,13 @@ export class EmojiWorld {
       [];
 
 
-    this._prepareMobileStaticFrames();
+    await this._prepareMobileStaticFrames();
 
+    await this._prepareMobileAnimatedFrames();
 
-    this._startMobileAnimationScheduler();
+    if (!this._hasActiveShakeMotion()) {
+      this._startMobileAnimationScheduler();
+    }
 
   }
 
@@ -5149,9 +5168,13 @@ export class EmojiWorld {
       this.gyro
     ) {
 
-      this.gyro.onShake = () => {
+      this.gyro.onShake = payload => {
 
-        this._handleShake();
+        this._handleShake(
+          payload?.force,
+          payload?.hard,
+          payload?.sequence
+        );
 
       };
 
@@ -5270,189 +5293,141 @@ export class EmojiWorld {
      SHAKE HANDLER
      ================================================================ */
 
-  _handleShake() {
+  _handleShake(
+    force = 0,
+    hard = false,
+    sequence = 0
+  ) {
 
     /* Shake-to-drop is intentionally mobile/tablet only. */
     if (!this.isMobileOrTablet) {
       return;
     }
 
-    /*
-     * Prevent repeated shake events from
-     * restarting the same physics sequence.
-     */
-
-    if (
-      this.isShaking ||
-      this.isRecovering
-    ) {
-
+    /* Prevent the same sensor event being delivered by both the
+     * immediate callback and the render-loop polling fallback. */
+    if (sequence && sequence === this.lastHandledShakeSequence) {
       return;
-
     }
 
+    if (sequence) {
+      this.lastHandledShakeSequence = sequence;
+    }
+
+    const shakeForce =
+      Number.isFinite(force) && force > 0
+        ? force
+        : 7;
+
+    const isHard =
+      Boolean(hard) ||
+      shakeForce >= 18;
+
+    const candidates =
+      this.emojis.filter(emoji =>
+        emoji &&
+        (
+          !emoji.isFlying ||
+          emoji.shakePhase === 'recovering'
+        )
+      );
+
+    if (candidates.length === 0) {
+      return;
+    }
+
+    /*
+     * Gentle shake: only a few emojis.
+     * Medium shake: a larger group.
+     * Hard shake: every emoji that is not already in a drop.
+     */
+    let count;
+
+    if (isHard) {
+      count = candidates.length;
+    } else if (shakeForce >= 12) {
+      count = Math.min(8, candidates.length);
+    } else {
+      count = Math.min(4, candidates.length);
+    }
+
+    /* Randomize candidates so repeated gentle shakes affect different emojis. */
+    const shuffled = [...candidates];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+
+    const selected =
+      shuffled.slice(0, count);
 
     console.log(
-      '💥 SHAKE DETECTED!'
+      `💥 SHAKE ${isHard ? 'HARD' : 'LIGHT'}: dropping ${selected.length}/${this.emojis.length}`
     );
 
-
-    /*
-     * Pause mobile animation scheduler.
-     */
-
-    if (
-      this.isMobileOrTablet
-    ) {
-
-      this._stopMobileAnimationScheduler();
-
-    }
-
-
-    /*
-     * Stop talking sound while the emojis
-     * are falling.
-     */
+    this._stopMobileAnimationScheduler();
 
     if (
       this.audio &&
       this.audio.talking
     ) {
-
       try {
-
         this.audio.talking.pause();
-
-      } catch {
-
-        /* Ignore */
-
-      }
-
+      } catch {}
     }
 
+    const now = performance.now();
+
+    for (const emoji of selected) {
+      if (!emoji || !emoji.physicsBody) {
+        continue;
+      }
+
+      /* A recovering emoji can be interrupted by a new shake. */
+      if (emoji.shakePhase === 'recovering') {
+        emoji.isFlying = false;
+        emoji.shakePhase = 'idle';
+        emoji.flyProgress = 0;
+      }
+
+      if (emoji.isMobileActive) {
+        this._deactivateMobileEmoji(emoji);
+      }
+
+      const body = emoji.physicsBody;
+
+      body.x = emoji.x;
+      body.y = emoji.y;
+      body.rotation = emoji.rotation || 0;
+      body.vx = (Math.random() - 0.5) * (isHard ? 10 : 6);
+      body.vy = -(1.5 + Math.min(3.0, shakeForce / 8));
+      body.angularVelocity = (Math.random() - 0.5) * (isHard ? 0.28 : 0.18);
+      body.isActive = true;
+      body.isResting = false;
+      body.sleeping = false;
+      body.grounded = false;
+
+      emoji.isFlying = true;
+      emoji.shakePhase = 'dropping';
+      emoji.shakeDropStartedAt = now;
+      emoji.shakeSettledAt = 0;
+      emoji.isRecovering = false;
+      emoji.animationEndsAt = 0;
+    }
 
     this.isShaking =
-      true;
+      this.emojis.some(emoji =>
+        emoji &&
+        emoji.isFlying &&
+        emoji.shakePhase === 'dropping'
+      );
 
-
-    /*
-     * Give the physics system control over
-     * every emoji.
-     */
-
-    for (
-      const emoji of this.emojis
-    ) {
-
-      if (
-        !emoji
-      ) {
-
-        continue;
-
-      }
-
-
-      /*
-       * Ensure mobile WebP animation doesn't
-       * keep decoding while the emoji is in
-       * physics mode.
-       */
-
-      if (
-        this.isMobileOrTablet &&
-        emoji.isMobileActive
-      ) {
-
-        this._deactivateMobileEmoji(
-          emoji
-        );
-
-      }
-
-
-      emoji.isFlying =
-        true;
-
-
-      emoji.isRecovering =
-        false;
-
-
-      /*
-       * Start the physics body from the
-       * emoji's CURRENT visual position.
-       */
-
-      if (
-        emoji.physicsBody
-      ) {
-
-        emoji.physicsBody.x =
-          emoji.x;
-
-
-        emoji.physicsBody.y =
-          emoji.y;
-
-
-        /*
-         * Give the emojis a small upward toss, then let gravity
-         * carry them all the way down to the actual screen floor.
-         * The old values launched them too high and recovery could
-         * begin before they had visibly landed.
-         */
-        emoji.physicsBody.vx =
-          (
-            Math.random() -
-            0.5
-          ) *
-          8;
-
-
-        emoji.physicsBody.vy =
-          -(
-            2.5 +
-            Math.random() *
-            2.5
-          );
-
-
-        emoji.physicsBody.angularVelocity =
-          (
-            Math.random() -
-            0.5
-          ) *
-          0.24;
-
-
-        emoji.physicsBody.isActive =
-          true;
-
-
-        emoji.physicsBody.isResting =
-          false;
-
-      }
-
-    }
-
-
-    /*
-     * Do NOT start recovery on a fixed short timer.
-     * On tall phones/tablets the emojis need more time to reach
-     * the floor. Recovery starts when the physics bodies have
-     * actually settled, with a generous safety timeout.
-     */
-    this.physicsDropStartedAt =
-      performance.now();
-
-    this.shakeRecoveryTime =
-      this.physicsDropStartedAt +
-      2800;
-
+    this.isRecovering =
+      this.emojis.some(emoji =>
+        emoji &&
+        emoji.isFlying &&
+        emoji.shakePhase === 'recovering'
+      );
   }
 
 
@@ -5460,226 +5435,107 @@ export class EmojiWorld {
      UPDATE FALLING PHYSICS
      ================================================================ */
 
+
+     ================================================================ */
+
   _updateFallingAnimation(
     emoji
   ) {
-
-    if (
-      !emoji ||
-      !emoji.physicsBody
-    ) {
-
+    if (!emoji || !emoji.physicsBody) {
       return;
-
     }
 
+    const body = emoji.physicsBody;
 
-    const body =
-      emoji.physicsBody;
+    emoji.x = body.x;
+    emoji.y = body.y;
+    emoji.rotation = body.rotation || 0;
+    emoji.scale = 1;
 
+    this._applyEmojiTransform(emoji);
 
-    /*
-     * Physics engine owns the position.
-     */
+    if (emoji.shakePhase !== 'dropping') {
+      return;
+    }
 
-    emoji.x =
-      body.x;
+    const now = performance.now();
+    const elapsed = now - (emoji.shakeDropStartedAt || now);
 
-
-    emoji.y =
-      body.y;
-
-
-    emoji.rotation =
-      body.rotation ||
-      0;
-
-
-    emoji.scale =
-      1;
-
-
-    this._applyEmojiTransform(
-      emoji
-    );
-
-
-    /*
-     * Wait for the emojis to really reach the floor before
-     * beginning the smooth return animation. This is important
-     * on mobile/tablet because screen height varies considerably.
-     */
+    /* Require a real ground contact and a short settled period. */
     if (
-      this.isShaking
+      body.grounded &&
+      Math.abs(body.vy) < 0.35 &&
+      Math.abs(body.vx) < 0.30 &&
+      Math.abs(body.angularVelocity) < 0.035
     ) {
-
-      const now =
-        performance.now();
-
-      const elapsed =
-        now -
-        this.physicsDropStartedAt;
-
-      const settled =
-        this._areShakeBodiesSettled();
-
-      if (
-        (elapsed >= 420 && settled) ||
-        now >= this.shakeRecoveryTime
-      ) {
-
-        this._beginRecovery();
-
+      if (!emoji.shakeSettledAt) {
+        emoji.shakeSettledAt = now;
       }
 
+      if (now - emoji.shakeSettledAt >= 120) {
+        this._beginEmojiRecovery(emoji);
+        return;
+      }
+    } else {
+      emoji.shakeSettledAt = 0;
     }
 
+    /* Never leave a phone waiting forever if a sensor/browser frame is poor. */
+    if (elapsed >= 3000) {
+      this._beginEmojiRecovery(emoji);
+    }
   }
 
 
   /* ================================================================
-     CHECK SHAKE PHYSICS SETTLED
+     PER-EMOJI RECOVERY
      ================================================================ */
 
-  _areShakeBodiesSettled() {
-
-    if (
-      !this.physics ||
-      !this.emojis ||
-      this.emojis.length === 0
-    ) {
-
-      return false;
-
-    }
-
-    return this.emojis.every(
-      emoji => {
-
-        if (
-          !emoji ||
-          !emoji.physicsBody
-        ) {
-
-          return true;
-
-        }
-
-        const body =
-          emoji.physicsBody;
-
-        return (
-          body.grounded &&
-          Math.abs(body.vy) < 0.20 &&
-          Math.abs(body.vx) < 0.15 &&
-          Math.abs(body.angularVelocity) < 0.02
-        );
-
-      }
-    );
-
-  }
-
-
-  /* ================================================================
-     BEGIN RECOVERY
-     ================================================================ */
-
-  _beginRecovery() {
-
-    if (
-      !this.isShaking
-    ) {
-
+  _beginEmojiRecovery(emoji) {
+    if (!emoji || !emoji.physicsBody || emoji.shakePhase !== 'dropping') {
       return;
-
     }
 
+    const body = emoji.physicsBody;
 
-    console.log(
-      '🏠 Starting emoji recovery...'
+    emoji.shakePhase = 'recovering';
+    emoji.isFlying = true;
+    emoji.isRecovering = true;
+    emoji.returnStartX = emoji.x;
+    emoji.returnStartY = emoji.y;
+    emoji.returnStartRotation = emoji.rotation || 0;
+    emoji.flyProgress = 0;
+    emoji.recoveryDelay = Math.random() * 100;
+    emoji.shakeSettledAt = 0;
+
+    body.isActive = false;
+    body.isResting = true;
+    body.vx = 0;
+    body.vy = 0;
+    body.angularVelocity = 0;
+    body.grounded = true;
+
+    this._updateShakeGlobalState();
+  }
+
+  _updateShakeGlobalState() {
+    this.isShaking = this.emojis.some(emoji =>
+      emoji && emoji.isFlying && emoji.shakePhase === 'dropping'
     );
 
-
-    this.isShaking =
-      false;
-
-
-    this.isRecovering =
-      true;
-
-
-    /*
-     * Stop physics simulation while the
-     * emojis fly back to their platforms.
-     */
-
-    for (
-      const emoji of this.emojis
-    ) {
-
-      if (
-        !emoji
-      ) {
-
-        continue;
-
-      }
-
-
-      const body =
-        emoji.physicsBody;
-
-
-      emoji.returnStartX =
-        emoji.x;
-
-
-      emoji.returnStartY =
-        emoji.y;
-
-
-      emoji.returnStartRotation =
-        emoji.rotation;
-
-
-      emoji.flyProgress =
-        0;
-
-
-      emoji.recoveryDelay =
-        Math.random() *
-        110;
-
-
-      if (
-        body
-      ) {
-
-        body.isActive =
-          false;
-
-
-        body.isResting =
-          true;
-
-
-        body.vx =
-          0;
-
-
-        body.vy =
-          0;
-
-
-        body.angularVelocity =
-          0;
-
-      }
-
-    }
-
+    this.isRecovering = this.emojis.some(emoji =>
+      emoji && emoji.isFlying && emoji.shakePhase === 'recovering'
+    );
   }
+
+  _hasActiveShakeMotion() {
+    return this.emojis.some(emoji =>
+      emoji && emoji.isFlying &&
+      (emoji.shakePhase === 'dropping' || emoji.shakePhase === 'recovering')
+    );
+  }
+
+
   /* ================================================================
      UPDATE FLYING BACK ANIMATION
      ================================================================ */
@@ -5831,6 +5687,14 @@ export class EmojiWorld {
       emoji.isFlying =
         false;
 
+      emoji.shakePhase =
+        'idle';
+
+      emoji.isRecovering =
+        false;
+
+      emoji.shakeSettledAt =
+        0;
 
       emoji.flyProgress =
         0;
@@ -5946,40 +5810,14 @@ export class EmojiWorld {
        * completed its return.
        */
 
-      const allHome =
-        this.emojis.every(
-          item =>
-            item &&
-            !item.isFlying
-        );
+      this._updateShakeGlobalState();
 
+      if (!this._hasActiveShakeMotion()) {
+        console.log('🏠 All active shake emojis returned home!');
 
-      if (
-        allHome
-      ) {
-
-        this.isRecovering =
-          false;
-
-
-        console.log(
-          '🏠 All emojis returned home!'
-        );
-
-
-        /*
-         * Resume the mobile animation
-         * scheduler only after recovery.
-         */
-
-        if (
-          this.isMobileOrTablet
-        ) {
-
+        if (this.isMobileOrTablet) {
           this._startMobileAnimationScheduler();
-
         }
-
       }
 
     }
@@ -7143,11 +6981,19 @@ export class EmojiWorld {
       if (
         this.isMobileOrTablet &&
         this.gyro &&
-        typeof this.gyro.pollShake === 'function' &&
-        this.gyro.pollShake()
+        typeof this.gyro.pollShake === 'function'
       ) {
 
-        this._handleShake();
+        const shake =
+          this.gyro.pollShake();
+
+        if (shake) {
+          this._handleShake(
+            shake.force,
+            shake.hard,
+            shake.sequence
+          );
+        }
 
       }
 
@@ -9017,6 +8863,9 @@ export class EmojiWorld {
     this.shakeRecoveryTime =
       0;
 
+    this.lastHandledShakeSequence =
+      0;
+
 
     this._stopMobileAnimationScheduler();
 
@@ -9044,6 +8893,17 @@ export class EmojiWorld {
       emoji.isFlying =
         false;
 
+      emoji.shakePhase =
+        'idle';
+
+      emoji.isRecovering =
+        false;
+
+      emoji.shakeSettledAt =
+        0;
+
+      emoji.shakeDropStartedAt =
+        0;
 
       emoji.isMobileActive =
         false;
