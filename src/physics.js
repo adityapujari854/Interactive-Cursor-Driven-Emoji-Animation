@@ -39,7 +39,7 @@ export class Physics {
     this.groundLevel =
       Number.isFinite(options.groundLevel)
         ? options.groundLevel
-        : this.height * 0.85;
+        : this.height * 0.94;
 
     /*
      * Gravity per 60 FPS frame.
@@ -51,7 +51,7 @@ export class Physics {
     this.gravity =
       Number.isFinite(options.gravity)
         ? options.gravity
-        : 0.65;
+        : 0.90;
 
     /*
      * Global damping.
@@ -67,7 +67,7 @@ export class Physics {
      *
      * Small bounce gives the emojis a soft landing.
      */
-    this.bounce = 0.28;
+    this.bounce = 0.12;
 
     /*
      * Maximum velocity prevents numerical explosions

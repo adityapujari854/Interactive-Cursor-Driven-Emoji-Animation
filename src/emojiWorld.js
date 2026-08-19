@@ -2114,7 +2114,7 @@ export class EmojiWorld {
 
         groundLevel:
           this.height *
-          0.90
+          0.94
 
       });
 
@@ -2930,7 +2930,7 @@ export class EmojiWorld {
 
       this.physics.groundLevel =
         this.height *
-        0.90;
+        0.94;
 
     }
 
@@ -5398,19 +5398,25 @@ export class EmojiWorld {
           emoji.y;
 
 
+        /*
+         * Give the emojis a small upward toss, then let gravity
+         * carry them all the way down to the actual screen floor.
+         * The old values launched them too high and recovery could
+         * begin before they had visibly landed.
+         */
         emoji.physicsBody.vx =
           (
             Math.random() -
             0.5
           ) *
-          12;
+          8;
 
 
         emoji.physicsBody.vy =
           -(
-            5 +
+            2.5 +
             Math.random() *
-            5
+            2.5
           );
 
 
@@ -5419,7 +5425,7 @@ export class EmojiWorld {
             Math.random() -
             0.5
           ) *
-          0.18;
+          0.24;
 
 
         emoji.physicsBody.isActive =
@@ -5435,13 +5441,17 @@ export class EmojiWorld {
 
 
     /*
-     * Shake state lasts long enough for the
-     * physics motion to become clearly visible.
+     * Do NOT start recovery on a fixed short timer.
+     * On tall phones/tablets the emojis need more time to reach
+     * the floor. Recovery starts when the physics bodies have
+     * actually settled, with a generous safety timeout.
      */
+    this.physicsDropStartedAt =
+      performance.now();
 
     this.shakeRecoveryTime =
-      performance.now() +
-      1150;
+      this.physicsDropStartedAt +
+      2800;
 
   }
 
@@ -5495,19 +5505,78 @@ export class EmojiWorld {
 
 
     /*
-     * Once the shake period is over,
-     * switch every emoji into recovery.
+     * Wait for the emojis to really reach the floor before
+     * beginning the smooth return animation. This is important
+     * on mobile/tablet because screen height varies considerably.
      */
-
     if (
-      this.isShaking &&
-      performance.now() >=
-      this.shakeRecoveryTime
+      this.isShaking
     ) {
 
-      this._beginRecovery();
+      const now =
+        performance.now();
+
+      const elapsed =
+        now -
+        this.physicsDropStartedAt;
+
+      const settled =
+        this._areShakeBodiesSettled();
+
+      if (
+        (elapsed >= 420 && settled) ||
+        now >= this.shakeRecoveryTime
+      ) {
+
+        this._beginRecovery();
+
+      }
 
     }
+
+  }
+
+
+  /* ================================================================
+     CHECK SHAKE PHYSICS SETTLED
+     ================================================================ */
+
+  _areShakeBodiesSettled() {
+
+    if (
+      !this.physics ||
+      !this.emojis ||
+      this.emojis.length === 0
+    ) {
+
+      return false;
+
+    }
+
+    return this.emojis.every(
+      emoji => {
+
+        if (
+          !emoji ||
+          !emoji.physicsBody
+        ) {
+
+          return true;
+
+        }
+
+        const body =
+          emoji.physicsBody;
+
+        return (
+          body.grounded &&
+          Math.abs(body.vy) < 0.20 &&
+          Math.abs(body.vx) < 0.15 &&
+          Math.abs(body.angularVelocity) < 0.02
+        );
+
+      }
+    );
 
   }
 
@@ -5580,7 +5649,7 @@ export class EmojiWorld {
 
       emoji.recoveryDelay =
         Math.random() *
-        140;
+        110;
 
 
       if (
@@ -5657,7 +5726,7 @@ export class EmojiWorld {
         1,
         emoji.flyProgress +
         dtMs /
-        900
+        1050
       );
 
 
