@@ -2889,21 +2889,6 @@ export class EmojiWorld {
 
 
     /*
-     * Cursor-reactive shadow layer.
-     */
-
-    const cursorShadow =
-      new PIXI.Graphics();
-
-    cursorShadow.eventMode =
-      'none';
-
-    group.addChild(
-      cursorShadow
-    );
-
-
-    /*
      * Store all visual components so
      * theme/cursor lighting can update
      * them later.
@@ -2931,9 +2916,7 @@ export class EmojiWorld {
 
       lowerBevel,
 
-      rimGlow,
-
-      cursorShadow
+      rimGlow
 
     };
 
@@ -7302,18 +7285,6 @@ export class EmojiWorld {
       alpha: dark ? 0.11 : 0.075
     });
 
-    /*
-     * The DOM cursor below is the only visible cursor marker.
-     * Keep PixiJS responsible only for environmental illumination.
-     *
-     * The old tiny 2.6–8px core was the pin-point visible in the scene
-     * and competed with the DOM orb. Removing it also prevents a second
-     * cursor from appearing at a slightly different scale.
-     */
-    this.cursorLight.circle(x, y, dark ? 38 : 32).fill({
-      color: dark ? 0xdff2ff : 0x18202a,
-      alpha: dark ? 0.045 : 0.025
-    });
 
   }
 
@@ -8044,19 +8015,12 @@ export class EmojiWorld {
       const inv = distance > 0.001 ? 1 / distance : 0;
 
       /* Shadow points away from the cursor light. */
-      const shadowDistance = 5 + influence * 11;
-      const shadowX = dx * inv * shadowDistance;
-      const shadowY = 4 + dy * inv * shadowDistance * 0.62;
-      const blur = 8 + influence * 8;
-
-      const baseAlpha = dark ? 0.42 : 0.27;
-      const directionalAlpha = dark ? 0.34 : 0.26;
-      const warmth = dark ? `,0.18` : `,0`;
-
+      /*
+       * Stable emoji shadow only. The cursor may still brighten the emoji,
+       * but it must not create a moving shadow beneath it.
+       */
       emoji.element.style.filter = `
-        drop-shadow(0 5px 9px rgba(0,0,0,${baseAlpha}))
-        drop-shadow(${shadowX.toFixed(1)}px ${shadowY.toFixed(1)}px ${blur.toFixed(1)}px rgba(0,0,0,${directionalAlpha + influence * 0.18}))
-        drop-shadow(${(-shadowX * 0.28).toFixed(1)}px ${(-shadowY * 0.18).toFixed(1)}px ${(5 + influence * 7).toFixed(1)}px rgba(${dark ? `255,180,95${warmth}` : '255,255,255,0.12'}))
+        drop-shadow(0 5px 9px rgba(0,0,0,${dark ? 0.34 : 0.24}))
         brightness(${(1 + influence * (dark ? 0.11 : 0.07)).toFixed(3)})
         saturate(${(1 + influence * 0.09).toFixed(3)})
       `;
@@ -8073,28 +8037,15 @@ export class EmojiWorld {
         continue;
       }
 
-      const dx = cube.x - lightX;
-      const dy = cube.y - lightY;
-      const distance = Math.hypot(dx, dy);
-      const influence = Math.max(0, 1 - distance / 650);
-      const inv = distance > 0.001 ? 1 / distance : 0;
-      const sx = dx * inv * (3 + influence * 8);
-      const sy = 2 + dy * inv * (2 + influence * 5);
-
+      /*
+       * Keep the platform shadows fixed.
+       * No cursor-following shadow is generated here.
+       */
       if (data.deepShadow) {
-        data.deepShadow.alpha = dark ? 0.34 + influence * 0.16 : 0.20 + influence * 0.12;
+        data.deepShadow.alpha = dark ? 0.30 : 0.11;
       }
       if (data.contactShadow) {
-        data.contactShadow.alpha = dark ? 0.46 + influence * 0.16 : 0.28 + influence * 0.14;
-      }
-      if (data.cursorShadow) {
-        data.cursorShadow.clear();
-        data.cursorShadow.ellipse(0, data.size * 0.43, data.size * 0.39, data.size * 0.075).fill({
-          color: dark ? 0x000000 : 0x1b2430,
-          alpha: dark ? 0.22 + influence * 0.20 : 0.08 + influence * 0.13
-        });
-        data.cursorShadow.x = sx;
-        data.cursorShadow.y = sy;
+        data.contactShadow.alpha = dark ? 0.30 : 0.14;
       }
 
     }
