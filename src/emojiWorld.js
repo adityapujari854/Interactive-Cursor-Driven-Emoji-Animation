@@ -76,7 +76,7 @@ export class EmojiWorld {
      * avoid decoder spikes and visible source-switch flicker.
      */
     this.mobileAnimationLimit =
-      8;
+      6;
 
     this.mobileActivationBatchSize =
       1;
