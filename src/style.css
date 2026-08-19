@@ -1559,3 +1559,38 @@ html[data-theme="dark"] #app {
         animation: none !important;
     }
 }
+
+
+/* ============================================================
+   CONTINUOUS BIOMETRIC SCANNER HUD
+   ============================================================ */
+.emoji-deck-biometric{position:absolute;left:50%;top:50%;width:128px;height:78px;transform:translate(-50%,-50%);z-index:5;pointer-events:none;opacity:.34;filter:drop-shadow(0 0 8px rgba(78,181,255,.18));}
+.emoji-deck-biometric::before{content:"";position:absolute;inset:9px 15px;border:1px solid rgba(106,190,255,.18);border-radius:50%;box-shadow:0 0 22px rgba(73,178,255,.08),inset 0 0 20px rgba(73,178,255,.06);}
+.emoji-deck-biometric::after{content:"";position:absolute;left:50%;top:50%;width:78px;height:44px;transform:translate(-50%,-50%);border:1px dashed rgba(112,205,255,.16);border-radius:50%;animation:bioTargetRotate 8s linear infinite;}
+.bio-ring{position:absolute;left:50%;top:50%;border:1px solid rgba(96,195,255,.32);border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 10px rgba(67,174,255,.10),inset 0 0 8px rgba(67,174,255,.05);}
+.bio-ring.ring-1{width:96px;height:56px;animation:bioRingPulse 2.8s ease-in-out infinite;}
+.bio-ring.ring-2{width:68px;height:42px;border-color:rgba(125,214,255,.42);animation:bioRingPulse 2.2s ease-in-out .25s infinite reverse;}
+.bio-ring.ring-3{width:42px;height:27px;border-color:rgba(157,225,255,.48);animation:bioRingPulse 1.8s ease-in-out .45s infinite;}
+.bio-corners{position:absolute;left:24px;right:24px;top:14px;bottom:14px;border:1px solid transparent;border-top-color:rgba(103,199,255,.34);border-bottom-color:rgba(103,199,255,.22);clip-path:polygon(0 0,18px 0,18px 2px,2px 2px,2px 16px,0 16px,0 100%,18px 100%,18px calc(100% - 2px),2px calc(100% - 2px),2px calc(100% - 16px),0 calc(100% - 16px),100% calc(100% - 16px),calc(100% - 2px) calc(100% - 16px),calc(100% - 2px) calc(100% - 2px),calc(100% - 18px) calc(100% - 2px),calc(100% - 18px) 100%,100% 100%,100% 0,calc(100% - 18px) 0,calc(100% - 18px) 2px,calc(100% - 2px) 2px,calc(100% - 2px) 16px,100% 16px);opacity:.7;}
+.bio-core{position:absolute;left:50%;top:50%;width:10px;height:10px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,#e9fbff 0 18%,#6fd4ff 22% 42%,rgba(79,184,255,.12) 68%,transparent 72%);box-shadow:0 0 8px #71d6ff,0 0 22px rgba(80,190,255,.65);animation:bioCorePulse 1.15s ease-in-out infinite;}
+.bio-scanline{position:absolute;left:13px;right:13px;top:8px;height:2px;border-radius:999px;background:linear-gradient(90deg,transparent 0%,rgba(105,205,255,.25) 12%,#c8f5ff 50%,rgba(105,205,255,.25) 88%,transparent 100%);box-shadow:0 0 5px rgba(103,207,255,.95),0 0 16px rgba(75,187,255,.65),0 0 32px rgba(75,187,255,.25);opacity:.72;animation:bioScanSweep 1.65s cubic-bezier(.45,.05,.55,.95) infinite;}
+.bio-scanline::after{content:"";position:absolute;left:50%;top:-9px;width:34px;height:20px;transform:translateX(-50%);background:radial-gradient(ellipse,rgba(103,211,255,.24),transparent 70%);filter:blur(2px);}
+.bio-data{position:absolute;font:700 5px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em;color:rgba(139,215,255,.45);text-shadow:0 0 6px rgba(72,184,255,.5);opacity:.5;}
+.bio-data.data-a{left:9px;top:7px;}
+.bio-data.data-b{right:8px;bottom:7px;}
+@keyframes bioScanSweep{0%{top:10px;opacity:.15;transform:scaleX(.72)}12%{opacity:.9}50%{top:66px;opacity:1;transform:scaleX(1)}88%{opacity:.85}100%{top:10px;opacity:.15;transform:scaleX(.72)}}
+@keyframes bioRingPulse{0%,100%{opacity:.32;transform:translate(-50%,-50%) scale(.96)}50%{opacity:.8;transform:translate(-50%,-50%) scale(1.04)}}
+@keyframes bioCorePulse{0%,100%{transform:translate(-50%,-50%) scale(.72);opacity:.65}50%{transform:translate(-50%,-50%) scale(1.18);opacity:1}}
+@keyframes bioTargetRotate{from{transform:translate(-50%,-50%) rotate(0deg)}to{transform:translate(-50%,-50%) rotate(360deg)}}
+.emoji-deck-scanfield.is-scanning .emoji-deck-biometric,.emoji-deck-scanfield.is-copying .emoji-deck-biometric{opacity:1;filter:drop-shadow(0 0 10px rgba(78,181,255,.34));}
+.emoji-deck-scanfield.is-scanning .bio-ring,.emoji-deck-scanfield.is-copying .bio-ring{border-color:rgba(104,205,255,.58);}
+.emoji-deck-scanfield.is-scanning .bio-core,.emoji-deck-scanfield.is-copying .bio-core{box-shadow:0 0 10px #9aeaff,0 0 28px rgba(80,190,255,.8);}
+/* Keep the main scan beam alive for the entire 10-second copy sequence. */
+.emoji-deck-scanfield.is-scanning .emoji-deck-beam,.emoji-deck-scanfield.is-copying .emoji-deck-beam{opacity:1;animation:biometricBeamContinuous 1.65s cubic-bezier(.45,.05,.55,.95) infinite;}
+.emoji-deck-scanfield.is-scanning .emoji-deck-platform,.emoji-deck-scanfield.is-copying .emoji-deck-platform{animation:platformScanContinuous 1.65s ease-in-out infinite;}
+@keyframes biometricBeamContinuous{0%{transform:translateX(-50%) translateY(-30px);opacity:.15}14%{opacity:1}50%{transform:translateX(-50%) translateY(32px);opacity:1}86%{opacity:.9}100%{transform:translateX(-50%) translateY(-30px);opacity:.15}}
+@keyframes platformScanContinuous{0%,100%{box-shadow:0 8px 20px rgba(57,107,145,.16),inset 0 1px 3px rgba(255,255,255,.95)}50%{box-shadow:0 0 34px rgba(77,188,255,.48),0 10px 30px rgba(57,107,145,.20),inset 0 1px 6px rgba(255,255,255,1)}}
+.emoji-deck-scanfield.is-scanning .emoji-deck-scan-grid,.emoji-deck-scanfield.is-copying .emoji-deck-scan-grid{animation:scannerGridPulse 1.65s ease-in-out infinite;}
+@keyframes scannerGridPulse{0%,100%{opacity:.42}50%{opacity:1;box-shadow:inset 0 0 30px rgba(87,166,230,.14),0 0 12px rgba(87,166,230,.08)}}
+.emoji-deck-scanfield.is-scanning .emoji-deck-scan-orbit,.emoji-deck-scanfield.is-copying .emoji-deck-scan-orbit{border-color:rgba(99,193,255,.42);}
+.emoji-deck-scanfield.is-scanning .emoji-deck-scan-particles i,.emoji-deck-scanfield.is-copying .emoji-deck-scan-particles i{opacity:.55;}

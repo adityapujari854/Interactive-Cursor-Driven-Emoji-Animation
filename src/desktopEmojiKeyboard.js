@@ -114,6 +114,16 @@ export class DesktopEmojiKeyboard {
         <div class="emoji-deck-scan-orbit orbit-a"></div>
         <div class="emoji-deck-scan-orbit orbit-b"></div>
         <div class="emoji-deck-scan-grid"></div>
+        <div class="emoji-deck-biometric" aria-hidden="true">
+          <span class="bio-ring ring-1"></span>
+          <span class="bio-ring ring-2"></span>
+          <span class="bio-ring ring-3"></span>
+          <span class="bio-corners"></span>
+          <span class="bio-core"></span>
+          <span class="bio-scanline"></span>
+          <span class="bio-data data-a">1010</span>
+          <span class="bio-data data-b">◈ 24</span>
+        </div>
         <div class="emoji-deck-scan-particles" aria-hidden="true"></div>
         <div class="emoji-deck-platform">
           <span class="platform-reflection"></span><span class="platform-edge"></span><span class="platform-shadow"></span>
