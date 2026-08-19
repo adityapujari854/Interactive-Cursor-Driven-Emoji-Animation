@@ -180,16 +180,19 @@ export class EmojiWorld {
         0,
 
       talkingCooldown:
-        650,
-
-      initialTalkingPlayed:
-        false
+        650
     };
 
     this._boundAudioUnlock =
       () => {
         this._unlockAudio();
       };
+
+
+    /* Best-effort asset protection. Browser-delivered assets cannot be made
+       impossible to capture, but casual save/drag/context-menu downloads are
+       blocked. */
+    this._installAssetProtection();
 
 
     /* ============================================================
@@ -242,6 +245,35 @@ export class EmojiWorld {
 
     this.ready =
       this._init();
+
+  }
+
+
+  /* ================================================================
+     BEST-EFFORT ASSET PROTECTION
+     ================================================================ */
+
+  _installAssetProtection() {
+
+    const block = event => {
+      event.preventDefault();
+      event.stopPropagation();
+      return false;
+    };
+
+    document.addEventListener('contextmenu', block, { capture: true });
+    document.addEventListener('dragstart', block, { capture: true });
+    document.addEventListener('selectstart', block, { capture: true });
+
+    document.addEventListener('keydown', event => {
+      const key = String(event.key || '').toLowerCase();
+      if ((event.ctrlKey || event.metaKey) && ['s', 'u'].includes(key)) {
+        block(event);
+      }
+      if (event.key === 'F12' || (event.ctrlKey && event.shiftKey && ['i', 'j', 'c'].includes(key))) {
+        block(event);
+      }
+    }, { capture: true });
 
   }
 
@@ -312,6 +344,7 @@ export class EmojiWorld {
 
 
       this._setupAudio();
+      this._unlockAudio();
 
 
       this._setupScene();
@@ -1716,7 +1749,7 @@ export class EmojiWorld {
       );
 
     talking.loop =
-      false;
+      true;
 
     talking.volume =
       0.60;
@@ -1728,6 +1761,11 @@ export class EmojiWorld {
       'playsinline',
       ''
     );
+
+    music.setAttribute('controlslist', 'nodownload noplaybackrate');
+    talking.setAttribute('controlslist', 'nodownload noplaybackrate');
+    music.disableRemotePlayback = true;
+    talking.disableRemotePlayback = true;
 
 
     /*
@@ -1810,10 +1848,6 @@ export class EmojiWorld {
 
     talking.load();
 
-    /* Best-effort audible autoplay. If the browser blocks it,
-       the first pointer/key/touch gesture retries immediately. */
-    this._unlockAudio();
-
 
     /*
      * ------------------------------------------------------------
@@ -1878,109 +1912,33 @@ export class EmojiWorld {
       return;
     }
 
-    const music =
-      this.audio.music;
+    const music = this.audio.music;
+    const talking = this.audio.talking;
 
-    const talking =
-      this.audio.talking;
+    music.volume = this.audio.musicVolume;
+    talking.volume = this.audio.talkingVolume;
+    music.loop = true;
+    talking.loop = true;
 
-    music.volume =
-      this.audio.musicVolume;
+    const attempts = [];
 
-    talking.volume =
-      this.audio.talkingVolume;
-
-    music.loop =
-      true;
-
-    const playInitialTalking = () => {
-
-      if (
-        this.audio.initialTalkingPlayed
-      ) {
-        return;
-      }
-
-      this.audio.initialTalkingPlayed =
-        true;
-
-      this.audio.talkingLastPlayedAt =
-        performance.now();
-
-      try {
-        talking.pause();
-        talking.currentTime = 0;
-        talking.volume =
-          this.audio.talkingVolume;
-
-        const talkingPromise =
-          talking.play();
-
-        if (
-          talkingPromise &&
-          typeof talkingPromise.catch ===
-            'function'
-        ) {
-          talkingPromise.catch(error => {
-            console.warn(
-              '⚠️ Initial talking sound playback failed:',
-              error
-            );
-          });
-        }
-      } catch (error) {
-        console.warn(
-          '⚠️ Initial talking sound failed:',
-          error
-        );
-      }
-
-      this.nextSoundAt =
-        performance.now() +
-        4000 +
-        Math.random() * 7000;
-    };
-
-    if (!music.paused) {
-      this.audio.unlocked = true;
-      playInitialTalking();
-      return;
+    if (music.paused) {
+      attempts.push(music.play());
     }
 
-    try {
-      const promise = music.play();
+    if (talking.paused) {
+      attempts.push(talking.play());
+    }
 
-      if (
-        promise &&
-        typeof promise.then ===
-          'function'
-      ) {
-        promise
-          .then(() => {
-            this.audio.unlocked = true;
-            console.log(
-              '🎵 BACKGROUND MUSIC PLAYING — 100%'
-            );
-            playInitialTalking();
-          })
-          .catch(error => {
-            this.audio.unlocked = false;
-            console.info(
-              '🔒 Audible autoplay blocked; waiting for first user interaction.',
-              error?.name || ''
-            );
-          });
+    Promise.allSettled(attempts).then(results => {
+      const blocked = results.some(result => result.status === 'rejected');
+      this.audio.unlocked = !blocked;
+      if (!blocked) {
+        console.log('🔊 MUSIC + TALKING AUDIO PLAYING');
       } else {
-        this.audio.unlocked = true;
-        playInitialTalking();
+        console.warn('⚠️ Browser autoplay policy blocked one or more audio streams.');
       }
-    } catch (error) {
-      this.audio.unlocked = false;
-      console.info(
-        '🔒 Audio autoplay unavailable until user interaction.',
-        error?.name || ''
-      );
-    }
+    });
 
   }
 
@@ -1991,95 +1949,35 @@ export class EmojiWorld {
 
   _playTalkingSound() {
 
-  if (
-    !this.audio ||
-    !this.audio.talking
-  ) {
-    return;
-  }
-
-
-  /*
-   * Audio must first be unlocked
-   * by a real user interaction.
-   */
-
-  if (
-    !this.audio.unlocked
-  ) {
-    return;
-  }
-
-
-  const now =
-    performance.now();
-
-
-  /*
-   * Prevent overlapping sounds.
-   */
-
-  if (
-    now -
-      this.audio.talkingLastPlayedAt <
-    this.audio.talkingCooldown
-  ) {
-    return;
-  }
-
-
-  this.audio.talkingLastPlayedAt =
-    now;
-
-
-  const talking =
-    this.audio.talking;
-
-
-  try {
-
-    talking.pause();
-
-    talking.currentTime =
-      0;
-
-    talking.volume =
-      this.audio.talkingVolume;
-
-
-    const promise =
-      talking.play();
-
-
     if (
-      promise &&
-      typeof promise.catch ===
-        'function'
+      !this.audio ||
+      !this.audio.talking ||
+      !this.audio.unlocked
     ) {
-
-      promise.catch(
-        error => {
-
-          console.warn(
-            '⚠️ Talking sound playback failed:',
-            error
-          );
-
-        }
-      );
-
+      return;
     }
 
-  } catch (error) {
+    const talking = this.audio.talking;
+    talking.loop = true;
+    talking.volume = this.audio.talkingVolume;
 
-    console.warn(
-      '⚠️ Talking sound failed:',
-      error
-    );
+    /* Never interrupt or restart the file. Let it play to completion. */
+    if (!talking.paused) {
+      return;
+    }
+
+    try {
+      const promise = talking.play();
+      if (promise && typeof promise.catch === 'function') {
+        promise.catch(error => console.warn('⚠️ Talking sound playback failed:', error));
+      }
+    } catch (error) {
+      console.warn('⚠️ Talking sound failed:', error);
+    }
 
   }
 
-}
+
   /* ================================================================
      START ANIMATION LOOP
      ================================================================ */
@@ -2894,6 +2792,21 @@ export class EmojiWorld {
 
 
     /*
+     * Cursor-reactive shadow layer.
+     */
+
+    const cursorShadow =
+      new PIXI.Graphics();
+
+    cursorShadow.eventMode =
+      'none';
+
+    group.addChild(
+      cursorShadow
+    );
+
+
+    /*
      * Store all visual components so
      * theme/cursor lighting can update
      * them later.
@@ -2915,7 +2828,9 @@ export class EmojiWorld {
 
       microHighlight,
 
-      edgeLight
+      edgeLight,
+
+      cursorShadow
 
     };
 
@@ -3900,19 +3815,7 @@ export class EmojiWorld {
     rotate(${rotation}rad)
     scale(${scale})`;
 
-  /*
-   * Keep the emoji looking grounded.
-   */
-
-  emoji.element.style.filter =
-    `
-      drop-shadow(
-        0 ${shadowY}px ${shadowBlur}px
-        rgba(0,0,0,${0.13 + proximityShadow * 0.07})
-      )
-      brightness(${1 + proximityShadow * 0.06})
-      saturate(${1 + proximityShadow * 0.08})
-    `;
+  /* Shadow/lighting is updated by _updateDynamicLighting(). */
 }
 
 
@@ -4054,7 +3957,7 @@ export class EmojiWorld {
           targetOffsetX -
           emoji.cursorOffsetX
         ) *
-        0.38;
+        0.22;
 
 
       emoji.cursorOffsetY +=
@@ -4062,7 +3965,7 @@ export class EmojiWorld {
           targetOffsetY -
           emoji.cursorOffsetY
         ) *
-        0.38;
+        0.22;
 
 
       /*
@@ -6198,7 +6101,7 @@ export class EmojiWorld {
    */
 
   const darkBackground =
-    'radial-gradient(circle at 50% 12%, #202735 0%, #0d1118 52%, #080b10 100%)';
+    'radial-gradient(circle at 50% 30%, #3a3b40 0%, #1d2027 38%, #101319 70%, #090c11 100%)';
 
   const lightBackground =
     'radial-gradient(circle at 50% 12%, #ffffff 0%, #f4f8fb 55%, #e8f0f5 100%)';
@@ -6268,7 +6171,7 @@ export class EmojiWorld {
         ? `
           radial-gradient(
             circle at 50% 18%,
-            rgba(90,145,220,0.12),
+            rgba(255,181,96,0.13),
             transparent 58%
           )
         `
@@ -7406,8 +7309,8 @@ export class EmojiWorld {
      ================================================================ */
 
   _setAudioVolumes(
-    musicVolume = 1.00,
-    talkingVolume = 0.60
+    musicVolume = 0.70,
+    talkingVolume = 0.50
   ) {
 
     /*
@@ -7825,66 +7728,40 @@ export class EmojiWorld {
       return;
     }
 
-    const x =
-      this.cursorLightX;
-
-    const y =
-      this.cursorLightY;
-
-    const isDark =
-      this.theme === 'dark';
+    const x = this.cursorLightX;
+    const y = this.cursorLightY;
+    const dark = this.theme === 'dark';
+    const warm = 0xffb45f;
+    const cool = 0xdce8ff;
 
     this.cursorLight.clear();
 
-    /*
-     * Theme-aware glowing orb:
-     * Light mode -> dark graphite orb + dark glow.
-     * Dark mode  -> soft white/ice orb + white glow.
-     */
-    const glowColor =
-      isDark
-        ? 0xeaf4ff
-        : 0x0b1220;
+    /* Broad illumination used by the scene. */
+    this.cursorLight.circle(x, y, dark ? 145 : 115).fill({
+      color: dark ? warm : cool,
+      alpha: dark ? 0.075 : 0.055
+    });
 
-    const coreColor =
-      isDark
-        ? 0xffffff
-        : 0x111827;
+    this.cursorLight.circle(x, y, dark ? 75 : 62).fill({
+      color: dark ? warm : 0xffffff,
+      alpha: dark ? 0.11 : 0.075
+    });
 
-    this.cursorLight
-      .circle(x, y, 34)
-      .fill({
-        color: glowColor,
-        alpha: isDark ? 0.10 : 0.12
-      });
+    /* Visible glowing orb. */
+    this.cursorLight.circle(x, y, dark ? 22 : 19).fill({
+      color: dark ? warm : 0x64748b,
+      alpha: dark ? 0.12 : 0.10
+    });
 
-    this.cursorLight
-      .circle(x, y, 18)
-      .fill({
-        color: glowColor,
-        alpha: isDark ? 0.18 : 0.22
-      });
+    this.cursorLight.circle(x, y, dark ? 8 : 7).fill({
+      color: dark ? 0xffd59a : 0x1f2937,
+      alpha: 0.96
+    });
 
-    this.cursorLight
-      .circle(x, y, 9)
-      .fill({
-        color: glowColor,
-        alpha: isDark ? 0.28 : 0.30
-      });
-
-    this.cursorLight
-      .circle(x, y, 4.8)
-      .fill({
-        color: coreColor,
-        alpha: 1
-      });
-
-    this.cursorLight
-      .circle(x - 1.1, y - 1.1, 1.35)
-      .fill({
-        color: isDark ? 0xffffff : 0x94a3b8,
-        alpha: isDark ? 1 : 0.80
-      });
+    this.cursorLight.circle(x, y, dark ? 3.2 : 2.6).fill({
+      color: dark ? 0xfffff5 : 0xffffff,
+      alpha: 1
+    });
 
   }
 
@@ -7914,7 +7791,7 @@ export class EmojiWorld {
       Math.min(
         1,
         dt *
-        45
+        24
       );
 
 
@@ -7926,7 +7803,7 @@ export class EmojiWorld {
       Math.min(
         1,
         dt *
-        45
+        24
       );
 
 
@@ -8590,6 +8467,87 @@ export class EmojiWorld {
 
   }
   /* ================================================================
+     DYNAMIC EMOJI / PLATFORM LIGHTING
+     ================================================================ */
+
+  _updateDynamicLighting() {
+
+    const dark = this.theme === 'dark';
+    const lightX = this.cursorLightX;
+    const lightY = this.cursorLightY;
+
+    for (const emoji of this.emojis) {
+
+      if (!emoji || !emoji.element) {
+        continue;
+      }
+
+      const dx = emoji.x - lightX;
+      const dy = emoji.y - lightY;
+      const distance = Math.hypot(dx, dy);
+      const influence = Math.max(0, 1 - distance / (dark ? 520 : 620));
+      const inv = distance > 0.001 ? 1 / distance : 0;
+
+      /* Shadow points away from the cursor light. */
+      const shadowDistance = 5 + influence * 11;
+      const shadowX = dx * inv * shadowDistance;
+      const shadowY = 4 + dy * inv * shadowDistance * 0.62;
+      const blur = 8 + influence * 8;
+
+      const baseAlpha = dark ? 0.42 : 0.27;
+      const directionalAlpha = dark ? 0.34 : 0.26;
+      const warmth = dark ? `,0.18` : `,0`;
+
+      emoji.element.style.filter = `
+        drop-shadow(0 5px 9px rgba(0,0,0,${baseAlpha}))
+        drop-shadow(${shadowX.toFixed(1)}px ${shadowY.toFixed(1)}px ${blur.toFixed(1)}px rgba(0,0,0,${directionalAlpha + influence * 0.18}))
+        drop-shadow(${(-shadowX * 0.28).toFixed(1)}px ${(-shadowY * 0.18).toFixed(1)}px ${(5 + influence * 7).toFixed(1)}px rgba(${dark ? `255,180,95${warmth}` : '255,255,255,0.12'}))
+        brightness(${(1 + influence * (dark ? 0.11 : 0.07)).toFixed(3)})
+        saturate(${(1 + influence * 0.09).toFixed(3)})
+      `;
+
+    }
+
+    /* Give every glass platform a visible contact shadow in both themes. */
+    for (const cubeData of this.cubes) {
+
+      const cube = cubeData?.sprite;
+      const data = cube?.userData;
+
+      if (!cube || !data) {
+        continue;
+      }
+
+      const dx = cube.x - lightX;
+      const dy = cube.y - lightY;
+      const distance = Math.hypot(dx, dy);
+      const influence = Math.max(0, 1 - distance / 650);
+      const inv = distance > 0.001 ? 1 / distance : 0;
+      const sx = dx * inv * (3 + influence * 8);
+      const sy = 2 + dy * inv * (2 + influence * 5);
+
+      if (data.deepShadow) {
+        data.deepShadow.alpha = dark ? 0.34 + influence * 0.16 : 0.20 + influence * 0.12;
+      }
+      if (data.contactShadow) {
+        data.contactShadow.alpha = dark ? 0.46 + influence * 0.16 : 0.28 + influence * 0.14;
+      }
+      if (data.cursorShadow) {
+        data.cursorShadow.clear();
+        data.cursorShadow.ellipse(0, data.size * 0.43, data.size * 0.39, data.size * 0.075).fill({
+          color: dark ? 0x000000 : 0x1b2430,
+          alpha: dark ? 0.22 + influence * 0.20 : 0.08 + influence * 0.13
+        });
+        data.cursorShadow.x = sx;
+        data.cursorShadow.y = sy;
+      }
+
+    }
+
+  }
+
+
+  /* ================================================================
      COMPLETE VISUAL UPDATE
      ================================================================ */
 
@@ -8650,6 +8608,8 @@ export class EmojiWorld {
     this._updateVisualEffects(
       dtMs
     );
+
+    this._updateDynamicLighting();
 
   }
 
@@ -9585,8 +9545,8 @@ export class EmojiWorld {
      */
 
     this._setAudioVolumes(
-      1.00,
-      0.60
+      0.70,
+      0.50
     );
 
 
