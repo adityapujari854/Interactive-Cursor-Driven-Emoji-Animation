@@ -71,6 +71,12 @@ export class GyroHandler {
 
     this.shakeDetected = false;
 
+    /* Callback invoked when a valid shake is detected. */
+    this.onShake =
+      typeof options.onShake === 'function'
+        ? options.onShake
+        : null;
+
     /* ==========================================================
        SUPPORT
        ========================================================== */
@@ -512,6 +518,22 @@ export class GyroHandler {
     console.log(
       `[Gyro] 📱 SHAKE DETECTED (${shakeForce.toFixed(1)})`
     );
+
+    /*
+     * Notify the application immediately.
+     * EmojiWorld also polls pollShake() as a safety net, so a
+     * browser/device timing difference cannot lose the event.
+     */
+    if (typeof this.onShake === 'function') {
+      try {
+        this.onShake({
+          force: shakeForce,
+          timestamp: now
+        });
+      } catch (error) {
+        console.warn('[Gyro] Shake callback failed:', error);
+      }
+    }
   }
 
   /* ============================================================

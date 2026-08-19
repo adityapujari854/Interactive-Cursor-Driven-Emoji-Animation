@@ -3199,6 +3199,28 @@ export class EmojiWorld {
 
       /*
        * ------------------------------------------------------------
+       * MOBILE GYRO SHAKE POLL
+       * ------------------------------------------------------------
+       *
+       * GyroHandler records a shake in shakeDetected(). Polling from
+       * the render loop is the reliable path on Android/Chrome because
+       * sensor callbacks and the Pixi ticker are independent. The gyro
+       * also exposes onShake() for immediate delivery.
+       */
+      if (
+        this.isMobileOrTablet &&
+        this.gyro &&
+        typeof this.gyro.pollShake === 'function' &&
+        this.gyro.pollShake()
+      ) {
+
+        this._handleShake();
+
+      }
+
+
+      /*
+       * ------------------------------------------------------------
        * UPDATE EMOJIS
        * ------------------------------------------------------------
        */
@@ -5219,6 +5241,9 @@ export class EmojiWorld {
         result.catch(
           error => {
 
+            this._permissionRequested =
+              false;
+
             console.warn(
               '[Emoji World] Gyroscope permission request failed:',
               error
@@ -5246,6 +5271,11 @@ export class EmojiWorld {
      ================================================================ */
 
   _handleShake() {
+
+    /* Shake-to-drop is intentionally mobile/tablet only. */
+    if (!this.isMobileOrTablet) {
+      return;
+    }
 
     /*
      * Prevent repeated shake events from
@@ -7027,6 +7057,28 @@ export class EmojiWorld {
         this.physics.update(
           dt
         );
+
+      }
+
+
+      /*
+       * ------------------------------------------------------------
+       * MOBILE GYRO SHAKE POLL
+       * ------------------------------------------------------------
+       *
+       * GyroHandler records a shake in shakeDetected(). Polling from
+       * the render loop is the reliable path on Android/Chrome because
+       * sensor callbacks and the Pixi ticker are independent. The gyro
+       * also exposes onShake() for immediate delivery.
+       */
+      if (
+        this.isMobileOrTablet &&
+        this.gyro &&
+        typeof this.gyro.pollShake === 'function' &&
+        this.gyro.pollShake()
+      ) {
+
+        this._handleShake();
 
       }
 
