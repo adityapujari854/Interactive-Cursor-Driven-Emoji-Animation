@@ -2583,76 +2583,6 @@ export class EmojiWorld {
 
     /*
      * ------------------------------------------------------------
-     * SOFT SHADOW
-     * ------------------------------------------------------------
-     */
-
-    const deepShadow =
-      new PIXI.Graphics();
-
-
-    deepShadow
-      .ellipse(
-        0,
-        size * 0.48,
-        size * 0.43,
-        size * 0.095
-      )
-      .fill({
-
-        color:
-          0x000000,
-
-        alpha:
-          0.11
-
-      });
-
-
-    deepShadow.y =
-      2;
-
-
-    group.addChild(
-      deepShadow
-    );
-
-
-    /*
-     * ------------------------------------------------------------
-     * CONTACT SHADOW
-     * ------------------------------------------------------------
-     */
-
-    const contactShadow =
-      new PIXI.Graphics();
-
-
-    contactShadow
-      .ellipse(
-        0,
-        size * 0.42,
-        size * 0.31,
-        size * 0.055
-      )
-      .fill({
-
-        color:
-          0x000000,
-
-        alpha:
-          0.14
-
-      });
-
-
-    group.addChild(
-      contactShadow
-    );
-
-
-    /*
-     * ------------------------------------------------------------
      * GLASS BODY
      * ------------------------------------------------------------
      */
@@ -2898,9 +2828,6 @@ export class EmojiWorld {
 
       size,
 
-      deepShadow,
-
-      contactShadow,
 
       glass,
 
@@ -5951,30 +5878,6 @@ export class EmojiWorld {
         });
     }
 
-
-    /*
-     * Shadows
-     */
-
-    if (data.deepShadow) {
-
-      data.deepShadow.alpha =
-        isDark
-          ? 0.34
-          : 0.11;
-
-    }
-
-
-    if (data.contactShadow) {
-
-      data.contactShadow.alpha =
-        isDark
-          ? 0.30
-          : 0.14;
-
-    }
-
   }
 
 
@@ -6349,39 +6252,6 @@ export class EmojiWorld {
             (this.theme === 'dark' ? 0.10 : 0.15) + influence * 0.24;
         }
 
-
-        if (
-          data.contactShadow
-        ) {
-
-          data.contactShadow.alpha =
-            (
-              this.theme ===
-              'dark'
-                ? 0.34
-                : 0.14
-            ) -
-            influence *
-            0.035;
-
-        }
-
-
-        if (
-          data.deepShadow
-        ) {
-
-          data.deepShadow.alpha =
-            (
-              this.theme ===
-              'dark'
-                ? 0.30
-                : 0.11
-            ) -
-            influence *
-            0.025;
-
-        }
 
       }
 
@@ -8064,6 +7934,14 @@ export class EmojiWorld {
     const lightX = this.cursorLightX;
     const lightY = this.cursorLightY;
 
+    /*
+     * Realistic cursor-responsive emoji shadows:
+     * - no ellipse/circle is drawn beneath the emoji
+     * - each emoji keeps a soft ambient contact shadow
+     * - the directional component shifts away from the glowing cursor
+     * - the closer the cursor gets, the more pronounced the directional
+     *   shadow becomes, creating a natural light/shadow response
+     */
     for (const emoji of this.emojis) {
 
       if (!emoji || !emoji.element) {
@@ -8073,23 +7951,45 @@ export class EmojiWorld {
       const dx = emoji.x - lightX;
       const dy = emoji.y - lightY;
       const distance = Math.hypot(dx, dy);
-      const influence = Math.max(0, 1 - distance / (dark ? 520 : 620));
-      const inv = distance > 0.001 ? 1 / distance : 0;
+      const radius = dark ? 430 : 500;
+      const influence = Math.max(0, 1 - distance / radius);
+      const normalizedX = distance > 0.001 ? dx / distance : 0;
+      const normalizedY = distance > 0.001 ? dy / distance : 0;
 
-      /* Shadow points away from the cursor light. */
       /*
-       * Stable emoji shadow only. The cursor may still brighten the emoji,
-       * but it must not create a moving shadow beneath it.
+       * Shadow travels away from the cursor. Keep it short and soft so it
+       * reads as light reacting to the emoji rather than a floating circle.
        */
+      const shadowDistance = 2.5 + influence * 10;
+      const shadowX = normalizedX * shadowDistance;
+      const shadowY = normalizedY * shadowDistance * 0.72;
+      const blur = 5 + influence * 6;
+      const ambientOpacity = dark ? 0.30 : 0.19;
+      const directionalOpacity = dark ? 0.36 : 0.24;
+      const directional = directionalOpacity + influence * (dark ? 0.18 : 0.13);
+      const brightness = 1 + influence * (dark ? 0.12 : 0.08);
+      const saturation = 1 + influence * 0.10;
+
+      emoji.element.style.setProperty('--emoji-shadow-x', `${shadowX.toFixed(2)}px`);
+      emoji.element.style.setProperty('--emoji-shadow-y', `${shadowY.toFixed(2)}px`);
+      emoji.element.style.setProperty('--emoji-shadow-blur', `${blur.toFixed(2)}px`);
+      emoji.element.style.setProperty('--emoji-shadow-opacity', directional.toFixed(3));
+      emoji.element.style.setProperty('--emoji-ambient-opacity', ambientOpacity.toFixed(3));
+
       emoji.element.style.filter = `
-        drop-shadow(0 5px 9px rgba(0,0,0,${dark ? 0.34 : 0.24}))
-        brightness(${(1 + influence * (dark ? 0.11 : 0.07)).toFixed(3)})
-        saturate(${(1 + influence * 0.09).toFixed(3)})
+        drop-shadow(0 4px 7px rgba(0,0,0,${ambientOpacity.toFixed(3)}))
+        drop-shadow(var(--emoji-shadow-x) var(--emoji-shadow-y) var(--emoji-shadow-blur) rgba(0,0,0,var(--emoji-shadow-opacity)))
+        brightness(${brightness.toFixed(3)})
+        saturate(${saturation.toFixed(3)})
       `;
 
     }
 
-    /* Give every glass platform a visible contact shadow in both themes. */
+    /*
+     * Platforms stay clean and glassy. Their old circular/deep/contact
+     * shadows have been removed entirely; depth now comes from the glass
+     * bevel, highlights and the emoji's own directional shadow.
+     */
     for (const cubeData of this.cubes) {
 
       const cube = cubeData?.sprite;
@@ -8099,21 +7999,21 @@ export class EmojiWorld {
         continue;
       }
 
-      /*
-       * Keep the platform shadows fixed.
-       * No cursor-following shadow is generated here.
-       */
-      if (data.deepShadow) {
-        data.deepShadow.alpha = dark ? 0.30 : 0.11;
+      if (data.glass) {
+        data.glass.alpha = dark ? 0.34 : 0.58;
       }
-      if (data.contactShadow) {
-        data.contactShadow.alpha = dark ? 0.30 : 0.14;
+
+      if (data.edgeLight) {
+        data.edgeLight.alpha = dark ? 0.46 : 0.62;
+      }
+
+      if (data.rimGlow) {
+        data.rimGlow.alpha = dark ? 0.14 : 0.15;
       }
 
     }
 
   }
-
 
   /* ================================================================
      COMPLETE VISUAL UPDATE

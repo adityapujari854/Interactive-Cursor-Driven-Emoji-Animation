@@ -2150,3 +2150,55 @@ body.tutorial-input-locked #pixi-canvas {
         inset 0 1px 0 rgba(255,255,255,.98),
         inset 0 -1px 0 rgba(123,166,195,.12) !important;
 }
+
+
+/* ================================================================
+   CURSOR-RESPONSIVE EMOJI SHADOWS
+   ================================================================
+   The shadow is attached to the emoji itself. It shifts away from the
+   random glowing emoji cursor and never renders a circular shadow below
+   the glass platform.
+*/
+.emoji-webp {
+    --emoji-shadow-x: 2px;
+    --emoji-shadow-y: 1px;
+    --emoji-shadow-blur: 7px;
+    --emoji-shadow-opacity: .24;
+    --emoji-ambient-opacity: .19;
+    transform-origin: center center;
+    will-change: filter, transform;
+}
+
+/* Keep the pointer emoji crisp while limiting its glow to a tight radius. */
+.emoji-cinematic-cursor__icon {
+    width: 30px;
+    height: 30px;
+    font-size: 24px;
+}
+
+.emoji-cinematic-cursor.is-day .emoji-cinematic-cursor__icon {
+    text-shadow:
+        0 0 2px rgba(255,255,255,.95),
+        0 0 5px rgba(72,156,214,.48),
+        0 0 7px rgba(72,156,214,.20);
+}
+
+.emoji-cinematic-cursor.is-night .emoji-cinematic-cursor__icon {
+    text-shadow:
+        0 0 2px rgba(255,255,255,.98),
+        0 0 5px rgba(255,255,255,.58),
+        0 0 7px rgba(220,240,255,.22);
+}
+
+.emoji-cinematic-cursor__icon::before {
+    width: 31px;
+    height: 31px;
+}
+
+.emoji-cinematic-cursor.is-day .emoji-cinematic-cursor__icon::before {
+    background: radial-gradient(circle, rgba(72,156,214,.08) 0%, rgba(72,156,214,.025) 42%, transparent 70%);
+}
+
+.emoji-cinematic-cursor.is-night .emoji-cinematic-cursor__icon::before {
+    background: radial-gradient(circle, rgba(255,255,255,.08) 0%, rgba(255,255,255,.025) 42%, transparent 70%);
+}
