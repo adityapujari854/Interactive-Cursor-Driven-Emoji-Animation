@@ -16,6 +16,7 @@
 import { EmojiWorld } from './emojiWorld.js';
 import { DesktopEmojiKeyboard } from './desktopEmojiKeyboard.js';
 import { FirstRunTutorial } from './tutorial.js';
+import './root-style.css';
 import './style.css';
 
 'use strict';
