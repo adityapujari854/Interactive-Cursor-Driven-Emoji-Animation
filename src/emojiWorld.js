@@ -78,7 +78,7 @@ export class EmojiWorld {
      * spikes that cause stutter/flicker.
      */
     this.mobileAnimationLimit =
-      12;
+      8;
 
     this.mobileActivationBatchSize =
       3;
