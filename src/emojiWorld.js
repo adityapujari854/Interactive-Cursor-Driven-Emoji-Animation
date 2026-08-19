@@ -71,8 +71,17 @@ export class EmojiWorld {
     this.isMobileOrTablet =
       this._detectMobileOrTablet();
 
+    /*
+     * Mobile animation balance:
+     * 12 active WebPs gives noticeably richer animation than the
+     * old 8-slot system, while batch activation prevents decode
+     * spikes that cause stutter/flicker.
+     */
     this.mobileAnimationLimit =
-      8;
+      12;
+
+    this.mobileActivationBatchSize =
+      3;
 
     this.mobileActiveEmojis =
       new Set();
@@ -344,7 +353,6 @@ export class EmojiWorld {
 
 
       this._setupAudio();
-      this._unlockAudio();
 
 
       this._setupScene();
@@ -1151,9 +1159,10 @@ export class EmojiWorld {
         'none';
 
 
-      element.style.willChange =
-        'transform';
-
+      /*
+       * will-change is intentionally not applied to all 24 images.
+       * It is enabled only for currently active mobile animations.
+       */
 
       /*
        * Store the real animated WebP.
@@ -1628,6 +1637,29 @@ export class EmojiWorld {
       emoji.staticURL =
         staticURL;
 
+      /*
+       * Keep the finished static frame underneath the animated
+       * WebP. Source transitions therefore never expose a blank
+       * frame while the animated decoder starts.
+       */
+      if (
+        emoji.element
+      ) {
+
+        emoji.element.style.backgroundImage =
+          `url("${staticURL}")`;
+
+        emoji.element.style.backgroundRepeat =
+          'no-repeat';
+
+        emoji.element.style.backgroundPosition =
+          'center';
+
+        emoji.element.style.backgroundSize =
+          'contain';
+
+      }
+
 
       emoji.staticReady =
         true;
@@ -1731,6 +1763,9 @@ export class EmojiWorld {
     music.preload =
       'auto';
 
+    music.autoplay =
+      true;
+
     music.setAttribute(
       'playsinline',
       ''
@@ -1756,6 +1791,9 @@ export class EmojiWorld {
 
     talking.preload =
       'auto';
+
+    talking.autoplay =
+      true;
 
     talking.setAttribute(
       'playsinline',
@@ -1848,6 +1886,11 @@ export class EmojiWorld {
 
     talking.load();
 
+    /*
+     * Attempt audible autoplay immediately when the page loads.
+     */
+    this._unlockAudio();
+
 
     /*
      * ------------------------------------------------------------
@@ -1912,32 +1955,76 @@ export class EmojiWorld {
       return;
     }
 
-    const music = this.audio.music;
-    const talking = this.audio.talking;
+    const music =
+      this.audio.music;
 
-    music.volume = this.audio.musicVolume;
-    talking.volume = this.audio.talkingVolume;
-    music.loop = true;
-    talking.loop = true;
+    const talking =
+      this.audio.talking;
 
-    const attempts = [];
+    music.volume =
+      this.audio.musicVolume;
 
-    if (music.paused) {
-      attempts.push(music.play());
-    }
+    talking.volume =
+      this.audio.talkingVolume;
 
-    if (talking.paused) {
-      attempts.push(talking.play());
-    }
+    music.loop =
+      true;
 
-    Promise.allSettled(attempts).then(results => {
-      const blocked = results.some(result => result.status === 'rejected');
-      this.audio.unlocked = !blocked;
-      if (!blocked) {
-        console.log('🔊 MUSIC + TALKING AUDIO PLAYING');
+    talking.loop =
+      true;
+
+    /*
+     * Best-effort immediate autoplay.
+     *
+     * If the browser allows audible autoplay, both streams begin
+     * during page initialization. If the browser blocks audible
+     * autoplay, the same call succeeds on the first allowed user
+     * gesture. There is no JavaScript API that can bypass that
+     * browser security policy.
+     */
+    const musicPromise =
+      music.paused
+        ? music.play()
+        : Promise.resolve();
+
+    const talkingPromise =
+      talking.paused
+        ? talking.play()
+        : Promise.resolve();
+
+    Promise.allSettled([
+      musicPromise,
+      talkingPromise
+    ]).then(results => {
+
+      const musicOK =
+        results[0]?.status ===
+        'fulfilled';
+
+      const talkingOK =
+        results[1]?.status ===
+        'fulfilled';
+
+      this.audio.unlocked =
+        musicOK &&
+        talkingOK;
+
+      if (
+        this.audio.unlocked
+      ) {
+
+        console.log(
+          '🔊 MUSIC + TALKING AUDIO PLAYING FROM LOAD'
+        );
+
       } else {
-        console.warn('⚠️ Browser autoplay policy blocked one or more audio streams.');
+
+        console.warn(
+          '⚠️ Audible autoplay was blocked by the browser; waiting for the first allowed user gesture.'
+        );
+
       }
+
     });
 
   }
@@ -4090,7 +4177,7 @@ export class EmojiWorld {
           this._scheduleMobileAnimationCheck();
 
         },
-        250
+        180
       );
 
   }
@@ -4218,9 +4305,15 @@ export class EmojiWorld {
     }
 
 
+    const batchSize =
+      Math.min(
+        available,
+        this.mobileActivationBatchSize || 3
+      );
+
     for (
       let i = 0;
-      i < available;
+      i < batchSize;
       i++
     ) {
 
@@ -4552,11 +4645,9 @@ export class EmojiWorld {
     emoji.element.src =
       animatedURL;
 
-
     /*
-     * Keep animation smooth.
+     * Only active mobile emojis get their own compositor hint.
      */
-
     emoji.element.style.willChange =
       'transform';
 
@@ -4621,23 +4712,12 @@ export class EmojiWorld {
 
     /*
      * ------------------------------------------------------------
-     * STOP ANIMATED WEBP
+     * STOP ANIMATED WEBP WITHOUT A BLANK FRAME
      * ------------------------------------------------------------
      *
-     * Removing src prevents the browser from
-     * continuing to decode/play this animated
-     * WebP.
-     */
-
-    element.removeAttribute(
-      'src'
-    );
-
-
-    /*
-     * ------------------------------------------------------------
-     * RESTORE HIGH-QUALITY STATIC FRAME
-     * ------------------------------------------------------------
+     * Switch directly to the cached static frame. The same frame
+     * remains as a CSS background underneath, so there is no
+     * visible blank/white flash.
      */
 
     if (
@@ -4647,29 +4727,16 @@ export class EmojiWorld {
       element.src =
         emoji.staticURL;
 
-    } else {
-
-      /*
-       * Static frame is not ready yet.
-       *
-       * The element remains visible. The
-       * static-frame preparation routine will
-       * replace it once available.
-       */
-
-      element.style.visibility =
-        'visible';
-
     }
 
+    element.style.willChange =
+      'auto';
 
     element.style.visibility =
       'visible';
 
-
     element.style.opacity =
       '1';
-
 
     element.style.display =
       'block';
@@ -4821,10 +4888,11 @@ export class EmojiWorld {
         0;
 
 
-      emoji.element.removeAttribute(
-        'src'
-      );
-
+      /*
+       * Never clear src before assigning the static frame.
+       * Clearing it created the mobile flicker seen during
+       * animation-slot changes.
+       */
 
       /*
        * If the high-quality static frame

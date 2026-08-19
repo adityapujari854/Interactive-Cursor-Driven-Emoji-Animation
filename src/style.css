@@ -934,3 +934,16 @@ html[data-theme="dark"] body,
 html[data-theme="dark"] #app {
     background: #101319;
 }
+
+
+/* ============================================================
+   MOBILE EMOJI RENDERING
+   ============================================================ */
+
+@media (pointer: coarse) {
+    .emoji-webp {
+        backface-visibility: hidden;
+        -webkit-backface-visibility: hidden;
+        transform: translate3d(-50%, -50%, 0);
+    }
+}
