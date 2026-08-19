@@ -1,4 +1,4 @@
-# 🌞 The Emojis — Interactive Emoji Experience
+# 🌞 The Emojis – Interactive Emoji Scanner & Cursor Animation
 
 A polished, interactive emoji experience built with **Vite, PixiJS, WebGL, and Vanilla JavaScript**.
 
