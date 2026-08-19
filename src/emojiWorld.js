@@ -11,12 +11,12 @@
  *
  * Mobile / Tablet:
  *   - all 24 emojis remain visible
- *   - only 5 animated WebPs are active at once
+ *   - only 8 animated WebPs are active at once
  *   - inactive emojis use lightweight static frames
  *   - animation slots rotate using a shuffle bag
  *
  * Mobile shake:
- *   - pauses the 5-animation scheduler
+ *   - pauses the 8-animation scheduler
  *   - all 24 emojis participate in physics
  *   - emojis visibly fall and bounce
  *   - emojis return to their original positions
@@ -96,7 +96,7 @@ export class EmojiWorld {
      *
      * All 24 emojis must remain visible on mobile.
      *
-     * Only 5 animated WebPs are active at once.
+     * Only 8 animated WebPs are active at once.
      * The remaining emojis use lightweight static
      * first-frame images.
      */
@@ -144,6 +144,52 @@ export class EmojiWorld {
 
     this.touchActive =
       false;
+
+
+    /* ============================================================
+       AUDIO
+       ============================================================ */
+
+    /*
+     * Background music and emoji talking sound.
+     *
+     * IMPORTANT:
+     *
+     * Browsers normally block autoplay until the user interacts
+     * with the page. The audio objects are prepared here, but actual
+     * playback starts from the first user gesture.
+     */
+
+    this.audio = {
+      music:
+        null,
+
+      talking:
+        null,
+
+      musicVolume:
+        1.00,
+
+      talkingVolume:
+        0.60,
+
+      unlocked:
+        false,
+
+      talkingLastPlayedAt:
+        0,
+
+      talkingCooldown:
+        650,
+
+      initialTalkingPlayed:
+        false
+    };
+
+    this._boundAudioUnlock =
+      () => {
+        this._unlockAudio();
+      };
 
 
     /* ============================================================
@@ -265,6 +311,9 @@ export class EmojiWorld {
       this._createEmojiDOMLayer();
 
 
+      this._setupAudio();
+
+
       this._setupScene();
 
 
@@ -272,6 +321,8 @@ export class EmojiWorld {
 
 
       this._startAnimationLoop();
+
+      this._finalizeInitialization();
 
 
       /*
@@ -306,7 +357,7 @@ export class EmojiWorld {
 
       console.log(
         this.isMobileOrTablet
-          ? '📱 Mobile/tablet mode: maximum 5 animated emojis'
+          ? '📱 Mobile/tablet mode: maximum 8 animated emojis'
           : '🖥️ Desktop mode: all 24 animations enabled'
       );
 
@@ -521,6 +572,236 @@ export class EmojiWorld {
 
   }
 
+    /* ================================================================
+     EMOJI CONFIGURATION
+     ================================================================ */
+
+  _getEmojiConfigs() {
+
+    return [
+
+      {
+        index: 0,
+        name: 'Happy',
+        idleType: 'bounce',
+        mass: 0.9,
+        idleSpeed: 0.055,
+        idleAmplitude: 6
+      },
+
+      {
+        index: 1,
+        name: 'Cool',
+        idleType: 'tilt',
+        mass: 1.0,
+        idleSpeed: 0.050,
+        idleAmplitude: 7
+      },
+
+      {
+        index: 2,
+        name: 'Love',
+        idleType: 'pulse',
+        mass: 0.8,
+        idleSpeed: 0.065,
+        idleAmplitude: 5,
+        scaleAmount: 0.05
+      },
+
+      {
+        index: 3,
+        name: 'Awestruck',
+        idleType: 'sway',
+        mass: 1.0,
+        idleSpeed: 0.050,
+        idleAmplitude: 7
+      },
+
+      {
+        index: 4,
+        name: 'Thinking',
+        idleType: 'bob',
+        mass: 1.05,
+        idleSpeed: 0.050,
+        idleAmplitude: 6
+      },
+
+      {
+        index: 5,
+        name: 'Angry',
+        idleType: 'vibrate',
+        mass: 1.2,
+        idleSpeed: 0.075,
+        idleAmplitude: 3
+      },
+
+      {
+        index: 6,
+        name: 'Party',
+        idleType: 'spin',
+        mass: 0.9,
+        idleSpeed: 0.045,
+        idleAmplitude: 2,
+        spinSpeed: 0.010
+      },
+
+      {
+        index: 7,
+        name: 'Smirk',
+        idleType: 'tilt',
+        mass: 1.0,
+        idleSpeed: 0.045,
+        idleAmplitude: 6
+      },
+
+      {
+        index: 8,
+        name: 'Sleepy',
+        idleType: 'drift',
+        mass: 0.95,
+        idleSpeed: 0.035,
+        idleAmplitude: 7
+      },
+
+      {
+        index: 9,
+        name: 'Shocked',
+        idleType: 'bounce',
+        mass: 1.1,
+        idleSpeed: 0.065,
+        idleAmplitude: 8
+      },
+
+      {
+        index: 10,
+        name: 'Scared',
+        idleType: 'tremble',
+        mass: 0.85,
+        idleSpeed: 0.070,
+        idleAmplitude: 3
+      },
+
+      {
+        index: 11,
+        name: 'Cool 2',
+        idleType: 'sway',
+        mass: 1.0,
+        idleSpeed: 0.045,
+        idleAmplitude: 6
+      },
+
+      {
+        index: 12,
+        name: 'Angel',
+        idleType: 'float',
+        mass: 0.8,
+        idleSpeed: 0.035,
+        idleAmplitude: 8
+      },
+
+      {
+        index: 13,
+        name: 'Sad',
+        idleType: 'droop',
+        mass: 1.15,
+        idleSpeed: 0.040,
+        idleAmplitude: 5
+      },
+
+      {
+        index: 14,
+        name: 'Nerd',
+        idleType: 'twitch',
+        mass: 0.9,
+        idleSpeed: 0.070,
+        idleAmplitude: 3
+      },
+
+      {
+        index: 15,
+        name: 'Frustrated',
+        idleType: 'shake',
+        mass: 1.1,
+        idleSpeed: 0.060,
+        idleAmplitude: 4
+      },
+
+      {
+        index: 16,
+        name: 'Tongue',
+        idleType: 'playful',
+        mass: 0.95,
+        idleSpeed: 0.060,
+        idleAmplitude: 7
+      },
+
+      {
+        index: 17,
+        name: 'Kiss',
+        idleType: 'bob',
+        mass: 0.85,
+        idleSpeed: 0.050,
+        idleAmplitude: 6
+      },
+
+      {
+        index: 18,
+        name: 'Cold',
+        idleType: 'shiver',
+        mass: 1.05,
+        idleSpeed: 0.075,
+        idleAmplitude: 3
+      },
+
+      {
+        index: 19,
+        name: 'Melting',
+        idleType: 'droop',
+        mass: 1.0,
+        idleSpeed: 0.040,
+        idleAmplitude: 5
+      },
+
+      {
+        index: 20,
+        name: 'Grinning',
+        idleType: 'bounce',
+        mass: 0.9,
+        idleSpeed: 0.060,
+        idleAmplitude: 7
+      },
+
+      {
+        index: 21,
+        name: 'Winking',
+        idleType: 'tilt',
+        mass: 1.0,
+        idleSpeed: 0.050,
+        idleAmplitude: 6
+      },
+
+      {
+        index: 22,
+        name: 'Neutral',
+        idleType: 'sway',
+        mass: 1.05,
+        idleSpeed: 0.038,
+        idleAmplitude: 5
+      },
+
+      {
+        index: 23,
+        name: 'Slight Smile',
+        idleType: 'drift',
+        mass: 0.92,
+        idleSpeed: 0.045,
+        idleAmplitude: 6
+      }
+
+    ];
+
+  }
+
 
   /* ================================================================
      GRID LAYOUT
@@ -553,7 +834,7 @@ export class EmojiWorld {
     const top =
       isSmallScreen
         ? 115
-        : 135;
+        : 170;
 
 
     const bottom =
@@ -612,8 +893,6 @@ export class EmojiWorld {
     const startX =
       this.width / 2 -
       gridWidth / 2;
-
-
     const startY =
       top +
       (
@@ -694,6 +973,11 @@ export class EmojiWorld {
     console.log(
       '[Emoji World] Creating 24 native WebP emojis...'
     );
+
+    this.nextSoundAt =
+      performance.now() +
+      3000 +
+      Math.random() * 5000,
 
 
     /*
@@ -1091,9 +1375,9 @@ export class EmojiWorld {
   }
 
 
-/* ================================================================
-   PREPARE ONE MOBILE STATIC FRAME
-   ================================================================ */
+  /* ================================================================
+     PREPARE ONE MOBILE STATIC FRAME
+     ================================================================ */
 
   async _prepareOneMobileStaticFrame(
     emoji
@@ -1272,10 +1556,6 @@ export class EmojiWorld {
       }
 
 
-      /*
-       * High-quality image scaling.
-       */
-
       context.imageSmoothingEnabled =
         true;
 
@@ -1284,20 +1564,12 @@ export class EmojiWorld {
         'high';
 
 
-      context.clearRect(
-        0,
-        0,
-        canvas.width,
-        canvas.height
-      );
-
-
       context.drawImage(
         bitmap,
         0,
         0,
-        canvas.width,
-        canvas.height
+        canvasWidth,
+        canvasHeight
       );
 
 
@@ -1305,13 +1577,23 @@ export class EmojiWorld {
 
 
       /*
-       * Store a high-resolution PNG static frame.
+       * Convert the first frame to a PNG
+       * data URL.
+       *
+       * This gives inactive emojis a
+       * stable high-quality static image
+       * instead of keeping their animated
+       * WebP running.
        */
 
-      emoji.staticURL =
+      const staticURL =
         canvas.toDataURL(
           'image/png'
         );
+
+
+      emoji.staticURL =
+        staticURL;
 
 
       emoji.staticReady =
@@ -1324,8 +1606,9 @@ export class EmojiWorld {
 
 
       /*
-       * Immediately replace the inactive WebP
-       * with the high-resolution static image.
+       * If this emoji is not currently
+       * active, immediately display the
+       * static frame.
        */
 
       if (
@@ -1335,12 +1618,10 @@ export class EmojiWorld {
       ) {
 
         emoji.element.src =
-          emoji.staticURL;
-
+          staticURL;
 
         emoji.element.style.visibility =
           'visible';
-
 
         emoji.element.style.opacity =
           '1';
@@ -1350,7 +1631,7 @@ export class EmojiWorld {
     } catch (error) {
 
       console.warn(
-        `[Emoji World] Static frame ${emoji.index + 1} preparation failed:`,
+        `[Emoji World] Static frame failed for emoji ${emoji.index + 1}:`,
         error
       );
 
@@ -1359,6 +1640,2473 @@ export class EmojiWorld {
       this.mobileStaticFrameLoading.delete(
         emoji.index
       );
+
+    }
+
+  }
+
+
+  /* ================================================================
+     SETUP AUDIO
+     ================================================================ */
+
+  _setupAudio() {
+
+  try {
+
+    /*
+     * ------------------------------------------------------------
+     * AUDIO PATHS
+     * ------------------------------------------------------------
+     *
+     * CURRENT PROJECT:
+     *
+     * assets/sound/
+     *
+     */
+
+    const musicURL =
+      new URL(
+        '../assets/sound/emojis_music.mp3',
+        import.meta.url
+      ).href;
+
+    const talkingURL =
+      new URL(
+        '../assets/sound/emojis_talking.mp3',
+        import.meta.url
+      ).href;
+
+
+    /*
+     * ------------------------------------------------------------
+     * BACKGROUND MUSIC
+     * ------------------------------------------------------------
+     */
+
+    const music =
+      new Audio(
+        musicURL
+      );
+
+    music.loop =
+      true;
+
+    music.volume =
+      1.00;
+
+    music.preload =
+      'auto';
+
+    music.setAttribute(
+      'playsinline',
+      ''
+    );
+
+
+    /*
+     * ------------------------------------------------------------
+     * TALKING SOUND
+     * ------------------------------------------------------------
+     */
+
+    const talking =
+      new Audio(
+        talkingURL
+      );
+
+    talking.loop =
+      false;
+
+    talking.volume =
+      0.60;
+
+    talking.preload =
+      'auto';
+
+    talking.setAttribute(
+      'playsinline',
+      ''
+    );
+
+
+    /*
+     * ------------------------------------------------------------
+     * STORE
+     * ------------------------------------------------------------
+     */
+
+    this.audio.music =
+      music;
+
+    this.audio.talking =
+      talking;
+
+
+    /*
+     * ------------------------------------------------------------
+     * DEBUG
+     * ------------------------------------------------------------
+     */
+
+    music.addEventListener(
+      'loadeddata',
+      () => {
+
+        console.log(
+          '✅ MUSIC LOADED:',
+          music.src
+        );
+
+      }
+    );
+
+    talking.addEventListener(
+      'loadeddata',
+      () => {
+
+        console.log(
+          '✅ TALKING SOUND LOADED:',
+          talking.src
+        );
+
+      }
+    );
+
+
+    music.addEventListener(
+      'error',
+      () => {
+
+        console.error(
+          '❌ MUSIC FILE ERROR:',
+          music.src,
+          music.error
+        );
+
+      }
+    );
+
+
+    talking.addEventListener(
+      'error',
+      () => {
+
+        console.error(
+          '❌ TALKING FILE ERROR:',
+          talking.src,
+          talking.error
+        );
+
+      }
+    );
+
+
+    /*
+     * Preload.
+     */
+
+    music.load();
+
+    talking.load();
+
+    /* Best-effort audible autoplay. If the browser blocks it,
+       the first pointer/key/touch gesture retries immediately. */
+    this._unlockAudio();
+
+
+    /*
+     * ------------------------------------------------------------
+     * USER GESTURE UNLOCK
+     * ------------------------------------------------------------
+     */
+
+    document.addEventListener(
+      'pointerdown',
+      this._boundAudioUnlock,
+      {
+        passive: true
+      }
+    );
+
+    document.addEventListener(
+      'keydown',
+      this._boundAudioUnlock,
+      {
+        passive: true
+      }
+    );
+
+
+    console.log(
+      '🔊 Audio system initialized'
+    );
+
+    console.log(
+      '🎵 Music URL:',
+      music.src
+    );
+
+    console.log(
+      '🗣️ Talking URL:',
+      talking.src
+    );
+
+  } catch (error) {
+
+    console.error(
+      '❌ Audio setup failed:',
+      error
+    );
+
+  }
+
+}
+
+
+  /* ================================================================
+     UNLOCK AUDIO
+     ================================================================ */
+
+  _unlockAudio() {
+
+    if (
+      !this.audio ||
+      !this.audio.music ||
+      !this.audio.talking
+    ) {
+      return;
+    }
+
+    const music =
+      this.audio.music;
+
+    const talking =
+      this.audio.talking;
+
+    music.volume =
+      this.audio.musicVolume;
+
+    talking.volume =
+      this.audio.talkingVolume;
+
+    music.loop =
+      true;
+
+    const playInitialTalking = () => {
+
+      if (
+        this.audio.initialTalkingPlayed
+      ) {
+        return;
+      }
+
+      this.audio.initialTalkingPlayed =
+        true;
+
+      this.audio.talkingLastPlayedAt =
+        performance.now();
+
+      try {
+        talking.pause();
+        talking.currentTime = 0;
+        talking.volume =
+          this.audio.talkingVolume;
+
+        const talkingPromise =
+          talking.play();
+
+        if (
+          talkingPromise &&
+          typeof talkingPromise.catch ===
+            'function'
+        ) {
+          talkingPromise.catch(error => {
+            console.warn(
+              '⚠️ Initial talking sound playback failed:',
+              error
+            );
+          });
+        }
+      } catch (error) {
+        console.warn(
+          '⚠️ Initial talking sound failed:',
+          error
+        );
+      }
+
+      this.nextSoundAt =
+        performance.now() +
+        4000 +
+        Math.random() * 7000;
+    };
+
+    if (!music.paused) {
+      this.audio.unlocked = true;
+      playInitialTalking();
+      return;
+    }
+
+    try {
+      const promise = music.play();
+
+      if (
+        promise &&
+        typeof promise.then ===
+          'function'
+      ) {
+        promise
+          .then(() => {
+            this.audio.unlocked = true;
+            console.log(
+              '🎵 BACKGROUND MUSIC PLAYING — 100%'
+            );
+            playInitialTalking();
+          })
+          .catch(error => {
+            this.audio.unlocked = false;
+            console.info(
+              '🔒 Audible autoplay blocked; waiting for first user interaction.',
+              error?.name || ''
+            );
+          });
+      } else {
+        this.audio.unlocked = true;
+        playInitialTalking();
+      }
+    } catch (error) {
+      this.audio.unlocked = false;
+      console.info(
+        '🔒 Audio autoplay unavailable until user interaction.',
+        error?.name || ''
+      );
+    }
+
+  }
+
+
+  /* ================================================================
+     PLAY TALKING SOUND
+     ================================================================ */
+
+  _playTalkingSound() {
+
+  if (
+    !this.audio ||
+    !this.audio.talking
+  ) {
+    return;
+  }
+
+
+  /*
+   * Audio must first be unlocked
+   * by a real user interaction.
+   */
+
+  if (
+    !this.audio.unlocked
+  ) {
+    return;
+  }
+
+
+  const now =
+    performance.now();
+
+
+  /*
+   * Prevent overlapping sounds.
+   */
+
+  if (
+    now -
+      this.audio.talkingLastPlayedAt <
+    this.audio.talkingCooldown
+  ) {
+    return;
+  }
+
+
+  this.audio.talkingLastPlayedAt =
+    now;
+
+
+  const talking =
+    this.audio.talking;
+
+
+  try {
+
+    talking.pause();
+
+    talking.currentTime =
+      0;
+
+    talking.volume =
+      this.audio.talkingVolume;
+
+
+    const promise =
+      talking.play();
+
+
+    if (
+      promise &&
+      typeof promise.catch ===
+        'function'
+    ) {
+
+      promise.catch(
+        error => {
+
+          console.warn(
+            '⚠️ Talking sound playback failed:',
+            error
+          );
+
+        }
+      );
+
+    }
+
+  } catch (error) {
+
+    console.warn(
+      '⚠️ Talking sound failed:',
+      error
+    );
+
+  }
+
+}
+  /* ================================================================
+     START ANIMATION LOOP
+     ================================================================ */
+
+  _startAnimationLoop() {
+
+    if (
+      !this.app ||
+      !this.app.ticker
+    ) {
+
+      return;
+
+    }
+
+
+    /*
+     * Prevent duplicate ticker callbacks.
+     */
+
+    this.app.ticker.remove(
+      this._boundUpdateFrame
+    );
+
+
+    this.app.ticker.add(
+      this._boundUpdateFrame
+    );
+
+
+    console.log(
+      '[Emoji World] ✓ Animation loop started'
+    );
+
+  }
+
+
+  /* ================================================================
+     SETUP SCENE
+     ================================================================ */
+
+  _setupScene() {
+
+    /*
+     * ------------------------------------------------------------
+     * GLASS PLATFORM CONTAINER
+     * ------------------------------------------------------------
+     */
+
+    this.cubesContainer =
+      new PIXI.Container();
+
+
+    this.cubesContainer.sortableChildren =
+      true;
+
+
+    this.cubesContainer.zIndex =
+      1;
+
+
+    this.app.stage.addChild(
+      this.cubesContainer
+    );
+
+
+    /*
+     * ------------------------------------------------------------
+     * TITLE CONTAINER
+     * ------------------------------------------------------------
+     */
+
+    this.titleContainer =
+      new PIXI.Container();
+
+
+    this.titleContainer.zIndex =
+      100;
+
+
+    this.app.stage.addChild(
+      this.titleContainer
+    );
+
+
+    /*
+     * ------------------------------------------------------------
+     * TITLE
+     * ------------------------------------------------------------
+     */
+
+    this._createTitle();
+
+
+    /*
+     * ------------------------------------------------------------
+     * EMOJIS + GLASS PLATFORMS
+     * ------------------------------------------------------------
+     */
+
+    this._createEmojisAndCubes();
+
+
+    /*
+     * ------------------------------------------------------------
+     * PHYSICS
+     * ------------------------------------------------------------
+     */
+
+    this.physics =
+      new Physics({
+
+        width:
+          this.width,
+
+        height:
+          this.height,
+
+        groundLevel:
+          this.height *
+          0.90
+
+      });
+
+
+    /*
+     * Create physics bodies after
+     * the physics engine exists.
+     */
+
+    for (
+      const emoji of this.emojis
+    ) {
+
+      if (
+        !emoji
+      ) {
+
+        continue;
+
+      }
+
+
+      const config =
+        emoji.config;
+
+
+
+      if (
+        !config
+      ) {
+
+        continue;
+
+      }
+
+
+      emoji.physicsBody =
+        this.physics.createBody({
+
+          x:
+            emoji.x,
+
+          y:
+            emoji.y,
+
+          radius:
+            emoji.size *
+            0.38,
+
+          mass:
+            config.mass,
+
+          restitution:
+            0.58,
+
+          friction:
+            0.985,
+
+          isActive:
+            false
+
+        });
+
+    }
+
+
+    /*
+     * Reposition once after physics
+     * bodies have been created.
+     */
+
+    this._repositionEmojisAndCubes();
+
+
+    console.log(
+      '[Emoji World] ✓ Scene created'
+    );
+
+  }
+
+
+  /* ================================================================
+     CREATE TITLE
+     ================================================================ */
+
+  _createTitle() {
+
+    const title =
+      new PIXI.Text({
+
+        text:
+          'The Emojis',
+
+        style: {
+            fontFamily:
+                'Arial, Helvetica, sans-serif',
+
+            fontSize:
+                this._getTitleSize(),
+
+            fontWeight:
+                '700',
+
+            fill:
+                0x111111,
+
+            align:
+                'center',
+
+            letterSpacing:
+                1,
+
+            dropShadow: {
+                color:
+                0x000000,
+
+                alpha:
+                0.14,
+
+                blur:
+                8,
+
+                distance:
+                3,
+
+                angle:
+                Math.PI / 2
+            }
+        }
+
+      });
+
+
+    title.anchor.set(
+      0.5
+    );
+
+
+    title.x =
+      this.width / 2;
+
+
+    title.y =
+      this._getTitleY();
+
+
+    this.titleContainer.addChild(
+      title
+    );
+
+
+    this.title =
+      title;
+
+
+    /*
+     * Title animation state.
+     */
+
+    this.titleBaseY =
+      title.y;
+
+
+    this.titleAnimationTime =
+      0;
+
+
+    this.titleEntranceProgress =
+      0;
+
+
+    /*
+     * Slight initial scale for
+     * the entrance animation.
+     */
+
+    title.alpha =
+      0;
+
+
+    title.scale.set(
+      0.94
+    );
+
+  }
+
+
+  /* ================================================================
+     TITLE SIZE
+     ================================================================ */
+
+  _getTitleSize() {
+
+    if (
+      this.width < 500
+    ) {
+
+      return 34;
+
+    }
+
+
+    if (
+      this.width < 900
+    ) {
+
+      return 42;
+
+    }
+
+
+    return 52;
+
+  }
+
+
+  /* ================================================================
+     TITLE Y POSITION
+     ================================================================ */
+
+  _getTitleY() {
+
+    if (
+      this.width < 500
+    ) {
+
+      return 52;
+
+    }
+
+
+    return 65;
+
+  }
+
+
+  /* ================================================================
+     CREATE EMOJIS + GLASS PLATFORMS
+     ================================================================ */
+
+  _createEmojisAndCubes() {
+
+    this.cubes =
+      [];
+
+
+    if (
+      this.cubesContainer
+    ) {
+
+      this.cubesContainer.removeChildren();
+
+    }
+
+
+    /*
+     * Create the 24 native WebP elements.
+     */
+
+    this._createEmojis();
+
+
+    const layout =
+      this._getGridLayout();
+
+
+    const {
+      cols,
+      spacing,
+      startX,
+      startY,
+      emojiSize,
+      cubeSize
+    } =
+      layout;
+
+
+    for (
+      let i = 0;
+      i < this.emojis.length;
+      i++
+    ) {
+
+      const emoji =
+        this.emojis[i];
+
+
+      if (
+        !emoji
+      ) {
+
+        continue;
+
+      }
+
+
+      const col =
+        i % cols;
+
+
+      const row =
+        Math.floor(
+          i / cols
+        );
+
+
+      const x =
+        startX +
+        col *
+        spacing;
+
+
+      const y =
+        startY +
+        row *
+        spacing;
+
+
+      emoji.x =
+        x;
+
+
+      emoji.y =
+        y;
+
+
+      emoji.originalX =
+        x;
+
+
+      emoji.originalY =
+        y;
+
+
+      emoji.targetX =
+        x;
+
+
+      emoji.targetY =
+        y;
+
+
+      emoji.size =
+        emojiSize;
+
+
+      if (
+        emoji.element
+      ) {
+
+        emoji.element.style.left =
+          `${x}px`;
+
+        emoji.element.style.top =
+          `${y}px`;
+
+        emoji.element.style.width =
+          `${emojiSize}px`;
+
+        emoji.element.style.height =
+          `${emojiSize}px`;
+
+      }
+
+
+      /*
+       * Create glass platform.
+       */
+
+      const cube =
+        this._createGlassCube(
+          x,
+          y +
+          emojiSize *
+          0.43,
+          cubeSize
+        );
+
+
+      cube.zIndex =
+        i;
+
+
+      this.cubesContainer.addChild(
+        cube
+      );
+
+
+      this.cubes.push({
+
+        sprite:
+          cube,
+
+        x:
+          x,
+
+        y:
+          y,
+
+        index:
+          i
+
+      });
+
+    }
+
+
+    this.cubesContainer.zIndex =
+      1;
+
+
+    this.titleContainer.zIndex =
+      100;
+
+  }
+
+
+  /* ================================================================
+     GLASS PLATFORM
+     ================================================================ */
+
+  _createGlassCube(
+    x,
+    y,
+    size
+  ) {
+
+    const group =
+      new PIXI.Container();
+
+
+    /*
+     * ------------------------------------------------------------
+     * SOFT SHADOW
+     * ------------------------------------------------------------
+     */
+
+    const deepShadow =
+      new PIXI.Graphics();
+
+
+    deepShadow
+      .ellipse(
+        0,
+        size * 0.48,
+        size * 0.43,
+        size * 0.095
+      )
+      .fill({
+
+        color:
+          0x000000,
+
+        alpha:
+          0.11
+
+      });
+
+
+    deepShadow.y =
+      2;
+
+
+    group.addChild(
+      deepShadow
+    );
+
+
+    /*
+     * ------------------------------------------------------------
+     * CONTACT SHADOW
+     * ------------------------------------------------------------
+     */
+
+    const contactShadow =
+      new PIXI.Graphics();
+
+
+    contactShadow
+      .ellipse(
+        0,
+        size * 0.42,
+        size * 0.31,
+        size * 0.055
+      )
+      .fill({
+
+        color:
+          0x000000,
+
+        alpha:
+          0.14
+
+      });
+
+
+    group.addChild(
+      contactShadow
+    );
+
+
+    /*
+     * ------------------------------------------------------------
+     * GLASS BODY
+     * ------------------------------------------------------------
+     */
+
+    const glass =
+      new PIXI.Graphics();
+
+
+    glass
+      .roundRect(
+        -size / 2,
+        -size * 0.15,
+        size,
+        size * 0.35,
+        16
+      )
+      .fill({
+
+        color:
+          0xf7fbff,
+
+        alpha:
+          0.70
+
+      })
+      .stroke({
+
+        color:
+          0xcbdbe8,
+
+        alpha:
+          0.76,
+
+        width:
+          1.35
+
+      });
+
+
+    group.addChild(
+      glass
+    );
+
+
+    /*
+     * ------------------------------------------------------------
+     * INNER GLASS
+     * ------------------------------------------------------------
+     */
+
+    const innerGlass =
+      new PIXI.Graphics();
+
+
+    innerGlass
+      .roundRect(
+        -size * 0.43,
+        -size * 0.11,
+        size * 0.86,
+        size * 0.25,
+        11
+      )
+      .fill({
+
+        color:
+          0xffffff,
+
+        alpha:
+          0.30
+
+      });
+
+
+    group.addChild(
+      innerGlass
+    );
+
+
+    /*
+     * ------------------------------------------------------------
+     * MAIN HIGHLIGHT
+     * ------------------------------------------------------------
+     */
+
+    const highlight =
+      new PIXI.Graphics();
+
+
+    highlight
+      .roundRect(
+        -size * 0.36,
+        -size * 0.085,
+        size * 0.50,
+        size * 0.055,
+        8
+      )
+      .fill({
+
+        color:
+          0xffffff,
+
+        alpha:
+          0.66
+
+      });
+
+
+    group.addChild(
+      highlight
+    );
+
+
+    /*
+     * ------------------------------------------------------------
+     * MICRO HIGHLIGHT
+     * ------------------------------------------------------------
+     */
+
+    const microHighlight =
+      new PIXI.Graphics();
+
+
+    microHighlight
+      .roundRect(
+        size * 0.18,
+        size * 0.005,
+        size * 0.15,
+        size * 0.035,
+        5
+      )
+      .fill({
+
+        color:
+          0xffffff,
+
+        alpha:
+          0.38
+
+      });
+
+
+    group.addChild(
+      microHighlight
+    );
+
+
+    /*
+     * ------------------------------------------------------------
+     * EDGE LIGHT
+     * ------------------------------------------------------------
+     */
+
+    const edgeLight =
+      new PIXI.Graphics();
+
+
+    edgeLight
+      .roundRect(
+        -size * 0.47,
+        -size * 0.13,
+        size * 0.94,
+        size * 0.31,
+        15
+      )
+      .stroke({
+
+        color:
+          0xffffff,
+
+        alpha:
+          0.42,
+
+        width:
+          0.8
+
+      });
+
+
+    group.addChild(
+      edgeLight
+    );
+
+
+    group.position.set(
+      x,
+      y
+    );
+
+
+    /*
+     * Store all visual components so
+     * theme/cursor lighting can update
+     * them later.
+     */
+
+    group.userData = {
+
+      size,
+
+      deepShadow,
+
+      contactShadow,
+
+      glass,
+
+      innerGlass,
+
+      highlight,
+
+      microHighlight,
+
+      edgeLight
+
+    };
+
+
+    return group;
+
+  }
+
+
+  /* ================================================================
+     RESIZE
+     ================================================================ */
+
+  _onWindowResize() {
+
+    if (
+      !this.app ||
+      !this.app.renderer
+    ) {
+
+      return;
+
+    }
+
+
+    this.width =
+      window.innerWidth;
+
+
+    this.height =
+      window.innerHeight;
+
+
+    const previousMode =
+      this.isMobileOrTablet;
+
+
+    this.isMobileOrTablet =
+      this._detectMobileOrTablet();
+
+
+    this.app.renderer.resize(
+      this.width,
+      this.height
+    );
+
+
+    if (
+      this.title
+    ) {
+
+      this.title.x =
+        this.width / 2;
+
+
+      this.title.y =
+        this._getTitleY();
+
+
+      this.titleBaseY =
+        this.title.y;
+
+
+      this.title.style.fontSize =
+        this._getTitleSize();
+
+    }
+
+
+    if (
+      this.physics
+    ) {
+
+      this.physics.width =
+        this.width;
+
+
+      this.physics.height =
+        this.height;
+
+
+      this.physics.groundLevel =
+        this.height *
+        0.90;
+
+    }
+
+
+    /*
+     * Do not reposition emojis while
+     * they are falling or recovering.
+     */
+
+    if (
+      !this.isShaking &&
+      !this.isRecovering
+    ) {
+
+      this._repositionEmojisAndCubes();
+
+    }
+
+
+    /*
+     * Device category changed.
+     */
+
+    if (
+      previousMode !==
+      this.isMobileOrTablet
+    ) {
+
+      if (
+        this.isMobileOrTablet
+      ) {
+
+        this._enableMobileAnimationMode();
+
+      } else {
+
+        this._enableDesktopAnimationMode();
+
+      }
+
+    }
+
+  }
+
+
+  /* ================================================================
+     REPOSITION EMOJIS + CUBES
+     ================================================================ */
+
+  _repositionEmojisAndCubes() {
+
+    if (
+      !this.emojis ||
+      this.emojis.length === 0
+    ) {
+
+      return;
+
+    }
+
+
+    const layout =
+      this._getGridLayout();
+
+
+    const {
+      cols,
+      spacing,
+      startX,
+      startY,
+      emojiSize,
+      cubeSize
+    } =
+      layout;
+
+
+    for (
+      let i = 0;
+      i < this.emojis.length;
+      i++
+    ) {
+
+      const emoji =
+        this.emojis[i];
+
+
+      if (
+        !emoji
+      ) {
+
+        continue;
+
+      }
+
+
+      const col =
+        i % cols;
+
+
+      const row =
+        Math.floor(
+          i / cols
+        );
+
+
+      const x =
+        startX +
+        col *
+        spacing;
+
+
+      const y =
+        startY +
+        row *
+        spacing;
+
+
+      emoji.originalX =
+        x;
+
+
+      emoji.originalY =
+        y;
+
+
+      emoji.targetX =
+        x;
+
+
+      emoji.targetY =
+        y;
+
+
+      emoji.size =
+        emojiSize;
+
+
+      if (
+        !emoji.isFlying
+      ) {
+
+        emoji.x =
+          x;
+
+
+        emoji.y =
+          y;
+
+      }
+
+
+      if (
+        emoji.element
+      ) {
+
+        emoji.element.style.width =
+          `${emojiSize}px`;
+
+        emoji.element.style.height =
+          `${emojiSize}px`;
+
+      }
+
+
+      const cubeData =
+        this.cubes[i];
+
+
+      if (
+        cubeData &&
+        cubeData.sprite
+      ) {
+
+        cubeData.x =
+          x;
+
+
+        cubeData.y =
+          y;
+
+
+        cubeData.sprite.position.set(
+
+          x,
+
+          y +
+          emojiSize *
+          0.43
+
+        );
+
+      }
+
+
+      if (
+        emoji.physicsBody &&
+        !emoji.isFlying
+      ) {
+
+        emoji.physicsBody.x =
+          x;
+
+
+        emoji.physicsBody.y =
+          y;
+
+      }
+
+
+      this._applyEmojiTransform(
+        emoji
+      );
+
+    }
+
+  }
+  /* ================================================================
+     FRAME UPDATE
+     ================================================================ */
+
+  _updateFrame(
+    ticker
+  ) {
+
+    try {
+
+      const delta =
+        ticker?.deltaTime ||
+        1;
+
+
+      const dtMs =
+        Math.min(
+          50,
+          delta *
+          (
+            1000 /
+            60
+          )
+        );
+
+
+      const dt =
+        Math.min(
+          1.5,
+          delta
+        );
+
+
+      /*
+       * ------------------------------------------------------------
+       * PHYSICS
+       * ------------------------------------------------------------
+       */
+
+      if (
+        this.physics
+      ) {
+
+        this.physics.update(
+          dt
+        );
+
+      }
+
+
+      /*
+       * ------------------------------------------------------------
+       * UPDATE EMOJIS
+       * ------------------------------------------------------------
+       */
+
+      for (
+        const emoji of this.emojis
+      ) {
+
+        if (
+          !emoji
+        ) {
+
+          continue;
+
+        }
+
+
+        try {
+
+          if (
+            emoji.isFlying
+          ) {
+
+            if (
+              this.isRecovering
+            ) {
+
+              this._updateFlyingBackAnimation(
+                emoji,
+                dtMs
+              );
+
+            } else {
+
+              this._updateFallingAnimation(
+                emoji
+              );
+
+            }
+
+          } else {
+
+            this._updateIdleAnimation(
+              emoji,
+              dt
+            );
+
+          }
+
+        } catch (error) {
+
+          console.error(
+            '[Emoji World] Emoji frame error:',
+            error
+          );
+
+        }
+
+      }
+
+
+      /*
+       * ------------------------------------------------------------
+       * MOBILE ANIMATION SCHEDULER
+       * ------------------------------------------------------------
+       *
+       * This scheduler is intentionally NOT tied to
+       * the Pixi frame rate.
+       *
+       * It only changes which WebPs are playing.
+       */
+
+      if (
+        this.isMobileOrTablet &&
+        !this.isShaking &&
+        !this.isRecovering
+      ) {
+
+        this._scheduleMobileAnimationCheck();
+
+      }
+
+    } catch (error) {
+
+      console.error(
+        '[Emoji World] Frame update error:',
+        error
+      );
+
+    }
+
+  }
+
+
+  /* ================================================================
+     IDLE EMOJI ANIMATION
+     ================================================================ */
+
+  _updateIdleAnimation(
+    emoji,
+    dt
+  ) {
+
+    if (
+      !emoji ||
+      !emoji.config
+    ) {
+
+      return;
+
+    }
+
+
+    const config =
+      emoji.config;
+    
+
+   /*
+    * ------------------------------------------------------------
+    * DESKTOP TALKING SOUND
+    * ------------------------------------------------------------
+    */
+
+    if (
+        !this.isMobileOrTablet &&
+        this.audio &&
+        this.audio.unlocked &&
+        performance.now() >=
+            this.nextSoundAt
+    ) {
+
+        this._playTalkingSound();
+
+        this.nextSoundAt =
+            performance.now() +
+            4000 +
+            Math.random() * 7000;
+    }
+
+
+    emoji.idleTime +=
+      config.idleSpeed *
+      dt;
+
+
+    const t =
+      emoji.idleTime;
+
+
+    const baseX =
+      emoji.originalX;
+
+
+    const baseY =
+      emoji.originalY;
+
+
+    const amplitude =
+      config.idleAmplitude ||
+      0;
+
+
+    let idleX =
+      baseX;
+
+
+    let idleY =
+      baseY;
+
+
+    let rotation =
+      0;
+
+
+    let scale =
+      1;
+
+
+    switch (
+      config.idleType
+    ) {
+
+      case 'bounce':
+
+        idleY =
+          baseY +
+          Math.sin(t) *
+          amplitude;
+
+        break;
+
+
+      case 'pulse':
+
+        scale =
+          1 +
+          Math.sin(t) *
+          (
+            config.scaleAmount ||
+            0.05
+          );
+
+
+        idleY =
+          baseY +
+          Math.sin(
+            t *
+            0.8
+          ) *
+          2;
+
+        break;
+
+
+      case 'sway':
+
+        idleY =
+          baseY +
+          Math.sin(t) *
+          amplitude;
+
+
+        rotation =
+          Math.sin(
+            t *
+            0.7
+          ) *
+          0.10;
+
+        break;
+
+
+      case 'tilt':
+
+        rotation =
+          Math.sin(t) *
+          0.12;
+
+
+        idleY =
+          baseY +
+          Math.sin(
+            t *
+            1.2
+          ) *
+          amplitude *
+          0.45;
+
+        break;
+
+
+      case 'spin':
+
+        rotation =
+          t *
+          (
+            config.spinSpeed ||
+            0.01
+          ) *
+          2;
+
+
+        idleY =
+          baseY +
+          Math.sin(
+            t *
+            0.7
+          ) *
+          2;
+
+        break;
+
+
+      case 'bob':
+
+        idleY =
+          baseY +
+          Math.sin(
+            t *
+            1.4
+          ) *
+          amplitude;
+
+        break;
+
+
+      case 'drift':
+
+        idleX =
+          baseX +
+          Math.sin(t) *
+          amplitude *
+          0.60;
+
+
+        idleY =
+          baseY +
+          Math.cos(
+            t *
+            0.7
+          ) *
+          amplitude *
+          0.45;
+
+        break;
+
+
+      case 'vibrate':
+
+        idleX =
+          baseX +
+          Math.sin(
+            t *
+            5
+          ) *
+          amplitude *
+          0.55;
+
+
+        idleY =
+          baseY +
+          Math.cos(
+            t *
+            4
+          ) *
+          amplitude *
+          0.25;
+
+        break;
+
+
+      case 'tremble':
+
+        idleX =
+          baseX +
+          Math.sin(
+            t *
+            8
+          ) *
+          amplitude *
+          0.45;
+
+
+        rotation =
+          Math.sin(
+            t *
+            7
+          ) *
+          0.035;
+
+        break;
+
+
+      case 'float':
+
+        idleX =
+          baseX +
+          Math.cos(
+            t *
+            0.65
+          ) *
+          amplitude *
+          0.35;
+
+
+        idleY =
+          baseY +
+          Math.sin(
+            t *
+            0.9
+          ) *
+          amplitude *
+          0.65;
+
+        break;
+
+
+      case 'droop':
+
+        idleY =
+          baseY +
+          Math.cos(t) *
+          amplitude;
+
+
+        rotation =
+          Math.sin(
+            t *
+            0.6
+          ) *
+          0.09;
+
+        break;
+
+
+      case 'twitch':
+
+        idleY =
+          baseY +
+          Math.sin(
+            t *
+            1.8
+          ) *
+          amplitude *
+          0.30;
+
+
+        rotation =
+          Math.sin(
+            t *
+            3.2
+          ) *
+          0.025;
+
+        break;
+
+
+      case 'shake':
+
+        idleX =
+          baseX +
+          Math.sin(
+            t *
+            3.5
+          ) *
+          amplitude *
+          0.60;
+
+
+        idleY =
+          baseY +
+          Math.cos(
+            t *
+            3.5
+          ) *
+          amplitude *
+          0.25;
+
+        break;
+
+
+      case 'playful':
+
+        rotation =
+          Math.sin(
+            t *
+            1.5
+          ) *
+          0.14;
+
+
+        idleY =
+          baseY +
+          Math.sin(
+            t *
+            2
+          ) *
+          amplitude *
+          0.65;
+
+        break;
+
+
+      case 'shiver':
+
+        idleX =
+          baseX +
+          Math.sin(
+            t *
+            8
+          ) *
+          amplitude *
+          0.45;
+
+
+        idleY =
+          baseY +
+          Math.cos(
+            t *
+            7
+          ) *
+          amplitude *
+          0.25;
+
+        break;
+
+
+      default:
+
+        break;
+
+    }
+
+
+    /*
+     * ------------------------------------------------------------
+     * CURSOR OFFSET
+     * ------------------------------------------------------------
+     *
+     * Keep cursor movement limited so emojis
+     * never fly too far away from their platforms.
+     */
+
+    if (
+      !this.isShaking &&
+      !this.isRecovering
+    ) {
+
+      const targetX =
+        idleX +
+        (
+          emoji.cursorOffsetX ||
+          0
+        );
+
+
+      const targetY =
+        idleY +
+        (
+          emoji.cursorOffsetY ||
+          0
+        );
+
+
+      emoji.x +=
+        (
+          targetX -
+          emoji.x
+        ) *
+        0.28;
+
+
+      emoji.y +=
+        (
+          targetY -
+          emoji.y
+        ) *
+        0.28;
+
+    }
+
+
+    emoji.rotation =
+      rotation;
+
+
+    emoji.scale =
+      scale;
+
+
+    this._applyEmojiTransform(
+      emoji
+    );
+
+
+    /*
+     * Cursor proximity effect.
+     */
+
+    this._addMouseProximityEffect(
+      emoji
+    );
+
+  }
+
+
+  /* ================================================================
+     APPLY EMOJI TRANSFORM
+     ================================================================ */
+
+  _applyEmojiTransform(emoji) {
+
+  if (
+    !emoji ||
+    !emoji.element
+  ) {
+    return;
+  }
+
+  const scale =
+    emoji.scale || 1;
+
+  const rotation =
+    emoji.rotation || 0;
+
+  /*
+   * The emoji DOM element is positioned at
+   * originalX / originalY.
+   *
+   * Apply the animated x/y difference through
+   * GPU transform instead of changing left/top
+   * every frame.
+   */
+
+  const offsetX =
+    emoji.x -
+    emoji.originalX;
+
+  const offsetY =
+    emoji.y -
+    emoji.originalY;
+
+  /*
+   * Subtle depth shadow.
+   */
+
+  const shadowY =
+    4 +
+    Math.max(
+      0,
+      Math.abs(offsetY) * 0.12
+    );
+
+  const shadowBlur =
+    9 +
+    Math.min(
+      7,
+      Math.abs(offsetY) * 0.15
+    );
+
+  const proximityShadow =
+    emoji.cursorInfluence || 0;
+
+  emoji.element.style.transform =
+    `translate3d(
+      calc(-50% + ${offsetX}px),
+      calc(-50% + ${offsetY}px),
+      0
+    )
+    rotate(${rotation}rad)
+    scale(${scale})`;
+
+  /*
+   * Keep the emoji looking grounded.
+   */
+
+  emoji.element.style.filter =
+    `
+      drop-shadow(
+        0 ${shadowY}px ${shadowBlur}px
+        rgba(0,0,0,${0.13 + proximityShadow * 0.07})
+      )
+      brightness(${1 + proximityShadow * 0.06})
+      saturate(${1 + proximityShadow * 0.08})
+    `;
+}
+
+
+  /* ================================================================
+     CURSOR PROXIMITY
+     ================================================================ */
+
+  _addMouseProximityEffect(
+    emoji
+  ) {
+
+    if (
+      !emoji ||
+      !emoji.element
+    ) {
+
+      return;
+
+    }
+
+
+    const isTouchDevice =
+      'ontouchstart' in window ||
+      navigator.maxTouchPoints > 0;
+
+
+    /*
+     * Don't run cursor movement on an
+     * idle touch device.
+     */
+
+    if (
+      isTouchDevice &&
+      !this.touchActive
+    ) {
+
+      emoji.cursorOffsetX +=
+        (
+          0 -
+          emoji.cursorOffsetX
+        ) *
+        0.12;
+
+
+      emoji.cursorOffsetY +=
+        (
+          0 -
+          emoji.cursorOffsetY
+        ) *
+        0.12;
+
+
+      return;
+
+    }
+
+
+    const dx =
+      this.mouse.x -
+      emoji.x;
+
+
+    const dy =
+      this.mouse.y -
+      emoji.y;
+
+
+    const distance =
+      Math.hypot(
+        dx,
+        dy
+      );
+
+
+    const range =
+      this.width < 700
+        ? 135
+        : 235;
+
+
+    if (
+      distance > 0 &&
+      distance < range
+    ) {
+
+      const proximity =
+        1 -
+        distance /
+        range;
+
+
+      /*
+       * Maximum displacement is deliberately
+       * small.
+       */
+
+      const maxPush =
+        this.width < 700
+          ? 13
+          : 28;
+
+
+      const push =
+        proximity *
+        proximity *
+        maxPush;
+
+
+      const targetOffsetX =
+        -(
+          dx /
+          distance
+        ) *
+        push;
+
+
+      const targetOffsetY =
+        -(
+          dy /
+          distance
+        ) *
+        push;
+
+        emoji.cursorInfluence =
+          proximity;
+        if (
+          distance >= range
+        ) {
+        emoji.cursorInfluence +=
+            (
+                0 -
+                (emoji.cursorInfluence || 0)
+            ) *
+            0.12;
+        }
+
+      emoji.cursorOffsetX +=
+        (
+          targetOffsetX -
+          emoji.cursorOffsetX
+        ) *
+        0.38;
+
+
+      emoji.cursorOffsetY +=
+        (
+          targetOffsetY -
+          emoji.cursorOffsetY
+        ) *
+        0.38;
+
+
+      /*
+       * Tiny scale reaction.
+       */
+
+      const targetScale =
+        1 +
+        proximity *
+        0.07;
+
+
+      emoji.scale +=
+        (
+          targetScale -
+          emoji.scale
+        ) *
+        0.12;
+
+
+    } else {
+
+      emoji.cursorOffsetX +=
+        (
+          0 -
+          emoji.cursorOffsetX
+        ) *
+        0.10;
+
+
+      emoji.cursorOffsetY +=
+        (
+          0 -
+          emoji.cursorOffsetY
+        ) *
+        0.10;
+
+
+      emoji.scale +=
+        (
+          1 -
+          emoji.scale
+        ) *
+        0.10;
 
     }
 
@@ -1380,75 +4128,217 @@ export class EmojiWorld {
     }
 
 
+    if (
+      this.isShaking ||
+      this.isRecovering
+    ) {
+
+      return;
+
+    }
+
+
     /*
-     * Prevent duplicate schedulers.
+     * Stop an existing scheduler first.
      */
 
     this._stopMobileAnimationScheduler();
 
 
-    this.mobileSchedulerGeneration++;
-
-
     const generation =
-      this.mobileSchedulerGeneration;
+      ++this.mobileSchedulerGeneration;
 
 
     /*
-     * Fresh randomized sequence.
+     * Start with a shuffled bag.
      */
 
     this._refillMobileShuffleBag();
 
 
     /*
-     * Fill all five animation slots immediately.
+     * Fill the initial animation slots.
      */
 
-    for (
-      let i = 0;
-      i < this.mobileAnimationLimit;
-      i++
-    ) {
-
-      this._activateRandomMobileEmoji();
-
-    }
+    this._fillMobileAnimationSlots();
 
 
-    this._scheduleMobileAnimationCheck(
-      generation
-    );
+    /*
+     * Periodic check.
+     *
+     * This is deliberately slow compared with
+     * the Pixi ticker and therefore very cheap.
+     */
+
+    this.mobileSchedulerTimer =
+      window.setInterval(
+        () => {
+
+          if (
+            generation !==
+            this.mobileSchedulerGeneration
+          ) {
+
+            return;
+
+          }
 
 
-    console.log(
-      '📱 Mobile animation scheduler started — max 5 active'
-    );
+          this._scheduleMobileAnimationCheck();
+
+        },
+        250
+      );
 
   }
 
 
   /* ================================================================
-     STOP MOBILE SCHEDULER
+     STOP MOBILE ANIMATION SCHEDULER
      ================================================================ */
 
   _stopMobileAnimationScheduler() {
 
+    this.mobileSchedulerGeneration++;
+
+
     if (
-      this.mobileSchedulerTimer
+      this.mobileSchedulerTimer !==
+      null
     ) {
 
-      clearTimeout(
+      clearInterval(
         this.mobileSchedulerTimer
       );
+
 
       this.mobileSchedulerTimer =
         null;
 
     }
 
+  }
 
-    this.mobileSchedulerGeneration++;
+
+  /* ================================================================
+     MOBILE ANIMATION CHECK
+     ================================================================ */
+
+  _scheduleMobileAnimationCheck() {
+
+    if (
+      !this.isMobileOrTablet ||
+      this.isShaking ||
+      this.isRecovering
+    ) {
+
+      return;
+
+    }
+
+
+    const now =
+      performance.now();
+
+
+    /*
+     * Deactivate expired animations.
+     */
+
+    for (
+      const emoji of [
+        ...this.mobileActiveEmojis
+      ]
+    ) {
+
+      if (
+        !emoji
+      ) {
+
+        continue;
+
+      }
+
+
+      if (
+        emoji.animationEndsAt > 0 &&
+        now >=
+        emoji.animationEndsAt
+      ) {
+
+        this._deactivateMobileEmoji(
+          emoji
+        );
+
+      }
+
+    }
+
+
+    /*
+     * Fill any available animation slots.
+     */
+
+    this._fillMobileAnimationSlots();
+
+  }
+
+
+  /* ================================================================
+     FILL MOBILE ANIMATION SLOTS
+     ================================================================ */
+
+  _fillMobileAnimationSlots() {
+
+    if (
+      !this.isMobileOrTablet ||
+      this.isShaking ||
+      this.isRecovering
+    ) {
+
+      return;
+
+    }
+
+
+    const available =
+      this.mobileAnimationLimit -
+      this.mobileActiveEmojis.size;
+
+
+    if (
+      available <= 0
+    ) {
+
+      return;
+
+    }
+
+
+    for (
+      let i = 0;
+      i < available;
+      i++
+    ) {
+
+      const emoji =
+        this._getNextMobileEmoji();
+
+
+      if (
+        !emoji
+      ) {
+
+        break;
+
+      }
+
+
+      this._activateMobileEmoji(
+        emoji
+      );
+
+    }
 
   }
 
@@ -1459,65 +4349,76 @@ export class EmojiWorld {
 
   _refillMobileShuffleBag() {
 
-    const bag =
-      [];
-
-
-    for (
-      let i = 0;
-      i < this.emojis.length;
-      i++
-    ) {
-
-      bag.push(
-        i
+    const indices =
+      this.emojis.map(
+        emoji =>
+          emoji.index
       );
-
-    }
 
 
     /*
      * Fisher-Yates shuffle.
+     *
+     * Every emoji gets one turn before
+     * the bag is refilled.
      */
 
     for (
-      let i = bag.length - 1;
+      let i =
+        indices.length - 1;
+
       i > 0;
+
       i--
     ) {
 
-      const randomIndex =
+      const j =
         Math.floor(
           Math.random() *
-          (i + 1)
+          (
+            i + 1
+          )
         );
 
 
-      const temp =
-        bag[i];
-
-
-      bag[i] =
-        bag[randomIndex];
-
-
-      bag[randomIndex] =
-        temp;
+      [
+        indices[i],
+        indices[j]
+      ] =
+      [
+        indices[j],
+        indices[i]
+      ];
 
     }
 
 
     this.mobileShuffleBag =
-      bag;
+      indices;
 
   }
 
 
   /* ================================================================
-     GET NEXT RANDOM EMOJI
+     GET NEXT MOBILE EMOJI
      ================================================================ */
 
   _getNextMobileEmoji() {
+
+    if (
+      !this.emojis ||
+      this.emojis.length === 0
+    ) {
+
+      return null;
+
+    }
+
+
+    /*
+     * Refill when the complete
+     * shuffle bag has been consumed.
+     */
 
     if (
       this.mobileShuffleBag.length === 0
@@ -1528,13 +4429,19 @@ export class EmojiWorld {
     }
 
 
+    /*
+     * Search the shuffled bag for an
+     * emoji that isn't already active.
+     */
+
     for (
       let i =
-        this.mobileShuffleBag.length - 1;
+        0;
 
-      i >= 0;
+      i <
+      this.mobileShuffleBag.length;
 
-      i--
+      i++
     ) {
 
       const index =
@@ -1547,7 +4454,8 @@ export class EmojiWorld {
 
       if (
         emoji &&
-        !emoji.isMobileActive
+        !emoji.isMobileActive &&
+        !emoji.isFlying
       ) {
 
         this.mobileShuffleBag.splice(
@@ -1563,70 +4471,49 @@ export class EmojiWorld {
     }
 
 
-    const available =
-      this.emojis.filter(
-        emoji =>
-          !emoji.isMobileActive
-      );
+    /*
+     * If every remaining shuffled emoji is
+     * currently active, leave the bag alone.
+     */
 
-
-    if (
-      available.length === 0
-    ) {
-
-      return null;
-
-    }
-
-
-    const randomIndex =
-      Math.floor(
-        Math.random() *
-        available.length
-      );
-
-
-    return available[
-      randomIndex
-    ];
+    return null;
 
   }
 
 
   /* ================================================================
-     ACTIVATE RANDOM MOBILE EMOJI
+     RANDOM MOBILE ANIMATION DURATION
      ================================================================ */
 
-  _activateRandomMobileEmoji() {
+  _getRandomAnimationDuration() {
 
-    if (
-      this.mobileActiveEmojis.size >=
-      this.mobileAnimationLimit
-    ) {
+    /*
+     * Random duration:
+     *
+     * 2.6s - 5.2s
+     *
+     * This prevents the 8 emojis from
+     * starting/stopping together.
+     */
 
-      return;
-
-    }
-
-
-    const emoji =
-      this._getNextMobileEmoji();
-
-
-    if (!emoji) {
-
-      return;
-
-    }
+    const min =
+      2600;
 
 
-    this._activateMobileEmoji(
-      emoji
+    const max =
+      5200;
+
+
+    return (
+      min +
+      Math.random() *
+      (
+        max -
+        min
+      )
     );
 
   }
-
-
   /* ================================================================
      ACTIVATE MOBILE EMOJI
      ================================================================ */
@@ -1654,20 +4541,20 @@ export class EmojiWorld {
     }
 
 
-    const element =
-      emoji.element;
-
-
-    const src =
-      element.dataset.src;
-
-
-    if (!src) {
+    if (
+      emoji.isFlying
+    ) {
 
       return;
 
     }
 
+
+    /*
+     * Mark active before changing the
+     * source so the scheduler cannot
+     * activate it twice.
+     */
 
     emoji.isMobileActive =
       true;
@@ -1677,6 +4564,28 @@ export class EmojiWorld {
       emoji
     );
 
+
+    /*
+     * ------------------------------------------------------------
+     * TALKING SOUND
+     * ------------------------------------------------------------
+     *
+     * Trigger one short talking sound when
+     * a new animation slot becomes active.
+     *
+     * _playTalkingSound() has its own cooldown,
+     * so multiple simultaneous activations
+     * don't stack eight audio streams.
+     */
+
+    this._playTalkingSound();
+
+
+    /*
+     * ------------------------------------------------------------
+     * ANIMATION TIMER
+     * ------------------------------------------------------------
+     */
 
     const duration =
       this._getRandomAnimationDuration();
@@ -1688,58 +4597,72 @@ export class EmojiWorld {
 
 
     /*
-     * Remove static source first.
-     * Then start the real animated WebP.
+     * ------------------------------------------------------------
+     * START ANIMATED WEBP
+     * ------------------------------------------------------------
      */
 
-    element.removeAttribute(
-      'src'
-    );
+    const animatedURL =
+      emoji.element.dataset.src;
 
 
-    element.src =
-      src;
+    if (
+      !animatedURL
+    ) {
+
+      emoji.isMobileActive =
+        false;
 
 
-    element.style.visibility =
+      this.mobileActiveEmojis.delete(
+        emoji
+      );
+
+
+      emoji.animationEndsAt =
+        0;
+
+
+      return;
+
+    }
+
+
+    /*
+     * Make sure the element remains
+     * visible before assigning the
+     * animated source.
+     */
+
+    emoji.element.style.visibility =
       'visible';
 
 
-    element.style.opacity =
+    emoji.element.style.opacity =
       '1';
+
+
+    /*
+     * Start the actual animated WebP.
+     */
+
+    emoji.element.src =
+      animatedURL;
+
+
+    /*
+     * Keep animation smooth.
+     */
+
+    emoji.element.style.willChange =
+      'transform';
 
   }
 
 
   /* ================================================================
-     RANDOM ANIMATION DURATION
+     DEACTIVATE MOBILE EMOJI
      ================================================================ */
-
-  _getRandomAnimationDuration() {
-
-    const minimum =
-      2500;
-
-
-    const maximum =
-      5500;
-
-
-    return (
-      minimum +
-      Math.random() *
-      (
-        maximum -
-        minimum
-      )
-    );
-
-  }
-
-
-/* ================================================================
-   DEACTIVATE MOBILE EMOJI
-   ================================================================ */
 
   _deactivateMobileEmoji(
     emoji
@@ -1773,7 +4696,7 @@ export class EmojiWorld {
 
 
     /*
-     * Remove from the active animation set.
+     * Remove from active animation set.
      */
 
     emoji.isMobileActive =
@@ -1786,7 +4709,7 @@ export class EmojiWorld {
 
 
     /*
-     * Clear the animation timer.
+     * Clear animation timer.
      */
 
     emoji.animationEndsAt =
@@ -1795,11 +4718,12 @@ export class EmojiWorld {
 
     /*
      * ------------------------------------------------------------
-     * STOP THE ANIMATED WEBP
+     * STOP ANIMATED WEBP
      * ------------------------------------------------------------
      *
-     * Removing the animated WebP source prevents this emoji from
-     * continuing to consume animation/decode resources on mobile.
+     * Removing src prevents the browser from
+     * continuing to decode/play this animated
+     * WebP.
      */
 
     element.removeAttribute(
@@ -1809,18 +4733,8 @@ export class EmojiWorld {
 
     /*
      * ------------------------------------------------------------
-     * USE PREPARED HIGH-QUALITY STATIC FRAME
+     * RESTORE HIGH-QUALITY STATIC FRAME
      * ------------------------------------------------------------
-     *
-     * IMPORTANT:
-     *
-     * Do NOT capture another frame here.
-     *
-     * The static frame is prepared separately by the mobile
-     * static-frame preparation system.
-     *
-     * This avoids creating a new low-quality frame every time
-     * an animation slot expires.
      */
 
     if (
@@ -1830,989 +4744,75 @@ export class EmojiWorld {
       element.src =
         emoji.staticURL;
 
-
-      element.style.visibility =
-        'visible';
-
-
-      element.style.opacity =
-        '1';
-
     } else {
 
       /*
        * Static frame is not ready yet.
        *
-       * Keep the element visible rather than hiding the emoji.
-       *
-       * The static-frame preparation system will replace the
-       * source once the high-quality frame becomes available.
+       * The element remains visible. The
+       * static-frame preparation routine will
+       * replace it once available.
        */
 
       element.style.visibility =
         'visible';
 
-
-      element.style.opacity =
-        '1';
-
     }
 
 
-    /*
-     * Keep the element rendered normally.
-     */
+    element.style.visibility =
+      'visible';
+
+
+    element.style.opacity =
+      '1';
+
 
     element.style.display =
       'block';
 
 
     /*
-     * Make sure the browser does not apply any unwanted
-     * image filtering from this function.
-     *
-     * The actual image quality is controlled by the source
-     * generated by the static-frame preparation system.
+     * Keep the element in the same rendering
+     * layer. Do not modify its position here.
      */
-
-    element.style.filter =
-      'none';
-
-
-    /*
-     * ------------------------------------------------------------
-     * POSITIONING
-     * ------------------------------------------------------------
-     *
-     * Do NOT modify any emoji coordinates here.
-     *
-     * The scheduler only controls whether the WebP is actively
-     * playing. Positioning remains controlled by EmojiWorld.
-     */
-
-    /*
-     * Do not modify:
-     *
-     * - emoji.x
-     * - emoji.y
-     * - emoji.rotation
-     * - emoji.scale
-     * - emoji.targetX
-     * - emoji.targetY
-     */
-
 
   }
 
 
   /* ================================================================
-     CREATE STATIC FRAME FROM CURRENT FRAME
+     ENABLE DESKTOP ANIMATION MODE
      ================================================================ */
 
-  _captureStaticFrame(
-    emoji
-  ) {
+  _enableDesktopAnimationMode() {
 
-    if (
-      !emoji ||
-      !emoji.element ||
-      emoji.staticURL
-    ) {
-
-      return;
-
-    }
-
-
-    const element =
-      emoji.element;
-
-
-    if (
-      !element.complete ||
-      element.naturalWidth <= 0
-    ) {
-
-      return;
-
-    }
-
-
-    try {
-
-      const canvas =
-        document.createElement(
-          'canvas'
-        );
-
-
-      const width =
-        element.naturalWidth;
-
-
-      const height =
-        element.naturalHeight;
-
-
-      const maxSize =
-        512;
-
-
-      const scale =
-        Math.min(
-          1,
-          maxSize /
-          Math.max(
-            width,
-            height
-          )
-        );
-
-
-      canvas.width =
-        Math.max(
-          1,
-          Math.round(
-            width * scale
-          )
-        );
-
-
-      canvas.height =
-        Math.max(
-          1,
-          Math.round(
-            height * scale
-          )
-        );
-
-
-      const context =
-        canvas.getContext(
-          '2d'
-        );
-
-
-      if (!context) {
-
-        return;
-
-      }
-
-
-      context.drawImage(
-        element,
-        0,
-        0,
-        canvas.width,
-        canvas.height
-      );
-
-
-      emoji.staticURL =
-        canvas.toDataURL(
-          'image/png'
-        );
-
-
-      emoji.staticReady =
-        true;
-
-
-      this.mobileStaticFrameReady.add(
-        emoji.index
-      );
-
-
-    } catch (error) {
-
-      console.warn(
-        '[Emoji World] Static frame capture skipped:',
-        error
-      );
-
-    }
-
-  }
-
-
-  /* ================================================================
-     MOBILE SCHEDULER CHECK
-     ================================================================ */
-
-  _scheduleMobileAnimationCheck(
-    generation
-  ) {
-
-    if (
-      !this.isMobileOrTablet
-    ) {
-
-      return;
-
-    }
-
-
-    if (
-      generation !==
-      this.mobileSchedulerGeneration
-    ) {
-
-      return;
-
-    }
-
-
-    this.mobileSchedulerTimer =
-      setTimeout(
-        () => {
-
-          this._updateMobileAnimationScheduler(
-            generation
-          );
-
-        },
-        250
-      );
-
-  }
-
-
-  /* ================================================================
-     UPDATE MOBILE SCHEDULER
-     ================================================================ */
-
-  _updateMobileAnimationScheduler(
-    generation
-  ) {
-
-    if (
-      generation !==
-      this.mobileSchedulerGeneration
-    ) {
-
-      return;
-
-    }
-
-
-    /*
-     * Never touch animation slots while
-     * the shake movie is running.
-     */
-
-    if (
-      this.isShaking ||
-      this.isRecovering
-    ) {
-
-      this._scheduleMobileAnimationCheck(
-        generation
-      );
-
-      return;
-
-    }
-
-
-    const now =
-      performance.now();
-
-
-    const expired =
-      [];
-
-
-    this.mobileActiveEmojis.forEach(
-      emoji => {
-
-        if (
-          emoji.animationEndsAt <=
-          now
-        ) {
-
-          expired.push(
-            emoji
-          );
-
-        }
-
-      }
+    console.log(
+      '🖥️ Switching to desktop animation mode'
     );
 
 
+    this.isMobileOrTablet =
+      false;
+
+
     /*
-     * Deactivate expired animations.
-     * The emoji remains visible as a static frame.
+     * Stop mobile scheduler.
+     */
+
+    this._stopMobileAnimationScheduler();
+
+
+    /*
+     * Restore animated WebPs for all 24.
      */
 
     for (
-      const emoji of expired
+      const emoji of this.emojis
     ) {
-
-      /*
-       * Capture the currently displayed
-       * frame if a static frame doesn't
-       * already exist.
-       */
-      
-
-      this._deactivateMobileEmoji(
-        emoji
-      );
-
-    }
-
-
-    /*
-     * Fill empty animation slots.
-     */
-
-    while (
-      this.mobileActiveEmojis.size <
-      this.mobileAnimationLimit
-    ) {
-
-      const before =
-        this.mobileActiveEmojis.size;
-
-
-      this._activateRandomMobileEmoji();
-
 
       if (
-        this.mobileActiveEmojis.size ===
-        before
-      ) {
-
-        break;
-
-      }
-
-    }
-
-
-    this._scheduleMobileAnimationCheck(
-      generation
-    );
-
-  }
-
-
-  /* ================================================================
-     SCENE SETUP
-     ================================================================ */
-
-  _setupScene() {
-
-    this.cubesContainer =
-      new PIXI.Container();
-
-
-    this.cubesContainer.sortableChildren =
-      true;
-
-
-    this.app.stage.addChild(
-      this.cubesContainer
-    );
-
-
-    this.titleContainer =
-      new PIXI.Container();
-
-
-    this.app.stage.addChild(
-      this.titleContainer
-    );
-
-
-    /*
-     * Physics is shared by all 24 emojis,
-     * but bodies remain inactive until shake.
-     */
-
-    this.physics =
-      new Physics({
-
-        width:
-          this.width,
-
-        height:
-          this.height,
-
-        groundLevel:
-          this.height * 0.85,
-
-        gravity:
-          0.65,
-
-        bounce:
-          0.28
-
-      });
-
-
-    /*
-     * Create emojis after physics exists
-     * so every emoji receives its body.
-     */
-
-    this._createEmojisAndCubes();
-
-
-    this._createTitle();
-
-
-    console.log(
-      '[Emoji World] ✓ Scene created'
-    );
-
-  }
-
-
-  /* ================================================================
-     CREATE EMOJIS + GLASS PLATFORMS
-     ================================================================ */
-
-  _createEmojisAndCubes() {
-
-    this.cubes =
-      [];
-
-
-    this._createEmojis();
-
-
-    const layout =
-      this._getGridLayout();
-
-
-    const {
-      cols,
-      spacing,
-      startX,
-      startY,
-      emojiSize,
-      cubeSize
-    } =
-      layout;
-
-
-    for (
-      let i = 0;
-      i < this.emojis.length;
-      i++
-    ) {
-
-      const emoji =
-        this.emojis[i];
-
-
-      if (!emoji) {
-
-        continue;
-
-      }
-
-
-      const col =
-        i % cols;
-
-
-      const row =
-        Math.floor(
-          i / cols
-        );
-
-
-      const x =
-        startX +
-        col * spacing;
-
-
-      const y =
-        startY +
-        row * spacing;
-
-
-      emoji.x =
-        x;
-
-      emoji.y =
-        y;
-
-      emoji.originalX =
-        x;
-
-      emoji.originalY =
-        y;
-
-      emoji.targetX =
-        x;
-
-      emoji.targetY =
-        y;
-
-      emoji.size =
-        emojiSize;
-
-
-      if (
-        emoji.element
-      ) {
-
-        element.style.left =
-        '0px';
-
-        element.style.top =
-        '0px';
-
-        emoji.element.style.width =
-          `${emojiSize}px`;
-
-        emoji.element.style.height =
-          `${emojiSize}px`;
-
-      }
-
-
-      /*
-       * Create glass platform.
-       */
-
-      const cube =
-        this._createGlassPlatform(
-          x,
-          y,
-          cubeSize
-        );
-
-
-      cube.zIndex =
-        1;
-
-
-      this.cubesContainer.addChild(
-        cube
-      );
-
-
-      this.cubes.push(
-        cube
-      );
-
-    }
-
-
-    console.log(
-      `[Emoji World] ✓ ${this.emojis.length} emoji platforms created`
-    );
-
-  }
-
-
-  /* ================================================================
-     GLASS PLATFORM
-     ================================================================ */
-
-  _createGlassPlatform(
-    x,
-    y,
-    size
-  ) {
-
-    const group =
-      new PIXI.Container();
-
-
-    const shadow =
-      new PIXI.Graphics();
-
-
-    shadow
-      .ellipse(
-        0,
-        size * 0.42,
-        size * 0.40,
-        size * 0.075
-      )
-      .fill({
-        color:
-          0x000000,
-        alpha:
-          0.12
-      });
-
-
-    const glass =
-      new PIXI.Graphics();
-
-
-    glass
-      .roundRect(
-        -size / 2,
-        -size * 0.15,
-        size,
-        size * 0.34,
-        14
-      )
-      .fill({
-        color:
-          0xf7fbff,
-        alpha:
-          0.72
-      })
-      .stroke({
-        color:
-          0xcbdbe8,
-        alpha:
-          0.75,
-        width:
-          1.5
-      });
-
-
-    const highlight =
-      new PIXI.Graphics();
-
-
-    highlight
-      .roundRect(
-        -size * 0.38,
-        -size * 0.08,
-        size * 0.50,
-        size * 0.07,
-        8
-      )
-      .fill({
-        color:
-          0xffffff,
-        alpha:
-          0.68
-      });
-
-
-    group.addChild(
-      shadow
-    );
-
-    group.addChild(
-      glass
-    );
-
-    group.addChild(
-      highlight
-    );
-
-
-    group.position.set(
-      x,
-      y
-    );
-
-
-    group.alpha =
-      0.95;
-
-
-    return group;
-
-  }
-  /* ================================================================
-     SCENE SETUP
-     ================================================================ */
-
-  _setupScene() {
-
-    /*
-     * Glass/platform layer.
-     */
-
-    this.cubesContainer =
-      new PIXI.Container();
-
-
-    this.cubesContainer.sortableChildren =
-      true;
-
-
-    this.app.stage.addChild(
-      this.cubesContainer
-    );
-
-
-    /*
-     * Title layer.
-     */
-
-    this.titleContainer =
-      new PIXI.Container();
-
-
-    this.app.stage.addChild(
-      this.titleContainer
-    );
-
-
-    /*
-     * Physics world.
-     */
-
-    this.physics =
-      new Physics({
-
-        width:
-          this.width,
-
-        height:
-          this.height,
-
-        groundLevel:
-          this.height * 0.90,
-
-        gravity:
-          0.62,
-
-        friction:
-          0.985,
-
-        bounce:
-          0.55
-
-      });
-
-
-    /*
-     * Title.
-     */
-
-    this._createTitle();
-
-
-    /*
-     * Glass platforms + emoji elements.
-     */
-
-    this._createEmojisAndCubes();
-
-
-    console.log(
-      `[Emoji World] ✓ Scene created with ${this.emojis.length} emojis`
-    );
-
-  }
-
-
-  /* ================================================================
-     TITLE
-     ================================================================ */
-
-  _createTitle() {
-
-    const title =
-      new PIXI.Text({
-
-        text:
-          'The Emojis',
-
-        style: {
-
-          fontFamily:
-            '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-
-          fontSize:
-            this._getTitleSize(),
-
-          fontWeight:
-            '700',
-
-          fill:
-            0x111111,
-
-          align:
-            'center',
-
-          letterSpacing:
-            1
-
-        }
-
-      });
-
-
-    title.anchor.set(
-      0.5
-    );
-
-
-    title.x =
-      this.width / 2;
-
-
-    title.y =
-      this._getTitleY();
-
-
-    title.alpha =
-      0.98;
-
-
-    title.zIndex =
-      100;
-
-
-    this.titleContainer.addChild(
-      title
-    );
-
-
-    this.title =
-      title;
-
-  }
-
-
-  /* ================================================================
-     TITLE SIZE
-     ================================================================ */
-
-  _getTitleSize() {
-
-    if (
-      this.width < 500
-    ) {
-
-      return 34;
-
-    }
-
-
-    return Math.max(
-
-      38,
-
-      Math.min(
-
-        58,
-
-        this.width *
-        0.045
-
-      )
-
-    );
-
-  }
-
-
-  /* ================================================================
-     TITLE POSITION
-     ================================================================ */
-
-  _getTitleY() {
-
-    return Math.max(
-
-      48,
-
-      Math.min(
-
-        75,
-
-        this.height *
-        0.085
-
-      )
-
-    );
-
-  }
-
-
-/* ================================================================
-   CREATE EMOJIS + GLASS PLATFORMS
-   ================================================================ */
-
-  _createEmojisAndCubes() {
-
-    /*
-     * Clear previous platform references.
-     */
-
-    this.cubes =
-      [];
-
-
-    /*
-     * Remove any old Pixi glass cubes
-     * if this method is ever called again.
-     *
-     * This prevents duplicate platforms.
-     */
-
-    if (
-      this.cubesContainer
-    ) {
-
-      this.cubesContainer.removeChildren();
-
-    }
-
-
-    /*
-     * Create the 24 native WebP emoji
-     * elements.
-     *
-     * _createEmojis() handles:
-     *
-     * - WebP loading
-     * - mobile static-frame handling
-     * - 5-animation scheduler
-     * - DOM element creation
-     */
-
-    this._createEmojis();
-
-
-    /*
-     * Get the SINGLE authoritative grid layout.
-     *
-     * Do not calculate another grid here.
-     */
-
-    const layout =
-      this._getGridLayout();
-
-
-    const {
-      cols,
-      spacing,
-      startX,
-      startY,
-      emojiSize,
-      cubeSize
-    } =
-      layout;
-
-
-    /*
-     * Position all 24 emojis and their
-     * corresponding glass platforms.
-     */
-
-    for (
-      let i = 0;
-      i < this.emojis.length;
-      i++
-    ) {
-
-      const emoji =
-        this.emojis[i];
-
-
-      if (
-        !emoji
+        !emoji ||
+        !emoji.element
       ) {
 
         continue;
@@ -2820,596 +4820,252 @@ export class EmojiWorld {
       }
 
 
-      /*
-       * Grid coordinates.
-       */
-
-      const col =
-        i %
-        cols;
+      emoji.isMobileActive =
+        false;
 
 
-      const row =
-        Math.floor(
-          i /
-          cols
-        );
-
-
-      const x =
-        startX +
-        col *
-        spacing;
-
-
-      const y =
-        startY +
-        row *
-        spacing;
-
-
-      /*
-       * ------------------------------------------------------------
-       * HOME / ORIGINAL POSITION
-       * ------------------------------------------------------------
-       */
-
-      emoji.x =
-        x;
-
-
-      emoji.y =
-        y;
-
-
-      emoji.originalX =
-        x;
-
-
-      emoji.originalY =
-        y;
-
-
-      emoji.targetX =
-        x;
-
-
-      emoji.targetY =
-        y;
-
-
-      emoji.size =
-        emojiSize;
-
-
-      /*
-       * Reset interaction offsets.
-       */
-
-      emoji.cursorOffsetX =
+      emoji.animationEndsAt =
         0;
 
 
-      emoji.cursorOffsetY =
-        0;
+      const animatedURL =
+        emoji.element.dataset.src;
 
-
-      emoji.rotation =
-        0;
-
-
-      emoji.scale =
-        1;
-
-
-      /*
-       * ------------------------------------------------------------
-       * NATIVE WEBP ELEMENT
-       * ------------------------------------------------------------
-       *
-       * IMPORTANT:
-       *
-       * Do NOT put x/y into left/top.
-       *
-       * _applyEmojiTransform() is the ONLY place that
-       * controls the emoji's actual position.
-       *
-       * Otherwise:
-       *
-       *     left: x
-       *     +
-       *     translate3d(x, y)
-       *
-       * would position the emoji twice.
-       */
 
       if (
-        emoji.element
+        animatedURL
       ) {
 
-        const element =
-          emoji.element;
-
-
-        /*
-         * Keep the element absolutely positioned
-         * inside the full-screen emoji layer.
-         */
-
-        element.style.position =
-          'absolute';
-
-
-        /*
-         * IMPORTANT:
-         *
-         * Base position is always 0,0.
-         *
-         * Actual position comes from:
-         *
-         * _applyEmojiTransform()
-         */
-
-        element.style.left =
-          '0px';
-
-
-        element.style.top =
-          '0px';
-
-
-        /*
-         * Set visual size.
-         */
-
-        element.style.width =
-          `${emojiSize}px`;
-
-
-        element.style.height =
-          `${emojiSize}px`;
-
-
-        /*
-         * Keep WebP aspect ratio.
-         */
-
-        element.style.objectFit =
-          'contain';
-
-
-        /*
-         * GPU-friendly rendering.
-         */
-
-        element.style.willChange =
-          'transform';
-
-
-        /*
-         * Make sure emoji is visible.
-         */
-
-        element.style.visibility =
-          'visible';
-
-
-        element.style.opacity =
-          '1';
+        emoji.element.src =
+          animatedURL;
 
       }
 
 
-      /*
-       * ------------------------------------------------------------
-       * GLASS PLATFORM
-       * ------------------------------------------------------------
-       *
-       * The platform uses the exact same x/y
-       * coordinates as the emoji home position.
-       */
-
-      const cube =
-        this._createGlassCube(
-
-          x,
-
-          y +
-          emojiSize *
-          0.43,
-
-          cubeSize
-
-        );
+      emoji.element.style.visibility =
+        'visible';
 
 
-      /*
-       * Preserve correct visual ordering.
-       */
-
-      cube.zIndex =
-        i;
-
-
-      this.cubesContainer.addChild(
-        cube
-      );
-
-
-      /*
-       * Store platform data.
-       */
-
-      this.cubes.push({
-
-        sprite:
-          cube,
-
-        x:
-          x,
-
-        y:
-          y
-
-      });
-
-
-      /*
-       * ------------------------------------------------------------
-       * PHYSICS HOME POSITION
-       * ------------------------------------------------------------
-       */
-
-      if (
-        emoji.physicsBody
-      ) {
-
-        emoji.physicsBody.x =
-          x;
-
-
-        emoji.physicsBody.y =
-          y;
-
-
-        emoji.physicsBody.vx =
-          0;
-
-
-        emoji.physicsBody.vy =
-          0;
-
-
-        emoji.physicsBody.angularVelocity =
-          0;
-
-
-        /*
-         * Start in a resting state.
-         */
-
-        emoji.physicsBody.isActive =
-          false;
-
-
-        emoji.physicsBody.isResting =
-          true;
-
-      }
-
-
-      /*
-       * ------------------------------------------------------------
-       * APPLY INITIAL TRANSFORM
-       * ------------------------------------------------------------
-       *
-       * This positions the WebP at exactly
-       * the same x/y as the glass cube.
-       */
-
-      this._applyEmojiTransform(
-        emoji
-      );
+      emoji.element.style.opacity =
+        '1';
 
     }
 
 
-    /*
-     * ------------------------------------------------------------
-     * LAYER ORDER
-     * ------------------------------------------------------------
-     */
+    this.mobileActiveEmojis.clear();
 
-    this.cubesContainer.zIndex =
-      1;
-
-
-    this.titleContainer.zIndex =
-      100;
-
-
-    /*
-     * Make sure the title stays above
-     * the glass/emoji scene.
-     */
-
-    if (
-      this.title
-    ) {
-
-      this.title.zIndex =
-        100;
-
-    }
-
-
-    /*
-     * Final diagnostic.
-     */
 
     console.log(
-      `[Emoji World] ✓ Grid created: ${cols} columns × ${Math.ceil(this.emojis.length / cols)} rows`
+      '🖥️ All 24 animated WebPs restored'
     );
 
   }
 
 
   /* ================================================================
-     GLASS PLATFORM
+     ENABLE MOBILE ANIMATION MODE
      ================================================================ */
 
-  _createGlassCube(
-    x,
-    y,
-    size
-  ) {
+  _enableMobileAnimationMode() {
 
-    const group =
-      new PIXI.Container();
+    console.log(
+      '📱 Switching to mobile/tablet animation mode'
+    );
+
+
+    this.isMobileOrTablet =
+      true;
 
 
     /*
-     * Soft shadow.
+     * Stop the current scheduler before
+     * changing every emoji's playback state.
      */
 
-    const shadow =
-      new PIXI.Graphics();
-
-
-    shadow
-      .ellipse(
-
-        0,
-
-        size *
-        0.42,
-
-        size *
-        0.40,
-
-        size *
-        0.075
-
-      )
-      .fill({
-
-        color:
-          0x000000,
-
-        alpha:
-          0.12
-
-      });
+    this._stopMobileAnimationScheduler();
 
 
     /*
-     * Glass body.
+     * Clear current active set.
      */
 
-    const glass =
-      new PIXI.Graphics();
-
-
-    glass
-      .roundRect(
-
-        -size / 2,
-
-        -size * 0.15,
-
-        size,
-
-        size * 0.34,
-
-        14
-
-      )
-      .fill({
-
-        color:
-          0xf7fbff,
-
-        alpha:
-          0.72
-
-      })
-      .stroke({
-
-        color:
-          0xcbdbe8,
-
-        alpha:
-          0.75,
-
-        width:
-          1.5
-
-      });
+    this.mobileActiveEmojis.clear();
 
 
     /*
-     * Glass highlight.
+     * Stop all animated WebPs.
      */
 
-    const highlight =
-      new PIXI.Graphics();
+    for (
+      const emoji of this.emojis
+    ) {
+
+      if (
+        !emoji ||
+        !emoji.element
+      ) {
+
+        continue;
+
+      }
 
 
-    highlight
-      .roundRect(
-
-        -size *
-        0.38,
-
-        -size *
-        0.08,
-
-        size *
-        0.50,
-
-        size *
-        0.07,
-
-        8
-
-      )
-      .fill({
-
-        color:
-          0xffffff,
-
-        alpha:
-          0.68
-
-      });
+      emoji.isMobileActive =
+        false;
 
 
-    group.addChild(
-      shadow
-    );
+      emoji.animationEndsAt =
+        0;
 
 
-    group.addChild(
-      glass
-    );
+      emoji.element.removeAttribute(
+        'src'
+      );
 
 
-    group.addChild(
-      highlight
-    );
+      /*
+       * If the high-quality static frame
+       * already exists, use it immediately.
+       */
+
+      if (
+        emoji.staticURL
+      ) {
+
+        emoji.element.src =
+          emoji.staticURL;
+
+      }
 
 
-    group.position.set(
-      x,
-      y
-    );
+      emoji.element.style.visibility =
+        'visible';
 
 
-    group.alpha =
-      0.95;
+      emoji.element.style.opacity =
+        '1';
+
+    }
 
 
-    return group;
+    /*
+     * Start a completely new random
+     * sequence.
+     */
+
+    this.mobileShuffleBag =
+      [];
+
+
+    this._prepareMobileStaticFrames();
+
+
+    this._startMobileAnimationScheduler();
 
   }
 
 
   /* ================================================================
-     EVENT LISTENERS
+     TOUCH / POINTER EVENT LISTENERS
      ================================================================ */
 
   _setupEventListeners() {
 
     /*
-     * Mouse movement.
+     * ------------------------------------------------------------
+     * MOUSE MOVE
+     * ------------------------------------------------------------
      */
 
     window.addEventListener(
-
       'mousemove',
-
-      (event) => {
+      event => {
 
         this.mouse.x =
           event.clientX;
+
 
         this.mouse.y =
           event.clientY;
 
       },
-
       {
         passive:
           true
       }
-
     );
 
 
     /*
-     * Touch start.
+     * ------------------------------------------------------------
+     * TOUCH START
+     * ------------------------------------------------------------
      */
 
     window.addEventListener(
-
       'touchstart',
-
-      (event) => {
+      event => {
 
         this.touchActive =
           true;
 
 
+        /*
+         * Unlock background music.
+         */
+
+        this._unlockAudio();
+
+
         const touch =
           event.touches[0];
 
 
-        if (touch) {
+        if (
+          touch
+        ) {
 
           this.mouse.x =
             touch.clientX;
+
 
           this.mouse.y =
             touch.clientY;
 
         }
 
-
-        /*
-         * Request sensor permission only
-         * after a user gesture.
-         */
 
         this._requestGyroPermissionOnce();
 
       },
-
       {
         passive:
           true
       }
-
     );
 
 
     /*
-     * Touch movement.
+     * ------------------------------------------------------------
+     * TOUCH MOVE
+     * ------------------------------------------------------------
      */
 
     window.addEventListener(
-
       'touchmove',
-
-      (event) => {
+      event => {
 
         const touch =
           event.touches[0];
 
 
-        if (touch) {
+        if (
+          touch
+        ) {
 
           this.mouse.x =
             touch.clientX;
+
 
           this.mouse.y =
             touch.clientY;
@@ -3417,119 +5073,141 @@ export class EmojiWorld {
         }
 
       },
-
       {
         passive:
           true
       }
-
     );
 
 
     /*
-     * Touch end.
+     * ------------------------------------------------------------
+     * TOUCH END
+     * ------------------------------------------------------------
      */
 
     window.addEventListener(
-
       'touchend',
-
       () => {
 
         this.touchActive =
           false;
 
       },
-
       {
         passive:
           true
       }
+    );
 
+
+    window.addEventListener(
+      'touchcancel',
+      () => {
+
+        this.touchActive =
+          false;
+
+      },
+      {
+        passive:
+          true
+      }
     );
 
 
     /*
-     * Desktop click can also request
-     * motion permission.
+     * ------------------------------------------------------------
+     * CLICK
+     * ------------------------------------------------------------
      */
 
     window.addEventListener(
-
       'click',
-
       () => {
+
+        /*
+         * User interaction is sufficient
+         * to unlock music on desktop.
+         */
+
+        this._unlockAudio();
+
 
         this._requestGyroPermissionOnce();
 
       },
-
       {
         passive:
           true
       }
-
     );
 
 
     /*
-     * Device orientation.
+     * ------------------------------------------------------------
+     * GYROSCOPE CALLBACK
+     * ------------------------------------------------------------
      */
 
-    window.addEventListener(
+    if (
+      this.gyro
+    ) {
 
-      'deviceorientation',
+      this.gyro.onShake = () => {
 
-      () => {
+        this._handleShake();
 
-        this._applyGyroInteraction();
+      };
 
-      },
-
-      {
-        passive:
-          true
-      }
-
-    );
+    }
 
 
     /*
-     * Device motion / shake.
+     * ------------------------------------------------------------
+     * KEYBOARD
+     * ------------------------------------------------------------
+     *
+     * Useful for desktop testing.
+     *
+     * Space can trigger the same shake
+     * behavior without changing the actual
+     * gyro implementation.
      */
 
     window.addEventListener(
-
-      'devicemotion',
-
-      () => {
+      'keydown',
+      event => {
 
         if (
-          this.gyro &&
-          this.gyro.pollShake()
+          event.code ===
+          'Space'
         ) {
 
-          this._onShakeDetected();
+          this._unlockAudio();
 
         }
 
       },
-
       {
         passive:
           true
       }
+    );
 
+
+    console.log(
+      '[Emoji World] ✓ Event listeners registered'
     );
 
   }
 
 
   /* ================================================================
-     GYROSCOPE PERMISSION
+     REQUEST GYROSCOPE PERMISSION
      ================================================================ */
 
-  async _requestGyroPermissionOnce() {
+  _requestGyroPermissionOnce() {
 
     if (
       this._permissionRequested
@@ -3544,34 +5222,45 @@ export class EmojiWorld {
       true;
 
 
+    if (
+      !this.gyro
+    ) {
+
+      return;
+
+    }
+
+
     try {
 
+      const result =
+        this.gyro.requestPermission();
+
+
       if (
-
-        this.gyro &&
-
-        typeof this.gyro.requestPermission ===
+        result &&
+        typeof result.catch ===
           'function'
-
       ) {
 
-        await this.gyro.requestPermission();
+        result.catch(
+          error => {
+
+            console.warn(
+              '[Emoji World] Gyroscope permission request failed:',
+              error
+            );
+
+          }
+        );
 
       }
-
-
-      console.log(
-        '📱 Motion sensors enabled'
-      );
 
     } catch (error) {
 
       console.warn(
-
-        '[Emoji World] Motion permission unavailable:',
-
+        '[Emoji World] Gyroscope permission request failed:',
         error
-
       );
 
     }
@@ -3580,123 +5269,14 @@ export class EmojiWorld {
 
 
   /* ================================================================
-     GYROSCOPE TILT
+     SHAKE HANDLER
      ================================================================ */
 
-  _applyGyroInteraction() {
+  _handleShake() {
 
     /*
-     * Do not apply tilt while the emojis
-     * are in the shake/fall/recovery movie.
-     */
-
-    if (
-      this.isShaking ||
-      this.isRecovering
-    ) {
-
-      return;
-
-    }
-
-
-    if (
-      !this.gyro ||
-      typeof this.gyro.getTilt !==
-        'function'
-    ) {
-
-      return;
-
-    }
-
-
-    const tilt =
-      this.gyro.getTilt();
-
-
-    if (!tilt) {
-
-      return;
-
-    }
-
-
-    /*
-     * Very small movement.
-     */
-
-    const tiltX =
-      Math.max(
-
-        -10,
-
-        Math.min(
-
-          10,
-
-          tilt.x *
-          10
-
-        )
-
-      );
-
-
-    const tiltY =
-      Math.max(
-
-        -6,
-
-        Math.min(
-
-          6,
-
-          tilt.y *
-          6
-
-        )
-
-      );
-
-
-    for (
-      const emoji of this.emojis
-    ) {
-
-      if (
-        !emoji ||
-        emoji.isFlying
-      ) {
-
-        continue;
-
-      }
-
-
-      emoji.targetX =
-        emoji.originalX +
-        tiltX;
-
-
-      emoji.targetY =
-        emoji.originalY +
-        tiltY;
-
-    }
-
-  }
-
-
-/* ================================================================
-   SHAKE DETECTED
-   ================================================================ */
-
-  _onShakeDetected() {
-
-    /*
-     * Ignore additional shakes while
-     * the current movie is running.
+     * Prevent repeated shake events from
+     * restarting the same physics sequence.
      */
 
     if (
@@ -3710,13 +5290,12 @@ export class EmojiWorld {
 
 
     console.log(
-      '📱💥 SHAKE DETECTED!'
+      '💥 SHAKE DETECTED!'
     );
 
 
     /*
-     * Pause the mobile 5-animation scheduler
-     * while the shake movie is running.
+     * Pause mobile animation scheduler.
      */
 
     if (
@@ -3728,27 +5307,36 @@ export class EmojiWorld {
     }
 
 
+    /*
+     * Stop talking sound while the emojis
+     * are falling.
+     */
+
+    if (
+      this.audio &&
+      this.audio.talking
+    ) {
+
+      try {
+
+        this.audio.talking.pause();
+
+      } catch {
+
+        /* Ignore */
+
+      }
+
+    }
+
+
     this.isShaking =
       true;
 
 
-    this.isRecovering =
-      false;
-
-
     /*
-     * Keep the falling sequence long enough
-     * to be clearly visible.
-     */
-
-    this.shakeRecoveryTime =
-      2200;
-
-
-    /*
-     * Every emoji participates in the shake,
-     * regardless of the normal mobile limit
-     * of 5 animated WebPs.
+     * Give the physics system control over
+     * every emoji.
      */
 
     for (
@@ -3765,184 +5353,156 @@ export class EmojiWorld {
 
 
       /*
-       * Mark emoji as part of the
-       * physical shake movie.
-       */
-
-      emoji.isFlying =
-        true;
-
-
-      /*
-       * Keep emoji visible.
+       * Ensure mobile WebP animation doesn't
+       * keep decoding while the emoji is in
+       * physics mode.
        */
 
       if (
-        emoji.element
+        this.isMobileOrTablet &&
+        emoji.isMobileActive
       ) {
 
-        emoji.element.style.visibility =
-          'visible';
-
-        emoji.element.style.opacity =
-          '1';
-
-      }
-
-
-      const body =
-        emoji.physicsBody;
-
-
-      if (
-        !body
-      ) {
-
-        continue;
-
-      }
-
-
-      /*
-       * ============================================================
-       * CRITICAL FIX
-       * ============================================================
-       *
-       * The physics engine skips bodies when:
-       *
-       *     body.sleeping === true
-       *
-       * After the first shake, settled emojis can become sleeping.
-       *
-       * Therefore every new shake MUST wake every body.
-       */
-
-      if (
-        this.physics &&
-        typeof this.physics.wakeBody ===
-        'function'
-      ) {
-
-        this.physics.wakeBody(
-          body
+        this._deactivateMobileEmoji(
+          emoji
         );
 
       }
 
 
-      /*
-       * Explicitly reset all physics state.
-       */
-
-      body.isActive =
+      emoji.isFlying =
         true;
 
 
-      body.sleeping =
-        false;
-
-
-      body.grounded =
+      emoji.isRecovering =
         false;
 
 
       /*
-       * These properties may exist in
-       * older versions of the physics system.
-       *
-       * Reset them safely without relying
-       * on them for the actual wake-up.
+       * Start the physics body from the
+       * emoji's CURRENT visual position.
        */
 
-      body.isResting =
-        false;
+      if (
+        emoji.physicsBody
+      ) {
+
+        emoji.physicsBody.x =
+          emoji.x;
 
 
-      body.restTimer =
-        0;
+        emoji.physicsBody.y =
+          emoji.y;
 
 
-      /*
-       * Start physics from the emoji's
-       * current visual position.
-       */
-
-      body.x =
-        emoji.x;
-
-
-      body.y =
-        emoji.y;
+        emoji.physicsBody.vx =
+          (
+            Math.random() -
+            0.5
+          ) *
+          12;
 
 
-      body.rotation =
-        emoji.rotation;
+        emoji.physicsBody.vy =
+          -(
+            5 +
+            Math.random() *
+            5
+          );
 
 
-      /*
-       * Clear previous motion completely.
-       */
-
-      body.vx =
-        0;
-
-
-      body.vy =
-        0;
+        emoji.physicsBody.angularVelocity =
+          (
+            Math.random() -
+            0.5
+          ) *
+          0.18;
 
 
-      body.angularVelocity =
-        0;
+        emoji.physicsBody.isActive =
+          true;
 
 
-      /*
-       * Random horizontal movement.
-       */
+        emoji.physicsBody.isResting =
+          false;
 
-      body.vx =
-        (
-          Math.random() -
-          0.5
-        ) *
-        5;
+      }
+
+    }
 
 
-      /*
-       * Initial upward impulse.
-       *
-       * Gravity then pulls the emoji
-       * downward and it falls to the floor.
-       */
+    /*
+     * Shake state lasts long enough for the
+     * physics motion to become clearly visible.
+     */
 
-      body.vy =
-        -6 -
-        Math.random() *
-        3;
+    this.shakeRecoveryTime =
+      performance.now() +
+      1150;
 
-
-      /*
-       * Random rotation.
-       */
-
-      body.angularVelocity =
-        (
-          Math.random() -
-          0.5
-        ) *
-        0.35;
+  }
 
 
-      /*
-       * Make sure the physics engine
-       * cannot consider this body settled.
-       */
+  /* ================================================================
+     UPDATE FALLING PHYSICS
+     ================================================================ */
 
-      body.sleeping =
-        false;
+  _updateFallingAnimation(
+    emoji
+  ) {
+
+    if (
+      !emoji ||
+      !emoji.physicsBody
+    ) {
+
+      return;
+
+    }
 
 
-      body.grounded =
-        false;
+    const body =
+      emoji.physicsBody;
+
+
+    /*
+     * Physics engine owns the position.
+     */
+
+    emoji.x =
+      body.x;
+
+
+    emoji.y =
+      body.y;
+
+
+    emoji.rotation =
+      body.rotation ||
+      0;
+
+
+    emoji.scale =
+      1;
+
+
+    this._applyEmojiTransform(
+      emoji
+    );
+
+
+    /*
+     * Once the shake period is over,
+     * switch every emoji into recovery.
+     */
+
+    if (
+      this.isShaking &&
+      performance.now() >=
+      this.shakeRecoveryTime
+    ) {
+
+      this._beginRecovery();
 
     }
 
@@ -3950,13 +5510,13 @@ export class EmojiWorld {
 
 
   /* ================================================================
-     START RETURN-TO-HOME ANIMATION
+     BEGIN RECOVERY
      ================================================================ */
 
-  _returnEmojis() {
+  _beginRecovery() {
 
     if (
-      this.isRecovering
+      !this.isShaking
     ) {
 
       return;
@@ -3965,7 +5525,7 @@ export class EmojiWorld {
 
 
     console.log(
-      '✨ Emojis returning to their glass cubes...'
+      '🏠 Starting emoji recovery...'
     );
 
 
@@ -3978,1041 +5538,78 @@ export class EmojiWorld {
 
 
     /*
-     * Capture current physics positions
-     * before disabling physics.
+     * Stop physics simulation while the
+     * emojis fly back to their platforms.
      */
 
-    this.emojis.forEach(
-
-      (emoji, index) => {
-
-        if (!emoji) {
-
-          return;
-
-        }
-
-
-        const body =
-          emoji.physicsBody;
-
-
-        emoji.isFlying =
-          true;
-
-
-        emoji.flyProgress =
-          0;
-
-
-        /*
-         * Slightly staggered return.
-         */
-
-        emoji.recoveryDelay =
-          index *
-          25;
-
-
-        if (body) {
-
-          emoji.returnStartX =
-            body.x;
-
-
-          emoji.returnStartY =
-            body.y;
-
-
-          emoji.returnStartRotation =
-            body.rotation;
-
-
-          /*
-           * Stop physics.
-           */
-
-          body.isActive =
-            false;
-
-
-          body.vx =
-            0;
-
-
-          body.vy =
-            0;
-
-
-          body.angularVelocity =
-            0;
-
-        } else {
-
-          emoji.returnStartX =
-            emoji.x;
-
-
-          emoji.returnStartY =
-            emoji.y;
-
-
-          emoji.returnStartRotation =
-            emoji.rotation;
-
-        }
-
-      }
-
-    );
-
-  }
-
-
-  /* ================================================================
-     START ANIMATION LOOP
-     ================================================================ */
-
-  _startAnimationLoop() {
-
-    if (
-      !this.app ||
-      !this.app.ticker
+    for (
+      const emoji of this.emojis
     ) {
-
-      throw new Error(
-        'PixiJS ticker is not available.'
-      );
-
-    }
-
-
-    /*
-     * Pixi ticker is the only world update loop.
-     */
-
-    this.app.ticker.add(
-      this._boundUpdateFrame
-    );
-
-
-    console.log(
-      '🎞️ Animation loop started'
-    );
-
-  }
-
-
-  /* ================================================================
-     MAIN FRAME UPDATE
-     ================================================================ */
-
-  _updateFrame(
-    ticker
-  ) {
-
-    try {
-
-      const dtMs =
-        Math.min(
-
-          ticker.deltaMS ||
-          16.67,
-
-          50
-
-        );
-
-
-      const dt =
-        Math.min(
-
-          Math.max(
-
-            dtMs /
-            16.67,
-
-            0.1
-
-          ),
-
-          2
-
-        );
-
-
-      /* ------------------------------------------------------------
-         SHAKE TIMER
-         ------------------------------------------------------------ */
 
       if (
-        this.isShaking
+        !emoji
       ) {
 
-        this.shakeRecoveryTime -=
-          dtMs;
-
-
-        if (
-          this.shakeRecoveryTime <=
-          0
-        ) {
-
-          this._returnEmojis();
-
-        }
+        continue;
 
       }
 
 
-        /* ------------------------------------------------------------
-        PHYSICS
-        ------------------------------------------------------------ */
+      const body =
+        emoji.physicsBody;
 
-        if (
-        this.physics
-        ) {
 
-        this.physics.update(
-            dt
-        );
-
-        }
-
-
-      /* ------------------------------------------------------------
-         EMOJI POSITIONS
-         ------------------------------------------------------------ */
-
-      for (
-        const emoji of this.emojis
-      ) {
-
-        if (!emoji) {
-
-          continue;
-
-        }
-
-
-        try {
-
-          if (
-            emoji.isFlying
-          ) {
-
-            if (
-              this.isRecovering
-            ) {
-
-              this._updateFlyingBackAnimation(
-
-                emoji,
-
-                dtMs
-
-              );
-
-            } else {
-
-              this._updateFallingAnimation(
-                emoji
-              );
-
-            }
-
-          } else {
-
-            this._updateIdleAnimation(
-
-              emoji,
-
-              dt
-
-            );
-
-          }
-
-        } catch (error) {
-
-          console.error(
-
-            '[Emoji World] Emoji frame error:',
-
-            error
-
-          );
-
-        }
-
-      }
-
-    } catch (error) {
-
-      console.error(
-
-        '[Emoji World] Frame update error:',
-
-        error
-
-      );
-
-    }
-
-  }
-
-
-  /* ================================================================
-     IDLE MOVEMENT
-     ================================================================ */
-
-  _updateIdleAnimation(
-    emoji,
-    dt
-  ) {
-
-    if (
-      !emoji ||
-      !emoji.config
-    ) {
-
-      return;
-
-    }
-
-
-    const config =
-      emoji.config;
-
-
-    /*
-     * Advance individual personality timer.
-     */
-
-    emoji.idleTime +=
-      config.idleSpeed *
-      dt;
-
-
-    const t =
-      emoji.idleTime;
-
-
-    const baseX =
-      emoji.originalX;
-
-
-    const baseY =
-      emoji.originalY;
-
-
-    const amplitude =
-      config.idleAmplitude;
-
-
-    let idleX =
-      baseX;
-
-
-    let idleY =
-      baseY;
-
-
-    let rotation =
-      0;
-
-
-    let scale =
-      1;
-
-
-    /* ------------------------------------------------------------
-       INDIVIDUAL PERSONALITIES
-       ------------------------------------------------------------ */
-
-    switch (
-      config.idleType
-    ) {
-
-      case 'bounce':
-
-        idleY =
-          baseY +
-          Math.sin(t) *
-          amplitude;
-
-        break;
-
-
-      case 'pulse':
-
-        scale =
-          1 +
-          Math.sin(t) *
-          config.scaleAmount;
-
-        idleY =
-          baseY +
-          Math.sin(
-            t * 0.8
-          ) * 2;
-
-        break;
-
-
-      case 'sway':
-
-        idleY =
-          baseY +
-          Math.sin(t) *
-          amplitude;
-
-        rotation =
-          Math.sin(
-            t * 0.7
-          ) * 0.10;
-
-        break;
-
-
-      case 'tilt':
-
-        rotation =
-          Math.sin(t) *
-          0.12;
-
-        idleY =
-          baseY +
-          Math.sin(
-            t * 1.2
-          ) *
-          amplitude *
-          0.45;
-
-        break;
-
-
-      case 'spin':
-
-        rotation =
-          t *
-          config.spinSpeed *
-          2;
-
-        idleY =
-          baseY +
-          Math.sin(
-            t * 0.7
-          ) * 2;
-
-        break;
-
-
-      case 'bob':
-
-        idleY =
-          baseY +
-          Math.sin(
-            t * 1.4
-          ) *
-          amplitude;
-
-        break;
-
-
-      case 'drift':
-
-        idleX =
-          baseX +
-          Math.sin(t) *
-          amplitude *
-          0.60;
-
-        idleY =
-          baseY +
-          Math.cos(
-            t * 0.7
-          ) *
-          amplitude *
-          0.45;
-
-        break;
-
-
-      case 'vibrate':
-
-        idleX =
-          baseX +
-          Math.sin(
-            t * 5
-          ) *
-          amplitude *
-          0.55;
-
-        idleY =
-          baseY +
-          Math.cos(
-            t * 4
-          ) *
-          amplitude *
-          0.25;
-
-        break;
-
-
-      case 'tremble':
-
-        idleX =
-          baseX +
-          Math.sin(
-            t * 8
-          ) *
-          amplitude *
-          0.45;
-
-        rotation =
-          Math.sin(
-            t * 7
-          ) *
-          0.035;
-
-        break;
-
-
-      case 'float':
-
-        idleX =
-          baseX +
-          Math.cos(
-            t * 0.65
-          ) *
-          amplitude *
-          0.35;
-
-        idleY =
-          baseY +
-          Math.sin(
-            t * 0.9
-          ) *
-          amplitude *
-          0.65;
-
-        break;
-
-
-      case 'droop':
-
-        idleY =
-          baseY +
-          Math.cos(t) *
-          amplitude;
-
-        rotation =
-          Math.sin(
-            t * 0.6
-          ) *
-          0.09;
-
-        break;
-
-
-      case 'twitch':
-
-        idleY =
-          baseY +
-          Math.sin(
-            t * 1.8
-          ) *
-          amplitude *
-          0.30;
-
-        rotation =
-          Math.sin(
-            t * 3.2
-          ) *
-          0.025;
-
-        break;
-
-
-      case 'shake':
-
-        idleX =
-          baseX +
-          Math.sin(
-            t * 3.5
-          ) *
-          amplitude *
-          0.60;
-
-        idleY =
-          baseY +
-          Math.cos(
-            t * 3.5
-          ) *
-          amplitude *
-          0.25;
-
-        break;
-
-
-      case 'playful':
-
-        rotation =
-          Math.sin(
-            t * 1.5
-          ) *
-          0.14;
-
-        idleY =
-          baseY +
-          Math.sin(
-            t * 2
-          ) *
-          amplitude *
-          0.65;
-
-        break;
-
-
-      case 'shiver':
-
-        idleX =
-          baseX +
-          Math.sin(
-            t * 8
-          ) *
-          amplitude *
-          0.45;
-
-        idleY =
-          baseY +
-          Math.cos(
-            t * 7
-          ) *
-          amplitude *
-          0.25;
-
-        break;
-
-
-      default:
-
-        break;
-
-    }
-
-
-    /* ------------------------------------------------------------
-       GYROSCOPE OFFSET
-       ------------------------------------------------------------ */
-
-    if (
-      !this.isShaking &&
-      !this.isRecovering
-    ) {
-
-      idleX +=
-        (
-          emoji.targetX -
-          emoji.originalX
-        ) *
-        0.35;
-
-
-      idleY +=
-        (
-          emoji.targetY -
-          emoji.originalY
-        ) *
-        0.35;
-
-    }
-
-
-    emoji.x =
-      idleX;
-
-
-    emoji.y =
-      idleY;
-
-
-    emoji.rotation =
-      rotation;
-
-
-    emoji.scale =
-      scale;
-
-
-    this._applyEmojiTransform(
-      emoji
-    );
-
-
-    /*
-     * Cursor/touch interaction.
-     */
-
-    this._addMouseProximityEffect(
-      emoji
-    );
-
-  }
-
-
-  /* ================================================================
-     APPLY NATIVE WEBP TRANSFORM
-     ================================================================ */
-
-  _applyEmojiTransform(
-    emoji
-  ) {
-
-    if (
-      !emoji ||
-      !emoji.element
-    ) {
-
-      return;
-
-    }
-
-
-    const element =
-      emoji.element;
-
-
-    /*
-     * Movement happens through transform
-     * to avoid continuous layout work.
-     */
-
-    const x =
-      emoji.x;
-
-
-    const y =
-      emoji.y;
-
-
-    const rotation =
-      emoji.rotation;
-
-
-    const scale =
-      emoji.scale ||
-      1;
-
-
-    element.style.transform =
-      `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%) rotate(${rotation}rad) scale(${scale})`;
-
-  }
-
-
-  /* ================================================================
-     CURSOR PROXIMITY
-     ================================================================ */
-
-  _addMouseProximityEffect(
-    emoji
-  ) {
-
-    if (
-      !emoji ||
-      !emoji.element
-    ) {
-
-      return;
-
-    }
-
-
-    const isTouchDevice =
-      'ontouchstart' in window ||
-      navigator.maxTouchPoints > 0;
-
-
-    /*
-     * On mobile, don't perform cursor
-     * calculations while the screen is idle.
-     */
-
-    if (
-      isTouchDevice &&
-      !this.touchActive
-    ) {
-
-      emoji.cursorOffsetX +=
-        (
-          0 -
-          emoji.cursorOffsetX
-        ) *
-        0.15;
-
-
-      emoji.cursorOffsetY +=
-        (
-          0 -
-          emoji.cursorOffsetY
-        ) *
-        0.15;
-
-
-      emoji.x +=
-        emoji.cursorOffsetX;
-
-
-      emoji.y +=
-        emoji.cursorOffsetY;
-
-
-      this._applyEmojiTransform(
-        emoji
-      );
-
-      return;
-
-    }
-
-
-    const dx =
-      this.mouse.x -
-      emoji.x;
-
-
-    const dy =
-      this.mouse.y -
-      emoji.y;
-
-
-    const distance =
-      Math.sqrt(
-        dx * dx +
-        dy * dy
-      );
-
-
-    const influenceRadius =
-      isTouchDevice
-        ? 150
-        : 190;
-
-
-    if (
-      distance <
-      influenceRadius
-    ) {
-
-      const strength =
-        1 -
-        (
-          distance /
-          influenceRadius
-        );
-
-
-      const safeDistance =
-        Math.max(
-          distance,
-          0.001
-        );
-
-
-      const directionX =
-        -dx /
-        safeDistance;
-
-
-      const directionY =
-        -dy /
-        safeDistance;
-
-
-      const maxOffset =
-        isTouchDevice
-          ? 12
-          : 18;
-
-
-      const targetOffsetX =
-        directionX *
-        strength *
-        maxOffset;
-
-
-      const targetOffsetY =
-        directionY *
-        strength *
-        maxOffset;
-
-
-      emoji.cursorOffsetX +=
-        (
-          targetOffsetX -
-          emoji.cursorOffsetX
-        ) *
-        0.12;
-
-
-      emoji.cursorOffsetY +=
-        (
-          targetOffsetY -
-          emoji.cursorOffsetY
-        ) *
-        0.12;
-
-    } else {
-
-      emoji.cursorOffsetX +=
-        (
-          0 -
-          emoji.cursorOffsetX
-        ) *
-        0.10;
-
-
-      emoji.cursorOffsetY +=
-        (
-          0 -
-          emoji.cursorOffsetY
-        ) *
-        0.10;
-
-    }
-
-
-    /*
-     * Cursor offsets are applied on top
-     * of the current idle position.
-     */
-
-    emoji.x +=
-      emoji.cursorOffsetX;
-
-
-    emoji.y +=
-      emoji.cursorOffsetY;
-
-
-    this._applyEmojiTransform(
-      emoji
-    );
-
-  }
-  /* ================================================================
-     FALLING PHYSICS
-     ================================================================ */
-
-  _updateFallingAnimation(
-    emoji
-  ) {
-
-    if (
-      !emoji
-    ) {
-
-      return;
-
-    }
-
-
-    const body =
-      emoji.physicsBody;
-
-
-    if (
-      !body
-    ) {
-
-      return;
-
-    }
-
-
-    /*
-     * Physics controls the emoji while
-     * the shake sequence is active.
-     */
-
-    emoji.x =
-      body.x;
-
-
-    emoji.y =
-      body.y;
-
-
-    emoji.rotation =
-      body.rotation;
-
-
-    /*
-     * Keep the emoji inside the visible
-     * horizontal screen area.
-     */
-
-    const margin =
-      emoji.size *
-      0.45;
-
-
-    if (
-      emoji.x <
-      margin
-    ) {
-
-      emoji.x =
-        margin;
-
-
-      body.x =
-        margin;
-
-
-      body.vx *=
-        -0.35;
-
-    }
-
-
-    if (
-      emoji.x >
-      this.width -
-      margin
-    ) {
-
-      emoji.x =
-        this.width -
-        margin;
-
-
-      body.x =
+      emoji.returnStartX =
         emoji.x;
 
 
-      body.vx *=
-        -0.35;
+      emoji.returnStartY =
+        emoji.y;
+
+
+      emoji.returnStartRotation =
+        emoji.rotation;
+
+
+      emoji.flyProgress =
+        0;
+
+
+      emoji.recoveryDelay =
+        Math.random() *
+        140;
+
+
+      if (
+        body
+      ) {
+
+        body.isActive =
+          false;
+
+
+        body.isResting =
+          true;
+
+
+        body.vx =
+          0;
+
+
+        body.vy =
+          0;
+
+
+        body.angularVelocity =
+          0;
+
+      }
 
     }
 
-
-    /*
-     * Apply the position to the native
-     * WebP element.
-     */
-
-    this._applyEmojiTransform(
-      emoji
-    );
-
   }
-
-
   /* ================================================================
-     FLY BACK TO GLASS PLATFORM
+     UPDATE FLYING BACK ANIMATION
      ================================================================ */
 
   _updateFlyingBackAnimation(
@@ -5030,16 +5627,18 @@ export class EmojiWorld {
 
 
     /*
-     * Staggered return.
+     * Small random delay makes the recovery
+     * feel organic instead of all 24 emojis
+     * returning at exactly the same moment.
      */
 
     if (
-      emoji.recoveryDelay > 0
+      emoji.recoveryDelay >
+      0
     ) {
 
       emoji.recoveryDelay -=
         dtMs;
-
 
       return;
 
@@ -5047,18 +5646,15 @@ export class EmojiWorld {
 
 
     /*
-     * Approximately one second flight.
+     * One-second return animation.
      */
 
     emoji.flyProgress =
       Math.min(
-
         1,
-
         emoji.flyProgress +
         dtMs /
-        1000
-
+        900
       );
 
 
@@ -5067,7 +5663,7 @@ export class EmojiWorld {
 
 
     /*
-     * Smooth easing.
+     * Smooth cubic easing.
      */
 
     const eased =
@@ -5093,10 +5689,7 @@ export class EmojiWorld {
 
 
     /*
-     * Curved flight path.
-     *
-     * Emoji rises slightly while
-     * travelling toward its platform.
+     * Small upward arc while returning.
      */
 
     const arc =
@@ -5104,7 +5697,7 @@ export class EmojiWorld {
         progress *
         Math.PI
       ) *
-      40;
+      42;
 
 
     emoji.x =
@@ -5126,10 +5719,6 @@ export class EmojiWorld {
       arc;
 
 
-    /*
-     * Rotate back to normal.
-     */
-
     emoji.rotation =
       emoji.returnStartRotation *
       (
@@ -5139,7 +5728,7 @@ export class EmojiWorld {
 
 
     /*
-     * Small flying scale effect.
+     * Small squash/stretch effect.
      */
 
     emoji.scale =
@@ -5157,11 +5746,14 @@ export class EmojiWorld {
 
 
     /*
-     * Landing.
+     * ------------------------------------------------------------
+     * RETURN COMPLETE
+     * ------------------------------------------------------------
      */
 
     if (
-      progress >= 1
+      progress >=
+      1
     ) {
 
       emoji.isFlying =
@@ -5169,6 +5761,10 @@ export class EmojiWorld {
 
 
       emoji.flyProgress =
+        0;
+
+
+      emoji.recoveryDelay =
         0;
 
 
@@ -5197,7 +5793,8 @@ export class EmojiWorld {
 
 
       /*
-       * Synchronize physics body.
+       * Reset physics body exactly to
+       * the platform position.
        */
 
       const body =
@@ -5228,6 +5825,10 @@ export class EmojiWorld {
           0;
 
 
+        body.rotation =
+          0;
+
+
         body.isActive =
           false;
 
@@ -5239,9 +5840,7 @@ export class EmojiWorld {
 
 
       /*
-       * Make sure inactive mobile emojis
-       * return to their lightweight static
-       * frame.
+       * Restore static frame on mobile.
        */
 
       if (
@@ -5271,13 +5870,14 @@ export class EmojiWorld {
 
 
       /*
-       * Check whether every emoji
-       * has completed the return.
+       * Check whether every emoji has
+       * completed its return.
        */
 
       const allHome =
         this.emojis.every(
           item =>
+            item &&
             !item.isFlying
         );
 
@@ -5297,7 +5897,7 @@ export class EmojiWorld {
 
         /*
          * Resume the mobile animation
-         * scheduler after the shake movie.
+         * scheduler only after recovery.
          */
 
         if (
@@ -5326,7 +5926,8 @@ export class EmojiWorld {
     return (
       1 -
       Math.pow(
-        1 - t,
+        1 -
+        t,
         3
       )
     );
@@ -5334,251 +5935,1315 @@ export class EmojiWorld {
   }
 
 
-/* ================================================================
-   RESIZE
-   ================================================================ */
+  /* ================================================================
+     THEME BUTTON
+     ================================================================ */
 
-//   _onWindowResize() {
-
-//     if (
-//       !this.app ||
-//       !this.app.renderer
-//     ) {
-
-//       return;
-
-//     }
-
-
-//     /*
-//      * Update viewport dimensions.
-//      */
-
-//     this.width =
-//       window.innerWidth;
-
-
-//     this.height =
-//       window.innerHeight;
-
-
-//     /*
-//      * Re-evaluate device category.
-//      *
-//      * This is important when a tablet/phone
-//      * changes orientation.
-//      */
-
-//     const previousMode =
-//       this.isMobileOrTablet;
-
-
-//     this.isMobileOrTablet =
-//       this._detectMobileOrTablet();
-
-
-//     /*
-//      * Resize Pixi renderer.
-//      *
-//      * Do NOT rebuild the emoji grid here.
-//      *
-//      * The grid is created and positioned by
-//      * _createEmojisAndCubes().
-//      */
-
-//     this.app.renderer.resize(
-//       this.width,
-//       this.height
-//     );
-
-
-//     /*
-//      * Update title position and size.
-//      */
-
-//     if (
-//       this.title
-//     ) {
-
-//       this.title.x =
-//         this.width / 2;
-
-
-//       this.title.y =
-//         this._getTitleY();
-
-
-//       this.title.style.fontSize =
-//         this._getTitleSize();
-
-//     }
-
-
-//     /*
-//      * Update physics world dimensions.
-//      */
-
-//     if (
-//       this.physics
-//     ) {
-
-//       this.physics.width =
-//         this.width;
-
-
-//       this.physics.height =
-//         this.height;
-
-
-//       this.physics.groundLevel =
-//         this.height *
-//         0.90;
-
-//     }
-
-
-//     /*
-//      * If the device category changed,
-//      * update the animation scheduler.
-//      *
-//      * Desktop:
-//      *   24 animated WebPs
-//      *
-//      * Mobile/tablet:
-//      *   maximum 5 animated WebPs
-//      */
-
-//     if (
-//       previousMode !==
-//       this.isMobileOrTablet
-//     ) {
-
-//       if (
-//         this.isMobileOrTablet
-//       ) {
-
-//         this._enableMobileAnimationMode();
-
-//       } else {
-
-//         this._enableDesktopAnimationMode();
-
-//       }
-
-//     }
-
-
-//     /*
-//      * IMPORTANT:
-//      *
-//      * Do NOT call:
-//      *
-//      *   _repositionEmojisAndCubes()
-//      *
-//      * here.
-//      *
-//      * The emoji grid has a single authoritative
-//      * layout calculation inside
-//      * _createEmojisAndCubes().
-//      *
-//      * Repositioning the DOM emojis separately
-//      * from the Pixi platforms causes the emoji
-//      * and platform coordinates to become
-//      * misaligned.
-//      *
-//      * During a shake, physics must also remain
-//      * in control of emoji positions.
-//      */
-
-//   }
-
-
-/* ================================================================
-   REPOSITION EMOJIS + CUBES
-   ================================================================ */
-
-  _repositionEmojisAndCubes() {
+  _createThemeButton() {
 
     /*
-     * INTENTIONALLY DISABLED.
-     *
-     * The emoji/grid layout is controlled exclusively by:
-     *
-     *     _createEmojisAndCubes()
-     *
-     * This method previously caused the native WebP emoji
-     * positions and Pixi glass-cube positions to become
-     * desynchronized.
-     *
-     * It also interfered with the mobile animation scheduler
-     * and could overwrite positions while the shake/physics
-     * sequence was running.
-     *
-     * DO NOT reposition emojis here.
-     *
-     * The only systems allowed to change emoji positions are:
-     *
-     * 1. _createEmojisAndCubes()
-     *      → initial/home positions
-     *
-     * 2. _updateIdleAnimation()
-     *      → normal idle movement
-     *
-     * 3. _addMouseProximityEffect()
-     *      → cursor interaction
-     *
-     * 4. _updateFallingAnimation()
-     *      → shake physics
-     *
-     * 5. _updateFlyingBackAnimation()
-     *      → return-to-cube animation
-     *
-     * Keeping a single position source prevents the
-     * emoji/platform alignment from breaking.
+     * Avoid creating duplicate buttons.
      */
 
-    return;
+    let button =
+      document.getElementById(
+        'emoji-theme-toggle'
+      );
+
+
+    if (
+      button
+    ) {
+
+      this.themeButton =
+        button;
+
+      return;
+
+    }
+
+
+    button =
+      document.createElement(
+        'button'
+      );
+
+
+    button.id =
+      'emoji-theme-toggle';
+
+
+    button.type =
+      'button';
+
+
+    button.setAttribute(
+      'aria-label',
+      'Toggle dark and light mode'
+    );
+
+
+    button.style.position =
+      'fixed';
+
+
+    button.style.top =
+      '18px';
+
+
+    button.style.right =
+      '18px';
+
+
+    button.style.width =
+      '42px';
+
+
+    button.style.height =
+      '42px';
+
+
+    button.style.border =
+      '0';
+
+
+    button.style.borderRadius =
+      '50%';
+
+
+    button.style.padding =
+      '0';
+
+
+    button.style.display =
+      'flex';
+
+
+    button.style.alignItems =
+      'center';
+
+
+    button.style.justifyContent =
+      'center';
+
+
+    button.style.fontSize =
+      '21px';
+
+
+    button.style.lineHeight =
+      '1';
+
+
+    button.style.cursor =
+      'pointer';
+
+
+    button.style.zIndex =
+      '1000';
+
+
+    button.style.background =
+      'rgba(255,255,255,0.72)';
+
+
+    button.style.border =
+      '1px solid rgba(255,255,255,0.65)';
+
+
+    button.style.boxShadow =
+      '0 8px 25px rgba(0,0,0,0.12)';
+
+
+    button.style.backdropFilter =
+      'blur(14px)';
+
+
+    button.style.webkitBackdropFilter =
+      'blur(14px)';
+
+
+    button.style.transition =
+      'transform 180ms ease, background 180ms ease, box-shadow 180ms ease';
+
+
+    button.addEventListener(
+      'mouseenter',
+      () => {
+
+        button.style.transform =
+          'scale(1.08)';
+
+      }
+    );
+
+
+    button.addEventListener(
+      'mouseleave',
+      () => {
+
+        button.style.transform =
+          'scale(1)';
+
+      }
+    );
+
+
+    button.addEventListener(
+      'click',
+      event => {
+
+        event.preventDefault();
+
+
+        event.stopPropagation();
+
+
+        this._toggleTheme();
+
+      }
+    );
+
+
+    document.body.appendChild(
+      button
+    );
+
+
+    this.themeButton =
+      button;
+
+
+    this._updateThemeButton();
 
   }
 
 
   /* ================================================================
-     ENABLE MOBILE MODE
+     TOGGLE THEME
      ================================================================ */
 
-  _enableMobileAnimationMode() {
+  _toggleTheme() {
 
-    console.log(
-      '📱 Switching to mobile/tablet animation mode'
+  const current =
+    document.documentElement
+      .getAttribute(
+        'data-theme'
+      );
+
+  const next =
+    current === 'dark'
+      ? 'light'
+      : 'dark';
+
+  document.documentElement
+    .setAttribute(
+      'data-theme',
+      next
+    );
+
+  try {
+
+    localStorage.setItem(
+      'emoji-theme',
+      next
+    );
+
+  } catch {}
+
+  this._applyTheme(
+    next
+  );
+
+  this._updateThemeButton();
+
+}
+
+
+  /* ================================================================
+     APPLY THEME
+     ================================================================ */
+
+  _applyTheme(
+  theme
+) {
+
+  this.theme =
+    theme === 'dark'
+      ? 'dark'
+      : 'light';
+
+
+  /*
+   * ------------------------------------------------------------
+   * HTML THEME ATTRIBUTE
+   * ------------------------------------------------------------
+   */
+
+  document.documentElement
+    .setAttribute(
+      'data-theme',
+      this.theme
     );
 
 
-    this.isMobileOrTablet =
+  const isDark =
+    this.theme === 'dark';
+
+
+  /*
+   * ------------------------------------------------------------
+   * BACKGROUND
+   * ------------------------------------------------------------
+   */
+
+  const darkBackground =
+    'radial-gradient(circle at 50% 12%, #202735 0%, #0d1118 52%, #080b10 100%)';
+
+  const lightBackground =
+    'radial-gradient(circle at 50% 12%, #ffffff 0%, #f4f8fb 55%, #e8f0f5 100%)';
+
+
+  /*
+   * BODY
+   */
+
+  document.body.style.background =
+    isDark
+      ? darkBackground
+      : lightBackground;
+
+  document.body.style.color =
+    isDark
+      ? '#f5f7fa'
+      : '#111111';
+
+
+  /*
+   * ------------------------------------------------------------
+   * MAIN SCENE
+   * ------------------------------------------------------------
+   *
+   * This is the important fix.
+   *
+   * The Pixi canvas is transparent, but the HTML scene/background
+   * can cover the body's background.
+   */
+
+  const scene =
+    document.getElementById(
+      'scene'
+    );
+
+  if (scene) {
+
+    scene.style.background =
+      isDark
+        ? darkBackground
+        : lightBackground;
+
+    scene.style.backgroundColor =
+      isDark
+        ? '#080b10'
+        : '#ffffff';
+
+  }
+
+
+  /*
+   * ------------------------------------------------------------
+   * BACKGROUND GLOW
+   * ------------------------------------------------------------
+   */
+
+  const backgroundGlow =
+    document.getElementById(
+      'backgroundGlow'
+    );
+
+  if (backgroundGlow) {
+
+    backgroundGlow.style.background =
+      isDark
+        ? `
+          radial-gradient(
+            circle at 50% 18%,
+            rgba(90,145,220,0.12),
+            transparent 58%
+          )
+        `
+        : `
+          radial-gradient(
+            circle at 50% 18%,
+            rgba(160,210,255,0.18),
+            transparent 58%
+          )
+        `;
+
+    backgroundGlow.style.opacity =
+      isDark
+        ? '1'
+        : '1';
+
+  }
+
+
+  /*
+   * ------------------------------------------------------------
+   * TITLE
+   * ------------------------------------------------------------
+   */
+
+  if (this.title) {
+
+    this.title.style.fill =
+      isDark
+        ? 0xf5f7fa
+        : 0x111111;
+
+  }
+
+
+  /*
+   * ------------------------------------------------------------
+   * TITLE GLOW
+   * ------------------------------------------------------------
+   */
+
+  if (this.titleGlow) {
+
+    this.titleGlow.style.fill =
+      isDark
+        ? 0xffffff
+        : 0x000000;
+
+    this.titleGlow.alpha =
+      isDark
+        ? 0.10
+        : 0.055;
+
+  }
+
+
+  /*
+   * ------------------------------------------------------------
+   * GLASS PLATFORMS
+   * ------------------------------------------------------------
+   */
+
+  for (
+    const cubeData of this.cubes
+  ) {
+
+    if (
+      !cubeData ||
+      !cubeData.sprite ||
+      !cubeData.sprite.userData
+    ) {
+      continue;
+    }
+
+
+    const data =
+      cubeData.sprite.userData;
+
+
+    /*
+     * Main glass body
+     */
+
+    if (data.glass) {
+
+      data.glass
+        .clear()
+        .roundRect(
+          -data.size / 2,
+          -data.size * 0.15,
+          data.size,
+          data.size * 0.35,
+          16
+        )
+        .fill({
+          color:
+            isDark
+              ? 0x27313d
+              : 0xf7fbff,
+
+          alpha:
+            isDark
+              ? 0.72
+              : 0.70
+        })
+        .stroke({
+          color:
+            isDark
+              ? 0x607184
+              : 0xcbdbe8,
+
+          alpha:
+            isDark
+              ? 0.82
+              : 0.76,
+
+          width:
+            1.35
+        });
+
+    }
+
+
+    /*
+     * Inner glass
+     */
+
+    if (data.innerGlass) {
+
+      data.innerGlass
+        .clear()
+        .roundRect(
+          -data.size * 0.43,
+          -data.size * 0.11,
+          data.size * 0.86,
+          data.size * 0.25,
+          11
+        )
+        .fill({
+          color:
+            0xffffff,
+
+          alpha:
+            isDark
+              ? 0.09
+              : 0.30
+        });
+
+    }
+
+
+    /*
+     * Main highlight
+     */
+
+    if (data.highlight) {
+
+      data.highlight
+        .clear()
+        .roundRect(
+          -data.size * 0.36,
+          -data.size * 0.085,
+          data.size * 0.50,
+          data.size * 0.055,
+          8
+        )
+        .fill({
+          color:
+            0xffffff,
+
+          alpha:
+            isDark
+              ? 0.22
+              : 0.66
+        });
+
+    }
+
+
+    /*
+     * Micro highlight
+     */
+
+    if (data.microHighlight) {
+
+      data.microHighlight
+        .clear()
+        .roundRect(
+          data.size * 0.18,
+          data.size * 0.005,
+          data.size * 0.15,
+          data.size * 0.035,
+          5
+        )
+        .fill({
+          color:
+            0xffffff,
+
+          alpha:
+            isDark
+              ? 0.14
+              : 0.38
+        });
+
+    }
+
+
+    /*
+     * Edge light
+     */
+
+    if (data.edgeLight) {
+
+      data.edgeLight
+        .clear()
+        .roundRect(
+          -data.size * 0.47,
+          -data.size * 0.13,
+          data.size * 0.94,
+          data.size * 0.31,
+          15
+        )
+        .stroke({
+          color:
+            0xffffff,
+
+          alpha:
+            isDark
+              ? 0.24
+              : 0.42,
+
+          width:
+            0.8
+        });
+
+    }
+
+
+    /*
+     * Shadows
+     */
+
+    if (data.deepShadow) {
+
+      data.deepShadow.alpha =
+        isDark
+          ? 0.34
+          : 0.11;
+
+    }
+
+
+    if (data.contactShadow) {
+
+      data.contactShadow.alpha =
+        isDark
+          ? 0.30
+          : 0.14;
+
+    }
+
+  }
+
+
+  /*
+   * ------------------------------------------------------------
+   * CURSOR LIGHT
+   * ------------------------------------------------------------
+   */
+
+  this._updateCursorLight();
+
+
+  /*
+   * ------------------------------------------------------------
+   * THEME BUTTON
+   * ------------------------------------------------------------
+   */
+
+  this._updateThemeButton();
+
+}
+
+
+  /* ================================================================
+     UPDATE THEME BUTTON
+     ================================================================ */
+
+  _updateThemeButton() {
+
+  if (
+    !this.themeButton
+  ) {
+    return;
+  }
+
+
+  const isDark =
+    this.theme === 'dark';
+
+
+  this.themeButton.textContent =
+    isDark
+      ? '☀️'
+      : '🌙';
+
+
+  this.themeButton.setAttribute(
+    'aria-label',
+    isDark
+      ? 'Switch to light mode'
+      : 'Switch to dark mode'
+  );
+
+
+  this.themeButton.title =
+    isDark
+      ? 'Switch to light mode'
+      : 'Switch to dark mode';
+
+
+  this.themeButton.style.background =
+    isDark
+      ? 'rgba(30,38,50,0.88)'
+      : 'rgba(255,255,255,0.88)';
+
+
+  this.themeButton.style.color =
+    isDark
+      ? '#ffffff'
+      : '#222222';
+
+
+  this.themeButton.style.border =
+    isDark
+      ? '1px solid rgba(255,255,255,0.18)'
+      : '1px solid rgba(0,0,0,0.08)';
+
+
+  this.themeButton.style.boxShadow =
+    isDark
+      ? '0 8px 28px rgba(0,0,0,0.38)'
+      : '0 8px 25px rgba(0,0,0,0.12)';
+
+}
+
+
+  /* ================================================================
+     INITIAL THEME
+     ================================================================ */
+
+  _initializeTheme() {
+
+    let savedTheme =
+      null;
+
+
+    try {
+
+      savedTheme =
+        localStorage.getItem(
+          'emoji-theme'
+        );
+
+    } catch {
+
+      savedTheme =
+        null;
+
+    }
+
+
+    const theme =
+      savedTheme ===
+      'dark'
+        ? 'dark'
+        : 'light';
+
+
+    document.documentElement
+      .setAttribute(
+        'data-theme',
+        theme
+      );
+
+
+    this._applyTheme(
+      theme
+    );
+
+  }
+  /* ================================================================
+     UPDATE VISUAL EFFECTS
+     ================================================================ */
+
+  _updateVisualEffects(
+    dtMs
+  ) {
+
+    const dt =
+      dtMs *
+      0.001;
+
+
+    /*
+     * ------------------------------------------------------------
+     * TITLE IDLE ANIMATION
+     * ------------------------------------------------------------
+     */
+
+    if (
+        this.title
+    ) {
+
+        this.titleAnimationTime += dt;
+
+        /*
+        * ------------------------------------------
+        * ENTRANCE
+        * ------------------------------------------
+        */
+
+        if (
+            this.titleEntranceProgress < 1
+        ) {
+
+            this.titleEntranceProgress =
+            Math.min(
+                1,
+                this.titleEntranceProgress +
+                dt / 0.75
+            );
+        }
+
+        const entrance =
+            this._easeOutCubic(
+            this.titleEntranceProgress
+            );
+
+        /*
+        * ------------------------------------------
+        * FLOAT
+        * ------------------------------------------
+        */
+
+        const floatY =
+            Math.sin(
+            this.titleAnimationTime *
+            1.15
+            ) * 2.2;
+
+        /*
+        * ------------------------------------------
+        * BREATHING
+        * ------------------------------------------
+        */
+
+        const breathing =
+            1 +
+            Math.sin(
+            this.titleAnimationTime *
+            0.85
+            ) * 0.012;
+
+        /*
+        * ------------------------------------------
+        * MICRO ROTATION
+        * ------------------------------------------
+        */
+
+        const tilt =
+            Math.sin(
+            this.titleAnimationTime *
+            0.55
+            ) * 0.008;
+
+        /*
+        * ------------------------------------------
+        * APPLY
+        * ------------------------------------------
+        */
+
+        this.title.alpha =
+            entrance;
+
+        this.title.y =
+            this.titleBaseY +
+            floatY;
+
+        this.title.rotation =
+            tilt;
+
+        this.title.scale.set(
+            (
+            0.88 +
+            entrance * 0.12
+            ) *
+            breathing
+        );
+
+    }
+
+
+    /*
+     * ------------------------------------------------------------
+     * GLASS LIGHTING
+     * ------------------------------------------------------------
+     *
+     * Cursor lighting is intentionally
+     * lightweight. No expensive blur filter
+     * is applied to every platform.
+     */
+
+    if (
+      this.cubes &&
+      this.cubes.length
+    ) {
+
+      for (
+        const cubeData of this.cubes
+      ) {
+
+        if (
+          !cubeData ||
+          !cubeData.sprite ||
+          !cubeData.sprite.userData
+        ) {
+
+          continue;
+
+        }
+
+
+        const data =
+          cubeData.sprite.userData;
+
+
+        const dx =
+          this.mouse.x -
+          cubeData.sprite.x;
+
+
+        const dy =
+          this.mouse.y -
+          cubeData.sprite.y;
+
+
+        const distance =
+          Math.hypot(
+            dx,
+            dy
+          );
+
+
+        const radius =
+          this.isMobileOrTablet
+            ? 155
+            : 230;
+
+
+        const influence =
+          Math.max(
+            0,
+            1 -
+            distance /
+            radius
+          );
+
+
+        /*
+         * Subtle highlight response.
+         */
+
+        if (
+          data.highlight
+        ) {
+          data.highlight.alpha =
+            (
+                this.theme === 'dark'
+                ? 0.24
+                : 0.58
+            ) +
+            influence *
+            (
+                this.theme === 'dark'
+                ? 0.30
+                : 0.32
+            );  
+        }
+
+
+        if (
+          data.edgeLight
+        ) {
+
+          data.edgeLight.alpha =
+            (
+                this.theme === 'dark'
+                ? 0.26
+                : 0.38
+            ) +
+            influence *
+            0.28;
+
+        }
+
+
+        if (
+          data.contactShadow
+        ) {
+
+          data.contactShadow.alpha =
+            (
+              this.theme ===
+              'dark'
+                ? 0.34
+                : 0.14
+            ) -
+            influence *
+            0.035;
+
+        }
+
+
+        if (
+          data.deepShadow
+        ) {
+
+          data.deepShadow.alpha =
+            (
+              this.theme ===
+              'dark'
+                ? 0.30
+                : 0.11
+            ) -
+            influence *
+            0.025;
+
+        }
+
+      }
+
+    }
+
+
+    /*
+     * ------------------------------------------------------------
+     * EMOJI HIGHLIGHT
+     * ------------------------------------------------------------
+     *
+     * Only CSS brightness/saturation is changed.
+     * No filters are applied when the pointer
+     * is far away.
+     */
+
+    if (
+      this.emojis
+    ) {
+
+      for (
+        const emoji of this.emojis
+      ) {
+
+        if (
+          !emoji ||
+          !emoji.element ||
+          emoji.isFlying
+        ) {
+
+          continue;
+
+        }
+
+
+        const dx =
+          this.mouse.x -
+          emoji.x;
+
+
+        const dy =
+          this.mouse.y -
+          emoji.y;
+
+
+        const distance =
+          Math.hypot(
+            dx,
+            dy
+          );
+
+
+        const radius =
+          this.isMobileOrTablet
+            ? 125
+            : 175;
+
+
+        const influence =
+          Math.max(
+            0,
+            1 -
+            distance /
+            radius
+          );
+
+
+        if (
+          influence >
+          0.03
+        ) {
+
+          const brightness =
+            1 +
+            influence *
+            0.085;
+
+            const saturation =
+            1 +
+            influence *
+            0.095;
+
+
+          emoji.cursorInfluence =
+            influence;
+
+        } else {
+
+          emoji.element.style.filter =
+            '';
+
+        }
+
+      }
+
+    }
+
+  }
+
+
+  /* ================================================================
+     UPDATE FRAME
+     ================================================================ */
+
+  _updateFrame(
+    ticker
+  ) {
+
+    try {
+
+      const deltaTime =
+        ticker?.deltaTime ||
+        1;
+
+
+      const dtMs =
+        Math.min(
+          50,
+          deltaTime *
+          (
+            1000 /
+            60
+          )
+        );
+
+
+      const dt =
+        Math.min(
+          1.5,
+          deltaTime
+        );
+
+
+      /*
+       * ------------------------------------------------------------
+       * PHYSICS UPDATE
+       * ------------------------------------------------------------
+       */
+
+      if (
+        this.physics
+      ) {
+
+        this.physics.update(
+          dt
+        );
+
+      }
+
+
+      /*
+       * ------------------------------------------------------------
+       * EMOJI UPDATE
+       * ------------------------------------------------------------
+       */
+
+      for (
+        const emoji of this.emojis
+      ) {
+
+        if (
+          !emoji
+        ) {
+
+          continue;
+
+        }
+
+
+        if (
+          emoji.isFlying
+        ) {
+
+          if (
+            this.isRecovering
+          ) {
+
+            this._updateFlyingBackAnimation(
+              emoji,
+              dtMs
+            );
+
+          } else {
+
+            this._updateFallingAnimation(
+              emoji
+            );
+
+          }
+
+        } else {
+
+          this._updateIdleAnimation(
+            emoji,
+            dt
+          );
+
+        }
+
+      }
+
+
+      /*
+       * ------------------------------------------------------------
+       * VISUAL EFFECTS
+       * ------------------------------------------------------------
+       *
+       * IMPORTANT:
+       *
+       * Keep this call ONLY ONCE per frame.
+       *
+       * Do not add another _updateVisualEffects()
+       * call elsewhere in _updateFrame().
+       */
+
+      this._updateVisualSystems(
+        dtMs
+    );
+
+    } catch (error) {
+
+      console.error(
+        '[Emoji World] Frame update error:',
+        error
+      );
+
+    }
+
+  }
+
+
+  /* ================================================================
+     CREATE / RESET PHYSICS BODY
+     ================================================================ */
+
+  _resetEmojiPhysics(
+    emoji
+  ) {
+
+    if (
+      !emoji
+    ) {
+
+      return;
+
+    }
+
+
+    const body =
+      emoji.physicsBody;
+
+
+    if (
+      !body
+    ) {
+
+      return;
+
+    }
+
+
+    body.x =
+      emoji.originalX;
+
+
+    body.y =
+      emoji.originalY;
+
+
+    body.vx =
+      0;
+
+
+    body.vy =
+      0;
+
+
+    body.rotation =
+      0;
+
+
+    body.angularVelocity =
+      0;
+
+
+    body.isActive =
+      false;
+
+
+    body.isResting =
       true;
 
 
-    /*
-     * Stop previous scheduler.
-     */
-
-    this._stopMobileAnimationScheduler();
+    emoji.x =
+      emoji.originalX;
 
 
-    /*
-     * Remove active WebP sources.
-     *
-     * IMPORTANT:
-     * Never hide emojis if there is no
-     * static frame yet.
-     */
+    emoji.y =
+      emoji.originalY;
+
+
+    emoji.rotation =
+      0;
+
+
+    emoji.scale =
+      1;
+
+
+    emoji.cursorOffsetX =
+      0;
+
+
+    emoji.cursorOffsetY =
+      0;
+
+
+    this._applyEmojiTransform(
+      emoji
+    );
+
+  }
+
+
+  /* ================================================================
+     STOP ALL MOBILE ANIMATIONS
+     ================================================================ */
+
+  _stopAllMobileAnimations() {
 
     for (
       const emoji of this.emojis
     ) {
 
       if (
-        !emoji ||
-        !emoji.element
+        !emoji
       ) {
 
         continue;
@@ -5586,27 +7251,54 @@ export class EmojiWorld {
       }
 
 
-      emoji.isMobileActive =
-        false;
+      if (
+        emoji.isMobileActive
+      ) {
+
+        this._deactivateMobileEmoji(
+          emoji
+        );
+
+      }
+
+    }
 
 
-      emoji.animationEndsAt =
-        0;
+    this.mobileActiveEmojis.clear();
+
+  }
 
 
-      this.mobileActiveEmojis.delete(
-        emoji
-      );
+  /* ================================================================
+     RESTORE MOBILE STATIC FRAMES
+     ================================================================ */
+
+  _restoreMobileStaticFrames() {
+
+    if (
+      !this.isMobileOrTablet
+    ) {
+
+      return;
+
+    }
 
 
-      emoji.element.removeAttribute(
-        'src'
-      );
+    for (
+      const emoji of this.emojis
+    ) {
 
+      if (
+        !emoji ||
+        !emoji.element ||
+        emoji.isMobileActive ||
+        emoji.isFlying
+      ) {
 
-      /*
-       * Show static frame when available.
-       */
+        continue;
+
+      }
+
 
       if (
         emoji.staticURL
@@ -5615,68 +7307,24 @@ export class EmojiWorld {
         emoji.element.src =
           emoji.staticURL;
 
+        emoji.element.style.visibility =
+          'visible';
+
+        emoji.element.style.opacity =
+          '1';
+
       }
 
-
-      /*
-       * NEVER hide an emoji simply
-       * because its static frame hasn't
-       * finished preparing yet.
-       */
-
-      emoji.element.style.visibility =
-        'visible';
-
-
-      emoji.element.style.opacity =
-        '1';
-
     }
-
-
-    /*
-     * Start fresh random sequence.
-     */
-
-    this._startMobileAnimationScheduler();
-
-
-    /*
-     * Continue preparing any frames
-     * that are still missing.
-     */
-
-    this._prepareMobileStaticFrames();
 
   }
 
 
   /* ================================================================
-     ENABLE DESKTOP MODE
+     RESTORE DESKTOP ANIMATIONS
      ================================================================ */
 
-  _enableDesktopAnimationMode() {
-
-    console.log(
-      '🖥️ Switching to desktop animation mode'
-    );
-
-
-    this.isMobileOrTablet =
-      false;
-
-
-    /*
-     * Stop mobile scheduler.
-     */
-
-    this._stopMobileAnimationScheduler();
-
-
-    /*
-     * Desktop restores all 24 animated
-     * WebP streams.
-     */
+  _restoreDesktopAnimations() {
 
     for (
       const emoji of this.emojis
@@ -5692,15 +7340,1558 @@ export class EmojiWorld {
       }
 
 
-      const src =
+      const animatedURL =
         emoji.element.dataset.src;
 
 
-      if (!src) {
+      if (
+        animatedURL
+      ) {
+
+        emoji.element.src =
+          animatedURL;
+
+      }
+
+
+      emoji.element.style.visibility =
+        'visible';
+
+
+      emoji.element.style.opacity =
+        '1';
+
+    }
+
+  }
+
+
+  /* ================================================================
+     SAFE MODE SWITCH
+     ================================================================ */
+
+  _refreshAnimationMode() {
+
+    const detectedMode =
+      this._detectMobileOrTablet();
+
+
+    if (
+      detectedMode ===
+      this.isMobileOrTablet
+    ) {
+
+      return;
+
+    }
+
+
+    if (
+      detectedMode
+    ) {
+
+      this._enableMobileAnimationMode();
+
+    } else {
+
+      this._enableDesktopAnimationMode();
+
+    }
+
+  }
+
+
+  /* ================================================================
+     AUDIO VOLUME CONTROL
+     ================================================================ */
+
+  _setAudioVolumes(
+    musicVolume = 1.00,
+    talkingVolume = 0.60
+  ) {
+
+    /*
+     * Clamp values to valid Web Audio
+     * / HTMLAudioElement range.
+     */
+
+    this.audio.musicVolume =
+      Math.max(
+        0,
+        Math.min(
+          1,
+          musicVolume
+        )
+      );
+
+
+    this.audio.talkingVolume =
+      Math.max(
+        0,
+        Math.min(
+          1,
+          talkingVolume
+        )
+      );
+
+
+    if (
+      this.audio.music
+    ) {
+
+      this.audio.music.volume =
+        this.audio.musicVolume;
+
+    }
+
+
+    if (
+      this.audio.talking
+    ) {
+
+      this.audio.talking.volume =
+        this.audio.talkingVolume;
+
+    }
+
+  }
+
+
+  /* ================================================================
+     MUTE / UNMUTE MUSIC
+     ================================================================ */
+
+  _setMusicMuted(
+    muted
+  ) {
+
+    if (
+      !this.audio.music
+    ) {
+
+      return;
+
+    }
+
+
+    this.audio.music.muted =
+      Boolean(
+        muted
+      );
+
+  }
+
+
+  /* ================================================================
+     PAUSE AUDIO
+     ================================================================ */
+
+  _pauseAudio() {
+
+    if (
+      this.audio.music
+    ) {
+
+      try {
+
+        this.audio.music.pause();
+
+      } catch {
+
+        /* Ignore */
+
+      }
+
+    }
+
+
+    if (
+      this.audio.talking
+    ) {
+
+      try {
+
+        this.audio.talking.pause();
+
+      } catch {
+
+        /* Ignore */
+
+      }
+
+    }
+
+  }
+
+
+  /* ================================================================
+     RESUME MUSIC
+     ================================================================ */
+
+  _resumeMusic() {
+
+    if (
+      !this.audio.music ||
+      !this.audio.unlocked
+    ) {
+
+      return;
+
+    }
+
+
+    this.audio.music.volume =
+      this.audio.musicVolume;
+
+
+    const playPromise =
+      this.audio.music.play();
+
+
+    if (
+      playPromise &&
+      typeof playPromise.catch ===
+        'function'
+    ) {
+
+      playPromise.catch(
+        () => {
+
+          /*
+           * Browser can reject playback
+           * after tab visibility changes.
+           *
+           * The next user interaction will
+           * call _unlockAudio() again.
+           */
+
+          this.audio.unlocked =
+            false;
+
+        }
+      );
+
+    }
+
+  }
+
+
+  /* ================================================================
+     VISIBILITY CHANGE
+     ================================================================ */
+
+  _handleVisibilityChange() {
+
+    if (
+      document.hidden
+    ) {
+
+      /*
+       * Stop animation scheduler while the
+       * page is not visible.
+       */
+
+      if (
+        this.isMobileOrTablet
+      ) {
+
+        this._stopMobileAnimationScheduler();
+
+      }
+
+
+      /*
+       * Pause audio to avoid unnecessary
+       * background playback.
+       */
+
+      this._pauseAudio();
+
+      return;
+
+    }
+
+
+    /*
+     * Resume mobile scheduler only if the
+     * scene is not currently shaking.
+     */
+
+    if (
+      this.isMobileOrTablet &&
+      !this.isShaking &&
+      !this.isRecovering
+    ) {
+
+      this._startMobileAnimationScheduler();
+
+    }
+
+
+    /*
+     * Music resumes only after audio has
+     * already been unlocked by the user.
+     */
+
+    this._resumeMusic();
+
+  }
+
+
+  /* ================================================================
+     SETUP VISIBILITY HANDLER
+     ================================================================ */
+
+  _setupVisibilityHandler() {
+
+    document.addEventListener(
+      'visibilitychange',
+      () => {
+
+        this._handleVisibilityChange();
+
+      },
+      {
+        passive:
+          true
+      }
+    );
+
+  }
+  /* ================================================================
+     INITIALIZE VISUAL STATE
+     ================================================================ */
+
+  _initializeVisualState() {
+
+    /*
+     * Cursor light state.
+     */
+
+    this.cursorLight =
+      null;
+
+    this.cursorLightEnabled =
+      true;
+
+    this.cursorLightX =
+      this.mouse.x;
+
+    this.cursorLightY =
+      this.mouse.y;
+
+    this.cursorLightTargetX =
+      this.mouse.x;
+
+    this.cursorLightTargetY =
+      this.mouse.y;
+
+
+    /*
+     * Visual animation state.
+     */
+
+    this.visualTime =
+      0;
+
+    this.titleAnimationTime =
+      0;
+
+    this.titleEntranceProgress =
+      0;
+
+
+    /*
+     * Theme state.
+     */
+
+    this.theme =
+      'light';
+
+
+    /*
+     * Theme colors used by lightweight
+     * visual effects.
+     */
+
+    this.currentThemeColors = {
+
+      light:
+        0xffffff,
+
+      glow:
+        0xffffff
+
+    };
+
+  }
+
+
+  /* ================================================================
+     CREATE CURSOR LIGHT
+     ================================================================ */
+
+  _createCursorLight() {
+
+    if (
+      !this.app ||
+      !this.app.stage
+    ) {
+
+      return;
+
+    }
+
+
+    /*
+     * Remove previous light if one exists.
+     */
+
+    if (
+      this.cursorLight
+    ) {
+
+      try {
+
+        this.app.stage.removeChild(
+          this.cursorLight
+        );
+
+      } catch {
+
+        /* Ignore */
+
+      }
+
+    }
+
+
+    const light =
+      new PIXI.Graphics();
+
+
+    light.eventMode =
+      'none';
+
+
+    light.zIndex =
+      0;
+
+
+    this.app.stage.addChild(
+      light
+    );
+
+
+    this.cursorLight =
+      light;
+
+
+    /*
+     * Start it at the current pointer.
+     */
+
+    this.cursorLightX =
+      this.mouse.x;
+
+
+    this.cursorLightY =
+      this.mouse.y;
+
+
+    this.cursorLightTargetX =
+      this.mouse.x;
+
+
+    this.cursorLightTargetY =
+      this.mouse.y;
+
+
+    this._updateCursorLight();
+
+  }
+
+
+  /* ================================================================
+     UPDATE CURSOR LIGHT
+     ================================================================ */
+
+  _updateCursorLight() {
+
+    if (
+      !this.cursorLight ||
+      !this.cursorLightEnabled
+    ) {
+      return;
+    }
+
+    const x =
+      this.cursorLightX;
+
+    const y =
+      this.cursorLightY;
+
+    const isDark =
+      this.theme === 'dark';
+
+    this.cursorLight.clear();
+
+    /*
+     * Theme-aware glowing orb:
+     * Light mode -> dark graphite orb + dark glow.
+     * Dark mode  -> soft white/ice orb + white glow.
+     */
+    const glowColor =
+      isDark
+        ? 0xeaf4ff
+        : 0x0b1220;
+
+    const coreColor =
+      isDark
+        ? 0xffffff
+        : 0x111827;
+
+    this.cursorLight
+      .circle(x, y, 34)
+      .fill({
+        color: glowColor,
+        alpha: isDark ? 0.10 : 0.12
+      });
+
+    this.cursorLight
+      .circle(x, y, 18)
+      .fill({
+        color: glowColor,
+        alpha: isDark ? 0.18 : 0.22
+      });
+
+    this.cursorLight
+      .circle(x, y, 9)
+      .fill({
+        color: glowColor,
+        alpha: isDark ? 0.28 : 0.30
+      });
+
+    this.cursorLight
+      .circle(x, y, 4.8)
+      .fill({
+        color: coreColor,
+        alpha: 1
+      });
+
+    this.cursorLight
+      .circle(x - 1.1, y - 1.1, 1.35)
+      .fill({
+        color: isDark ? 0xffffff : 0x94a3b8,
+        alpha: isDark ? 1 : 0.80
+      });
+
+  }
+
+
+  /* ================================================================
+     UPDATE CURSOR LIGHT POSITION
+     ================================================================ */
+
+  _updateCursorLightPosition(
+    dt
+  ) {
+
+    if (
+      !this.cursorLight
+    ) {
+
+      return;
+
+    }
+
+
+    this.cursorLightX +=
+      (
+        this.cursorLightTargetX -
+        this.cursorLightX
+      ) *
+      Math.min(
+        1,
+        dt *
+        45
+      );
+
+
+    this.cursorLightY +=
+      (
+        this.cursorLightTargetY -
+        this.cursorLightY
+      ) *
+      Math.min(
+        1,
+        dt *
+        45
+      );
+
+
+    this._updateCursorLight();
+
+  }
+
+
+  /* ================================================================
+     CREATE TITLE GLOW
+     ================================================================ */
+
+  _createTitleGlow() {
+
+    /*
+     * The title itself remains the main
+     * readable text. The glow is deliberately
+     * subtle and placed behind it.
+     */
+
+    if (
+      !this.title ||
+      !this.titleContainer
+    ) {
+
+      return;
+
+    }
+
+
+    const glow =
+      new PIXI.Text({
+
+        text:
+          this.title.text,
+
+        style: {
+
+          fontFamily:
+            'Arial, Helvetica, sans-serif',
+
+          fontSize:
+            this._getTitleSize(),
+
+          fontWeight:
+            '700',
+
+          fill:
+            0xffffff,
+
+          align:
+            'center',
+
+          letterSpacing:
+            1
+
+        }
+
+      });
+
+
+    glow.anchor.set(
+      0.5
+    );
+
+
+    glow.x =
+      this.title.x;
+
+
+    glow.y =
+      this.title.y;
+
+
+    glow.alpha =
+      0;
+
+
+    glow.zIndex =
+      -1;
+
+
+    /*
+     * Very small scale difference.
+     */
+
+    glow.scale.set(
+      1.03
+    );
+
+
+    this.titleContainer.addChildAt(
+      glow,
+      0
+    );
+
+
+    this.titleGlow =
+      glow;
+
+  }
+
+
+  /* ================================================================
+     UPDATE TITLE GLOW
+     ================================================================ */
+
+  _updateTitleGlow() {
+
+    if (
+      !this.titleGlow ||
+      !this.title
+    ) {
+
+      return;
+
+    }
+
+
+    this.titleGlow.text =
+      this.title.text;
+
+
+    this.titleGlow.x =
+      this.title.x;
+
+
+    this.titleGlow.y =
+      this.title.y;
+
+
+    this.titleGlow.style.fontSize =
+      this._getTitleSize();
+
+
+    this.titleGlow.alpha =
+      this.theme ===
+      'dark'
+        ? 0.10
+        : 0.055;
+
+
+    this.titleGlow.scale.set(
+      this.title.scale.x *
+      1.035
+    );
+
+  }
+
+
+  /* ================================================================
+     ENHANCE TITLE
+     ================================================================ */
+
+  _enhanceTitle() {
+
+    if (
+      !this.title
+    ) {
+
+      return;
+
+    }
+
+
+    /*
+     * Make sure the title remains readable.
+     */
+
+    this.title.alpha =
+      this.titleEntranceProgress;
+
+
+    this._updateTitleGlow();
+
+  }
+
+
+  /* ================================================================
+     VISUAL EFFECTS INITIALIZATION
+     ================================================================ */
+
+  _initializeVisualEffects() {
+
+    this._initializeVisualState();
+
+
+    /*
+     * Cursor light is disabled on very small
+     * devices until touch interaction occurs.
+     *
+     * This prevents unnecessary rendering on
+     * low-powered mobile devices.
+     */
+
+    if (
+      this.isMobileOrTablet &&
+      !this.touchActive
+    ) {
+
+      this.cursorLightEnabled =
+        false;
+
+    } else {
+
+      this.cursorLightEnabled =
+        true;
+
+    }
+
+
+    this._createCursorLight();
+
+
+    this._createTitleGlow();
+
+
+    this._initializeTheme();
+
+
+    this._enhanceTitle();
+
+  }
+
+
+  /* ================================================================
+     ENABLE MOBILE CURSOR LIGHT
+     ================================================================ */
+
+  _enableMobileCursorLight() {
+
+    if (
+      !this.isMobileOrTablet
+    ) {
+
+      return;
+
+    }
+
+
+    this.cursorLightEnabled =
+      true;
+
+
+    if (
+      !this.cursorLight
+    ) {
+
+      this._createCursorLight();
+
+    }
+
+
+    this._updateCursorLight();
+
+  }
+
+
+  /* ================================================================
+     DISABLE MOBILE CURSOR LIGHT
+     ================================================================ */
+
+  _disableMobileCursorLight() {
+
+    if (
+      !this.isMobileOrTablet
+    ) {
+
+      return;
+
+    }
+
+
+    this.cursorLightEnabled =
+      false;
+
+
+    if (
+      this.cursorLight
+    ) {
+
+      this.cursorLight.clear();
+
+    }
+
+  }
+
+
+  /* ================================================================
+     MOBILE TOUCH LIGHT
+     ================================================================ */
+
+  _updateMobileTouchLight() {
+
+    if (
+      !this.isMobileOrTablet
+    ) {
+
+      return;
+
+    }
+
+
+    if (
+      !this.touchActive
+    ) {
+
+      /*
+       * Fade the effect out by simply
+       * clearing the lightweight graphics.
+       */
+
+      this._disableMobileCursorLight();
+
+      return;
+
+    }
+
+
+    this._enableMobileCursorLight();
+
+  }
+
+
+  /* ================================================================
+     THEME COLOR UPDATE
+     ================================================================ */
+
+  _updateThemeColors() {
+
+    if (
+      this.theme ===
+      'dark'
+    ) {
+
+      this.currentThemeColors = {
+
+        light:
+          0x9bc8ff,
+
+        glow:
+          0xbfe0ff
+
+      };
+
+    } else {
+
+      this.currentThemeColors = {
+
+        light:
+          0xffffff,
+
+        glow:
+          0xffffff
+
+      };
+
+    }
+
+  }
+
+
+  /* ================================================================
+     APPLY THEME + VISUAL COLORS
+     ================================================================ */
+
+  _refreshThemeVisuals() {
+
+    this._updateThemeColors();
+
+
+    this._applyTheme(
+      this.theme
+    );
+
+
+    this._updateCursorLight();
+
+
+    this._updateTitleGlow();
+
+  }
+
+
+  /* ================================================================
+     PAGE FOCUS
+     ================================================================ */
+
+  _handleWindowFocus() {
+
+    if (
+      this.isMobileOrTablet &&
+      !this.isShaking &&
+      !this.isRecovering
+    ) {
+
+      this._startMobileAnimationScheduler();
+
+    }
+
+
+    this._resumeMusic();
+
+  }
+
+
+  /* ================================================================
+     PAGE BLUR
+     ================================================================ */
+
+  _handleWindowBlur() {
+
+    if (
+      this.isMobileOrTablet
+    ) {
+
+      this._stopMobileAnimationScheduler();
+
+    }
+
+
+    this._pauseAudio();
+
+  }
+
+
+  /* ================================================================
+     SETUP PAGE FOCUS / BLUR
+     ================================================================ */
+
+  _setupFocusHandlers() {
+
+    window.addEventListener(
+      'focus',
+      () => {
+
+        this._handleWindowFocus();
+
+      },
+      {
+        passive:
+          true
+      }
+    );
+
+
+    window.addEventListener(
+      'blur',
+      () => {
+
+        this._handleWindowBlur();
+
+      },
+      {
+        passive:
+          true
+      }
+    );
+
+  }
+
+
+  /* ================================================================
+     UPDATE POINTER POSITION
+     ================================================================ */
+
+  _setPointerPosition(
+    x,
+    y
+  ) {
+
+    if (
+      !Number.isFinite(x) ||
+      !Number.isFinite(y)
+    ) {
+
+      return;
+
+    }
+
+
+    this.mouse.x =
+      Math.max(
+        0,
+        Math.min(
+          this.width,
+          x
+        )
+      );
+
+
+    this.mouse.y =
+      Math.max(
+        0,
+        Math.min(
+          this.height,
+          y
+        )
+      );
+
+
+    this.cursorLightTargetX =
+      this.mouse.x;
+
+
+    this.cursorLightTargetY =
+      this.mouse.y;
+
+
+    if (
+      this.cursorLightEnabled
+    ) {
+
+      this._updateCursorLight();
+
+    }
+
+  }
+
+
+  /* ================================================================
+     ADVANCED POINTER LIGHT
+     ================================================================ */
+
+  _updatePointerLightFromEvent(
+    event
+  ) {
+
+    if (
+      !event
+    ) {
+
+      return;
+
+    }
+
+
+    this._setPointerPosition(
+      event.clientX,
+      event.clientY
+    );
+
+  }
+
+
+  /* ================================================================
+     ADD POINTER LIGHT EVENTS
+     ================================================================ */
+
+  _setupPointerLightEvents() {
+
+    window.addEventListener(
+      'mousemove',
+      event => {
+
+        this._updatePointerLightFromEvent(
+          event
+        );
+
+      },
+      {
+        passive:
+          true
+      }
+    );
+
+
+    window.addEventListener(
+      'touchstart',
+      event => {
+
+        const touch =
+          event.touches?.[0];
+
+
+        if (
+          touch
+        ) {
+
+          this._setPointerPosition(
+            touch.clientX,
+            touch.clientY
+          );
+
+        }
+
+
+        this._enableMobileCursorLight();
+
+      },
+      {
+        passive:
+          true
+      }
+    );
+
+
+    window.addEventListener(
+      'touchmove',
+      event => {
+
+        const touch =
+          event.touches?.[0];
+
+
+        if (
+          touch
+        ) {
+
+          this._setPointerPosition(
+            touch.clientX,
+            touch.clientY
+          );
+
+        }
+
+
+        this._enableMobileCursorLight();
+
+      },
+      {
+        passive:
+          true
+      }
+    );
+
+
+    window.addEventListener(
+      'touchend',
+      () => {
+
+        this.touchActive =
+          false;
+
+
+        this._disableMobileCursorLight();
+
+      },
+      {
+        passive:
+          true
+      }
+    );
+
+  }
+
+
+  /* ================================================================
+     SETUP ALL VISUAL EVENT HANDLERS
+     ================================================================ */
+
+  _setupVisualEventHandlers() {
+
+    this._setupVisibilityHandler();
+
+
+    this._setupFocusHandlers();
+
+
+    this._setupPointerLightEvents();
+
+  }
+  /* ================================================================
+     COMPLETE VISUAL UPDATE
+     ================================================================ */
+
+  _updateVisualSystems(
+    dtMs
+  ) {
+
+    const dt =
+      dtMs *
+      0.001;
+
+
+    /*
+     * Cursor light.
+     */
+
+    if (
+      this.cursorLightEnabled
+    ) {
+
+      this._updateCursorLightPosition(
+        dt
+      );
+
+    }
+
+
+    /*
+     * Mobile touch state.
+     */
+
+    if (
+      this.isMobileOrTablet
+    ) {
+
+      this._updateMobileTouchLight();
+
+    }
+
+
+    /*
+     * Title glow.
+     */
+
+    if (
+      this.titleGlow
+    ) {
+
+      this._updateTitleGlow();
+
+    }
+
+
+    /*
+     * Main visual effects.
+     */
+
+    this._updateVisualEffects(
+      dtMs
+    );
+
+  }
+
+
+  /* ================================================================
+     DEBUG INFORMATION
+     ================================================================ */
+
+  getDebugInfo() {
+
+    return {
+
+      width:
+        this.width,
+
+      height:
+        this.height,
+
+      mobile:
+        this.isMobileOrTablet,
+
+      emojiCount:
+        this.emojis.length,
+
+      activeMobileAnimations:
+        this.mobileActiveEmojis.size,
+
+      mobileAnimationLimit:
+        this.mobileAnimationLimit,
+
+      schedulerRunning:
+        this.mobileSchedulerTimer !==
+        null,
+
+      shaking:
+        this.isShaking,
+
+      recovering:
+        this.isRecovering,
+
+      audioUnlocked:
+        this.audio.unlocked,
+
+      musicVolume:
+        this.audio.musicVolume,
+
+      talkingVolume:
+        this.audio.talkingVolume,
+
+      theme:
+        this.theme
+
+    };
+
+  }
+
+
+  /* ================================================================
+     GET ACTIVE MOBILE EMOJIS
+     ================================================================ */
+
+  getActiveMobileEmojis() {
+
+    return [
+      ...this.mobileActiveEmojis
+    ].map(
+      emoji =>
+        emoji.index
+    );
+
+  }
+
+
+  /* ================================================================
+     FORCE NEXT MOBILE ANIMATION
+     ================================================================ */
+
+  _forceNextMobileAnimation() {
+
+    if (
+      !this.isMobileOrTablet
+    ) {
+
+      return;
+
+    }
+
+
+    if (
+      this.isShaking ||
+      this.isRecovering
+    ) {
+
+      return;
+
+    }
+
+
+    const emoji =
+      this._getNextMobileEmoji();
+
+
+    if (
+      !emoji
+    ) {
+
+      return;
+
+    }
+
+
+    this._activateMobileEmoji(
+      emoji
+    );
+
+  }
+
+
+  /* ================================================================
+     FORCE MOBILE RESHUFFLE
+     ================================================================ */
+
+  _reshuffleMobileAnimations() {
+
+    if (
+      !this.isMobileOrTablet
+    ) {
+
+      return;
+
+    }
+
+
+    this.mobileShuffleBag =
+      [];
+
+
+    this._refillMobileShuffleBag();
+
+  }
+
+
+  /* ================================================================
+     PAUSE MOBILE ANIMATIONS
+     ================================================================ */
+
+  _pauseMobileAnimations() {
+
+    this._stopMobileAnimationScheduler();
+
+
+    for (
+      const emoji of [
+        ...this.mobileActiveEmojis
+      ]
+    ) {
+
+      this._deactivateMobileEmoji(
+        emoji
+      );
+
+    }
+
+  }
+
+
+  /* ================================================================
+     RESUME MOBILE ANIMATIONS
+     ================================================================ */
+
+  _resumeMobileAnimations() {
+
+    if (
+      !this.isMobileOrTablet
+    ) {
+
+      return;
+
+    }
+
+
+    if (
+      this.isShaking ||
+      this.isRecovering
+    ) {
+
+      return;
+
+    }
+
+
+    this._restoreMobileStaticFrames();
+
+
+    this._startMobileAnimationScheduler();
+
+  }
+
+
+  /* ================================================================
+     RESET ALL EMOJIS
+     ================================================================ */
+
+  _resetAllEmojis() {
+
+    this.isShaking =
+      false;
+
+
+    this.isRecovering =
+      false;
+
+
+    this.shakeRecoveryTime =
+      0;
+
+
+    this._stopMobileAnimationScheduler();
+
+
+    this.mobileActiveEmojis.clear();
+
+
+    this.mobileShuffleBag =
+      [];
+
+
+    for (
+      const emoji of this.emojis
+    ) {
+
+      if (
+        !emoji
+      ) {
 
         continue;
 
       }
+
+
+      emoji.isFlying =
+        false;
 
 
       emoji.isMobileActive =
@@ -5711,12 +8902,48 @@ export class EmojiWorld {
         0;
 
 
-      /*
-       * Restore original animated WebP.
-       */
+      emoji.flyProgress =
+        0;
 
-      emoji.element.src =
-        src;
+
+      emoji.recoveryDelay =
+        0;
+
+
+      this._resetEmojiPhysics(
+        emoji
+      );
+
+
+      if (
+        this.isMobileOrTablet
+      ) {
+
+        if (
+          emoji.staticURL
+        ) {
+
+          emoji.element.src =
+            emoji.staticURL;
+
+        }
+
+      } else {
+
+        const animatedURL =
+          emoji.element.dataset.src;
+
+
+        if (
+          animatedURL
+        ) {
+
+          emoji.element.src =
+            animatedURL;
+
+        }
+
+      }
 
 
       emoji.element.style.visibility =
@@ -5729,17 +8956,399 @@ export class EmojiWorld {
     }
 
 
-    /*
-     * Clear active mobile slots.
-     */
+    if (
+      this.isMobileOrTablet
+    ) {
 
-    this.mobileActiveEmojis.clear();
+      this._startMobileAnimationScheduler();
+
+    }
 
   }
 
 
   /* ================================================================
-     CLEANUP
+     SET ANIMATION LIMIT
+     ================================================================ */
+
+  _setMobileAnimationLimit(
+    limit
+  ) {
+
+    if (
+      !Number.isFinite(limit)
+    ) {
+
+      return;
+
+    }
+
+
+    const safeLimit =
+      Math.max(
+        1,
+        Math.min(
+          this.emojis.length,
+          Math.floor(
+            limit
+          )
+        )
+      );
+
+
+    this.mobileAnimationLimit =
+      safeLimit;
+
+
+    if (
+      !this.isMobileOrTablet
+    ) {
+
+      return;
+
+    }
+
+
+    /*
+     * If the new limit is smaller than
+     * the current active count, deactivate
+     * excess emojis.
+     */
+
+    while (
+      this.mobileActiveEmojis.size >
+      safeLimit
+    ) {
+
+      const first =
+        this.mobileActiveEmojis
+          .values()
+          .next()
+          .value;
+
+
+      if (
+        !first
+      ) {
+
+        break;
+
+      }
+
+
+      this._deactivateMobileEmoji(
+        first
+      );
+
+    }
+
+
+    this._fillMobileAnimationSlots();
+
+  }
+
+
+  /* ================================================================
+     PRELOAD NEXT STATIC FRAMES
+     ================================================================ */
+
+  _preloadMobileFramesForNextCycle() {
+
+    if (
+      !this.isMobileOrTablet
+    ) {
+
+      return;
+
+    }
+
+
+    /*
+     * Only prepare frames that are not
+     * already ready/loading.
+     */
+
+    const pending =
+      this.emojis.filter(
+        emoji =>
+          emoji &&
+          !emoji.staticReady &&
+          !this.mobileStaticFrameLoading.has(
+            emoji.index
+          )
+      );
+
+
+    if (
+      pending.length === 0
+    ) {
+
+      return;
+
+    }
+
+
+    /*
+     * Prepare one frame at a time so
+     * the browser does not suddenly decode
+     * all 24 animations simultaneously.
+     */
+
+    const next =
+      pending[0];
+
+
+    this._prepareOneMobileStaticFrame(
+      next
+    );
+
+  }
+
+
+  /* ================================================================
+     AUDIO STATUS
+     ================================================================ */
+
+  _getAudioStatus() {
+
+    return {
+
+      unlocked:
+        Boolean(
+          this.audio.unlocked
+        ),
+
+      musicPlaying:
+        Boolean(
+          this.audio.music &&
+          !this.audio.music.paused
+        ),
+
+      talkingPlaying:
+        Boolean(
+          this.audio.talking &&
+          !this.audio.talking.paused
+        ),
+
+      musicVolume:
+        this.audio.musicVolume,
+
+      talkingVolume:
+        this.audio.talkingVolume
+
+    };
+
+  }
+
+
+  /* ================================================================
+     STOP TALKING SOUND
+     ================================================================ */
+
+  _stopTalkingSound() {
+
+    if (
+      !this.audio.talking
+    ) {
+
+      return;
+
+    }
+
+
+    try {
+
+      this.audio.talking.pause();
+
+
+      this.audio.talking.currentTime =
+        0;
+
+    } catch {
+
+      /* Ignore */
+
+    }
+
+  }
+
+
+  /* ================================================================
+     STOP MUSIC
+     ================================================================ */
+
+  _stopMusic() {
+
+    if (
+      !this.audio.music
+    ) {
+
+      return;
+
+    }
+
+
+    try {
+
+      this.audio.music.pause();
+
+
+      this.audio.music.currentTime =
+        0;
+
+    } catch {
+
+      /* Ignore */
+
+    }
+
+  }
+
+
+  /* ================================================================
+     AUDIO CLEANUP
+     ================================================================ */
+
+  _destroyAudio() {
+
+    document.removeEventListener(
+      'pointerdown',
+      this._boundAudioUnlock
+    );
+
+
+    document.removeEventListener(
+      'touchstart',
+      this._boundAudioUnlock
+    );
+
+
+    document.removeEventListener(
+      'keydown',
+      this._boundAudioUnlock
+    );
+
+
+    this._stopTalkingSound();
+
+
+    this._stopMusic();
+
+
+    if (
+      this.audio.music
+    ) {
+
+      this.audio.music.src =
+        '';
+
+
+      this.audio.music.load();
+
+    }
+
+
+    if (
+      this.audio.talking
+    ) {
+
+      this.audio.talking.src =
+        '';
+
+
+      this.audio.talking.load();
+
+    }
+
+
+    this.audio.music =
+      null;
+
+
+    this.audio.talking =
+      null;
+
+
+    this.audio.unlocked =
+      false;
+
+  }
+
+
+  /* ================================================================
+     REMOVE VISUAL EFFECTS
+     ================================================================ */
+
+  _destroyVisualEffects() {
+
+    if (
+      this.cursorLight
+    ) {
+
+      try {
+
+        if (
+          this.cursorLight.parent
+        ) {
+
+          this.cursorLight.parent
+            .removeChild(
+              this.cursorLight
+            );
+
+        }
+
+        this.cursorLight.destroy();
+
+      } catch {
+
+        /* Ignore */
+
+      }
+
+    }
+
+
+    this.cursorLight =
+      null;
+
+
+    if (
+      this.titleGlow
+    ) {
+
+      try {
+
+        if (
+          this.titleGlow.parent
+        ) {
+
+          this.titleGlow.parent
+            .removeChild(
+              this.titleGlow
+            );
+
+        }
+
+        this.titleGlow.destroy();
+
+      } catch {
+
+        /* Ignore */
+
+      }
+
+    }
+
+
+    this.titleGlow =
+      null;
+
+  }
+
+
+  /* ================================================================
+     DESTROY
      ================================================================ */
 
   destroy() {
@@ -5750,21 +9359,22 @@ export class EmojiWorld {
 
 
     /*
-     * Stop mobile scheduler.
+     * Stop schedulers first.
      */
 
     this._stopMobileAnimationScheduler();
 
 
     /*
-     * Invalidate static-frame preparation.
+     * Invalidate pending static-frame
+     * generation work.
      */
 
     this.mobileStaticFrameGeneration++;
 
 
     /*
-     * Remove ticker callback.
+     * Stop Pixi ticker.
      */
 
     if (
@@ -5790,7 +9400,7 @@ export class EmojiWorld {
 
 
     /*
-     * Remove emoji DOM elements.
+     * Remove native emoji DOM.
      */
 
     if (
@@ -5802,13 +9412,15 @@ export class EmojiWorld {
       ) {
 
         if (
+          emoji &&
           emoji.element &&
           emoji.element.parentNode
         ) {
 
-          emoji.element.parentNode.removeChild(
-            emoji.element
-          );
+          emoji.element.parentNode
+            .removeChild(
+              emoji.element
+            );
 
         }
 
@@ -5817,17 +9429,48 @@ export class EmojiWorld {
     }
 
 
-    /*
-     * Clear arrays.
-     */
-
     this.emojis =
       [];
 
 
-    this.cubes =
-      [];
+    /*
+     * Remove theme button.
+     */
 
+    if (
+      this.themeButton &&
+      this.themeButton.parentNode
+    ) {
+
+      this.themeButton.parentNode
+        .removeChild(
+          this.themeButton
+        );
+
+    }
+
+
+    this.themeButton =
+      null;
+
+
+    /*
+     * Audio cleanup.
+     */
+
+    this._destroyAudio();
+
+
+    /*
+     * Visual-effect cleanup.
+     */
+
+    this._destroyVisualEffects();
+
+
+    /*
+     * Clear scheduler state.
+     */
 
     this.mobileActiveEmojis.clear();
 
@@ -5853,24 +9496,30 @@ export class EmojiWorld {
       this.app
     ) {
 
-      this.app.destroy(
+      try {
 
-        true,
+        this.app.destroy(
+          true,
+          {
+            children:
+              true,
 
-        {
+            texture:
+              false,
 
-          children:
-            true,
+            baseTexture:
+              false
+          }
+        );
 
-          texture:
-            false,
+      } catch (error) {
 
-          baseTexture:
-            false
+        console.warn(
+          '[Emoji World] Pixi destroy warning:',
+          error
+        );
 
-        }
-
-      );
+      }
 
     }
 
@@ -5883,241 +9532,487 @@ export class EmojiWorld {
       null;
 
 
+    this.cubes =
+      [];
+
+
+    this.cubesContainer =
+      null;
+
+
+    this.titleContainer =
+      null;
+
+
+    this.emojiLayer =
+      null;
+
+
     console.log(
       '✓ Emoji World destroyed'
     );
 
   }
+  /* ================================================================
+     FINAL INITIALIZATION HELPERS
+     ================================================================ */
+
+  _finalizeInitialization() {
+
+    /*
+     * Theme button.
+     */
+
+    this._createThemeButton();
+
+
+    /*
+     * Theme and visual systems.
+     */
+
+    this._initializeVisualEffects();
+
+
+    /*
+     * Visibility/focus/pointer handlers.
+     */
+
+    this._setupVisualEventHandlers();
+
+
+    /*
+     * Keep audio at the requested levels.
+     */
+
+    this._setAudioVolumes(
+      1.00,
+      0.60
+    );
+
+
+    /*
+     * Ensure all emojis are correctly
+     * positioned after visual systems
+     * are initialized.
+     */
+
+    this._repositionEmojisAndCubes();
+
+
+    /*
+     * Start the correct animation mode.
+     */
+
+    if (
+      this.isMobileOrTablet
+    ) {
+
+      this._enableMobileAnimationMode();
+
+    } else {
+
+      this._enableDesktopAnimationMode();
+
+    }
+
+  }
 
 
   /* ================================================================
-     EMOJI CONFIGURATION
+     FINAL SCENE VALIDATION
      ================================================================ */
 
-  _getEmojiConfigs() {
+  _validateScene() {
 
-    return [
+    const problems =
+      [];
 
-      {
-        index: 0,
-        name: 'Happy',
-        idleType: 'bounce',
-        mass: 0.9,
-        idleSpeed: 0.055,
-        idleAmplitude: 6
-      },
 
-      {
-        index: 1,
-        name: 'Cool',
-        idleType: 'tilt',
-        mass: 1.0,
-        idleSpeed: 0.050,
-        idleAmplitude: 7
-      },
+    if (
+      !this.app
+    ) {
 
-      {
-        index: 2,
-        name: 'Love',
-        idleType: 'pulse',
-        mass: 0.8,
-        idleSpeed: 0.065,
-        idleAmplitude: 5,
-        scaleAmount: 0.05
-      },
+      problems.push(
+        'Pixi application missing'
+      );
 
-      {
-        index: 3,
-        name: 'Awestruck',
-        idleType: 'sway',
-        mass: 1.0,
-        idleSpeed: 0.050,
-        idleAmplitude: 7
-      },
+    }
 
-      {
-        index: 4,
-        name: 'Thinking',
-        idleType: 'bob',
-        mass: 1.05,
-        idleSpeed: 0.050,
-        idleAmplitude: 6
-      },
 
-      {
-        index: 5,
-        name: 'Angry',
-        idleType: 'vibrate',
-        mass: 1.2,
-        idleSpeed: 0.075,
-        idleAmplitude: 3
-      },
+    if (
+      !this.physics
+    ) {
 
-      {
-        index: 6,
-        name: 'Party',
-        idleType: 'spin',
-        mass: 0.9,
-        idleSpeed: 0.045,
-        idleAmplitude: 2,
-        spinSpeed: 0.010
-      },
+      problems.push(
+        'Physics engine missing'
+      );
 
-      {
-        index: 7,
-        name: 'Smirk',
-        idleType: 'tilt',
-        mass: 1.0,
-        idleSpeed: 0.045,
-        idleAmplitude: 6
-      },
+    }
 
-      {
-        index: 8,
-        name: 'Sleepy',
-        idleType: 'drift',
-        mass: 0.95,
-        idleSpeed: 0.035,
-        idleAmplitude: 7
-      },
 
-      {
-        index: 9,
-        name: 'Shocked',
-        idleType: 'bounce',
-        mass: 1.1,
-        idleSpeed: 0.065,
-        idleAmplitude: 8
-      },
+    if (
+      !this.emojis ||
+      this.emojis.length !== 24
+    ) {
 
-      {
-        index: 10,
-        name: 'Scared',
-        idleType: 'tremble',
-        mass: 0.85,
-        idleSpeed: 0.070,
-        idleAmplitude: 3
-      },
+      problems.push(
+        `Expected 24 emojis, found ${
+          this.emojis?.length || 0
+        }`
+      );
 
-      {
-        index: 11,
-        name: 'Cool 2',
-        idleType: 'sway',
-        mass: 1.0,
-        idleSpeed: 0.045,
-        idleAmplitude: 6
-      },
+    }
 
-      {
-        index: 12,
-        name: 'Angel',
-        idleType: 'float',
-        mass: 0.8,
-        idleSpeed: 0.035,
-        idleAmplitude: 8
-      },
 
-      {
-        index: 13,
-        name: 'Sad',
-        idleType: 'droop',
-        mass: 1.15,
-        idleSpeed: 0.040,
-        idleAmplitude: 5
-      },
+    if (
+      !this.cubes ||
+      this.cubes.length !== 24
+    ) {
 
-      {
-        index: 14,
-        name: 'Nerd',
-        idleType: 'twitch',
-        mass: 0.9,
-        idleSpeed: 0.070,
-        idleAmplitude: 3
-      },
+      problems.push(
+        `Expected 24 platforms, found ${
+          this.cubes?.length || 0
+        }`
+      );
 
-      {
-        index: 15,
-        name: 'Frustrated',
-        idleType: 'shake',
-        mass: 1.1,
-        idleSpeed: 0.060,
-        idleAmplitude: 4
-      },
+    }
 
-      {
-        index: 16,
-        name: 'Tongue',
-        idleType: 'playful',
-        mass: 0.95,
-        idleSpeed: 0.060,
-        idleAmplitude: 7
-      },
 
-      {
-        index: 17,
-        name: 'Kiss',
-        idleType: 'bob',
-        mass: 0.85,
-        idleSpeed: 0.050,
-        idleAmplitude: 6
-      },
+    if (
+      problems.length > 0
+    ) {
 
-      {
-        index: 18,
-        name: 'Cold',
-        idleType: 'shiver',
-        mass: 1.05,
-        idleSpeed: 0.075,
-        idleAmplitude: 3
-      },
+      console.warn(
+        '[Emoji World] Scene validation:',
+        problems
+      );
 
-      {
-        index: 19,
-        name: 'Melting',
-        idleType: 'droop',
-        mass: 1.0,
-        idleSpeed: 0.040,
-        idleAmplitude: 5
-      },
 
-      {
-        index: 20,
-        name: 'Grinning',
-        idleType: 'bounce',
-        mass: 0.9,
-        idleSpeed: 0.060,
-        idleAmplitude: 7
-      },
+      return false;
 
-      {
-        index: 21,
-        name: 'Winking',
-        idleType: 'tilt',
-        mass: 1.0,
-        idleSpeed: 0.050,
-        idleAmplitude: 6
-      },
+    }
 
-      {
-        index: 22,
-        name: 'Neutral',
-        idleType: 'sway',
-        mass: 1.05,
-        idleSpeed: 0.038,
-        idleAmplitude: 5
-      },
 
-      {
-        index: 23,
-        name: 'Slight Smile',
-        idleType: 'drift',
-        mass: 0.92,
-        idleSpeed: 0.045,
-        idleAmplitude: 6
+    return true;
+
+  }
+
+
+  /* ================================================================
+     PUBLIC INITIALIZATION
+     ================================================================ */
+
+  async initialize() {
+
+    /*
+     * This method is safe to call after
+     * construction if the caller wants an
+     * explicit initialization step.
+     */
+
+    if (
+      this.ready
+    ) {
+
+      try {
+
+        await this.ready;
+
+      } catch (error) {
+
+        throw error;
+
       }
 
-    ];
+    }
+
+
+    /*
+     * Final scene checks.
+     */
+
+    this._validateScene();
+
+
+    /*
+     * If visual systems weren't initialized
+     * by the host initialization flow, create
+     * them here.
+     */
+
+    if (
+      !this.themeButton
+    ) {
+
+      this._finalizeInitialization();
+
+    }
+
+
+    return this;
+
+  }
+
+
+  /* ================================================================
+     PUBLIC SETTING: ANIMATION COUNT
+     ================================================================ */
+
+  setMobileAnimationCount(
+    count
+  ) {
+
+    this._setMobileAnimationLimit(
+      count
+    );
+
+
+    return this.mobileAnimationLimit;
+
+  }
+
+
+  /* ================================================================
+     PUBLIC SETTING: MUSIC VOLUME
+     ================================================================ */
+
+  setMusicVolume(
+    volume
+  ) {
+
+    const value =
+      Math.max(
+        0,
+        Math.min(
+          1,
+          Number(
+            volume
+          )
+        )
+      );
+
+
+    if (
+      !Number.isFinite(value)
+    ) {
+
+      return this.audio.musicVolume;
+
+    }
+
+
+    this.audio.musicVolume =
+      value;
+
+
+    if (
+      this.audio.music
+    ) {
+
+      this.audio.music.volume =
+        value;
+
+    }
+
+
+    return value;
+
+  }
+
+
+  /* ================================================================
+     PUBLIC SETTING: TALKING VOLUME
+     ================================================================ */
+
+  setTalkingVolume(
+    volume
+  ) {
+
+    const value =
+      Math.max(
+        0,
+        Math.min(
+          1,
+          Number(
+            volume
+          )
+        )
+      );
+
+
+    if (
+      !Number.isFinite(value)
+    ) {
+
+      return this.audio.talkingVolume;
+
+    }
+
+
+    this.audio.talkingVolume =
+      value;
+
+
+    if (
+      this.audio.talking
+    ) {
+
+      this.audio.talking.volume =
+        value;
+
+    }
+
+
+    return value;
+
+  }
+
+
+  /* ================================================================
+     PUBLIC AUDIO UNLOCK
+     ================================================================ */
+
+  unlockAudio() {
+
+    this._unlockAudio();
+
+  }
+
+
+  /* ================================================================
+     PUBLIC SHAKE TRIGGER
+     ================================================================ */
+
+  triggerShake() {
+
+    this._handleShake();
+
+  }
+
+
+  /* ================================================================
+     PUBLIC THEME TOGGLE
+     ================================================================ */
+
+  toggleTheme() {
+
+    this._toggleTheme();
+
+  }
+
+
+  /* ================================================================
+     PUBLIC THEME GETTER
+     ================================================================ */
+
+  getTheme() {
+
+    return this.theme;
+
+  }
+
+
+  /* ================================================================
+     PUBLIC AUDIO GETTER
+     ================================================================ */
+
+  getAudioStatus() {
+
+    return this._getAudioStatus();
+
+  }
+
+
+  /* ================================================================
+     PUBLIC DEBUG GETTER
+     ================================================================ */
+
+  getStatus() {
+
+    return this.getDebugInfo();
+
+  }
+
+
+  /* ================================================================
+     PUBLIC RESIZE
+     ================================================================ */
+
+  resize() {
+
+    this._onWindowResize();
+
+  }
+
+
+  /* ================================================================
+     PUBLIC PAUSE
+     ================================================================ */
+
+  pause() {
+
+    if (
+      this.isMobileOrTablet
+    ) {
+
+      this._pauseMobileAnimations();
+
+    }
+
+
+    this._pauseAudio();
+
+  }
+
+
+  /* ================================================================
+     PUBLIC RESUME
+     ================================================================ */
+
+  resume() {
+
+    if (
+      this.isMobileOrTablet &&
+      !this.isShaking &&
+      !this.isRecovering
+    ) {
+
+      this._resumeMobileAnimations();
+
+    }
+
+
+    this._resumeMusic();
+
+  }
+
+
+  /* ================================================================
+     PUBLIC RESET
+     ================================================================ */
+
+  reset() {
+
+    this._resetAllEmojis();
+
+  }
+
+
+  /* ================================================================
+     PUBLIC DESTROY
+     ================================================================ */
+
+  dispose() {
+
+    this.destroy();
 
   }
 
 }
+
+
+/* ==================================================================
+   DEFAULT EXPORT
+   ================================================================== */
+
+export default EmojiWorld;

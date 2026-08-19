@@ -794,6 +794,118 @@ a {
  * and could increase memory usage on mobile.
  */
 
+/* ============================================================
+   THEME SYSTEM
+   ============================================================ */
+
+:root {
+    --background:
+        radial-gradient(
+            circle at 50% 12%,
+            #ffffff 0%,
+            #f4f8fb 55%,
+            #e8f0f5 100%
+        );
+
+    --text: #111111;
+}
+
+
+/* DARK THEME */
+
+html[data-theme="dark"] {
+    --background:
+        radial-gradient(
+            circle at 50% 12%,
+            #202735 0%,
+            #0d1118 52%,
+            #080b10 100%
+        );
+
+    --text: #f5f7fa;
+
+    color-scheme: dark;
+}
+
+
+/* LIGHT THEME */
+
+html[data-theme="light"] {
+    --background:
+        radial-gradient(
+            circle at 50% 12%,
+            #ffffff 0%,
+            #f4f8fb 55%,
+            #e8f0f5 100%
+        );
+
+    --text: #111111;
+
+    color-scheme: light;
+}
+
+
+/* PAGE */
+
+html,
+body {
+    background: var(--background) !important;
+    color: var(--text) !important;
+}
+
+
+/* MAIN APPLICATION */
+
+#app {
+    background: var(--background) !important;
+}
+
+
+/* PIXI CANVAS */
+
+#pixi-canvas,
+#app > canvas {
+    background: transparent !important;
+}
+
+
+/* MOBILE */
+
+@media (max-width: 768px) {
+
+    #app {
+        background: var(--background) !important;
+    }
+
+}
+
+
+/* ============================================================
+   SMALL LIGHT-BALL CURSOR
+   ============================================================ */
+
+/*
+ * Hide the normal browser cursor.
+ * The Pixi cursor light becomes the visible cursor.
+ */
+
+html,
+body,
+#app,
+#pixi-canvas {
+    cursor: none !important;
+}
+
+
+/*
+ * Keep the theme button clickable without showing
+ * the normal browser arrow.
+ */
+
+#emoji-theme-toggle {
+    cursor: none !important;
+}
+
 
 /* ============================================================
    END
