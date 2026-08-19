@@ -25,7 +25,6 @@
  */
 
 import * as PIXI from 'pixi.js';
-import { selectValidatedEmojiSet } from './emojiAssets.js';
 
 
 export class EmojiWorld {
@@ -136,12 +135,6 @@ export class EmojiWorld {
 
     this.emojis =
       [];
-
-    this.emojiAssets =
-      [];
-
-    this.refreshingEmojiSet =
-      false;
 
     this.cubes =
       [];
@@ -374,7 +367,7 @@ export class EmojiWorld {
       this._setupAudio();
 
 
-      await this._setupScene();
+      this._setupScene();
 
 
       this._setupEventListeners();
@@ -710,155 +703,7 @@ export class EmojiWorld {
       }
     }
 
-    this._createEmojiRefreshControl();
     this._updateCinematicTheme();
-  }
-
-  /* ================================================================
-     EMOJI SET REFRESH CONTROL
-     ================================================================ */
-
-  _createEmojiRefreshControl() {
-    if (this.emojiRefreshButton) return;
-
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'emoji-set-refresh';
-    button.setAttribute('aria-label', 'Refresh emoji set');
-    button.title = 'Refresh emojis';
-    button.innerHTML = '<span aria-hidden="true">↻</span>';
-
-    Object.assign(button.style, {
-      position: 'fixed',
-      left: '22px',
-      top: '22px',
-      width: '50px',
-      height: '50px',
-      zIndex: '10030',
-      display: 'grid',
-      placeItems: 'center',
-      border: '1px solid rgba(255,255,255,.72)',
-      borderRadius: '50%',
-      background: 'rgba(255,255,255,.72)',
-      color: '#25364a',
-      boxShadow: '0 10px 30px rgba(15,23,42,.12), inset 0 1px 0 rgba(255,255,255,.95)',
-      backdropFilter: 'blur(16px)',
-      WebkitBackdropFilter: 'blur(16px)',
-      cursor: 'none',
-      fontSize: '27px',
-      lineHeight: '1',
-      fontWeight: '500',
-      transition: 'transform 180ms ease, opacity 180ms ease, box-shadow 180ms ease'
-    });
-
-    button.addEventListener('mouseenter', () => {
-      if (!this.refreshingEmojiSet) button.style.transform = 'rotate(-18deg) scale(1.06)';
-    });
-    button.addEventListener('mouseleave', () => {
-      button.style.transform = 'none';
-    });
-    button.addEventListener('click', async (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      await this.refreshEmojiSet();
-    });
-
-    document.body.appendChild(button);
-    this.emojiRefreshButton = button;
-  }
-
-  _setEmojiRefreshBusy(busy) {
-    if (!this.emojiRefreshButton) return;
-    this.emojiRefreshButton.disabled = Boolean(busy);
-    this.emojiRefreshButton.style.opacity = busy ? '0.48' : '1';
-    this.emojiRefreshButton.style.transform = busy ? 'rotate(180deg)' : 'none';
-    this.emojiRefreshButton.querySelector('span')?.style.setProperty(
-      'animation',
-      busy ? 'emojiSetRefreshSpin 850ms linear infinite' : 'none'
-    );
-  }
-
-  async refreshEmojiSet() {
-    if (this.refreshingEmojiSet) return false;
-
-    const scannerBusy = this.emojis.some((emoji) => emoji?.scannerState);
-    if (scannerBusy || this.isShaking || this.isRecovering) return false;
-
-    this.refreshingEmojiSet = true;
-    this._setEmojiRefreshBusy(true);
-
-    try {
-      if (this.isMobileOrTablet) {
-        this._stopMobileAnimationScheduler();
-        this._stopAllMobileAnimations();
-      }
-
-      const excluded = new Set(this.emojis.map((emoji) => emoji.codePoint));
-      const assets = await selectValidatedEmojiSet(24, excluded);
-
-      this.emojiAssets = assets;
-      this.mobileStaticFrameReady.clear();
-      this.mobileStaticFrameLoading.clear();
-      this.mobileAnimatedReady.clear();
-      this.mobileAnimatedLoading.clear();
-
-      for (let i = 0; i < this.emojis.length; i += 1) {
-        const emoji = this.emojis[i];
-        const asset = assets[i];
-        if (!emoji?.element || !asset) continue;
-
-        emoji.codePoint = asset.codePoint;
-        emoji.char = asset.char;
-        emoji.name = asset.name;
-        emoji.url = asset.url;
-        emoji.element.dataset.src = asset.url;
-        emoji.element.dataset.codePoint = asset.codePoint;
-        emoji.element.dataset.emojiChar = asset.char;
-        emoji.element.dataset.emojiName = asset.name;
-        emoji.element.alt = asset.name;
-        emoji.staticURL = null;
-        emoji.staticReady = false;
-        emoji.animatedReady = false;
-        emoji.animatedPreloadPromise = null;
-        emoji.isMobileActive = false;
-        emoji.animationEndsAt = 0;
-
-        if (this.isMobileOrTablet) {
-          emoji.element.removeAttribute('src');
-          emoji.element.style.visibility = 'hidden';
-          emoji.element.style.opacity = '0';
-        } else {
-          emoji.element.src = asset.url;
-          emoji.element.style.visibility = 'visible';
-          emoji.element.style.opacity = '1';
-        }
-      }
-
-      if (this.isMobileOrTablet) {
-        await this._prepareMobileStaticFrames();
-        await this._prepareMobileAnimatedFrames();
-        this._startMobileAnimationScheduler();
-      }
-
-      window.dispatchEvent(new CustomEvent('emoji-set-changed', {
-        detail: { emojis: this.emojis.map((emoji) => ({
-          index: emoji.index,
-          codePoint: emoji.codePoint,
-          char: emoji.char,
-          name: emoji.name,
-          url: emoji.url
-        })) }
-      }));
-
-      console.log('🔄 Emoji set refreshed with 24 validated Noto animations.');
-      return true;
-    } catch (error) {
-      console.error('[Emoji World] Emoji refresh failed:', error);
-      return false;
-    } finally {
-      this.refreshingEmojiSet = false;
-      this._setEmojiRefreshBusy(false);
-    }
   }
 
   _updateCinematicTheme() {
@@ -988,11 +833,13 @@ export class EmojiWorld {
       {
         index: 6,
         name: 'Party',
-        idleType: 'spin',
+        // Index 6 is the platform that previously rotated continuously.
+        // Keep its idle motion, but remove all rotation so any refreshed
+        // Noto emoji placed here remains upright on its glass platform.
+        idleType: 'bob',
         mass: 0.9,
         idleSpeed: 0.045,
-        idleAmplitude: 2,
-        spinSpeed: 0.010
+        idleAmplitude: 2
       },
 
       {
@@ -1249,119 +1096,313 @@ export class EmojiWorld {
   }
 
   /* ================================================================
-     CREATE 24 VALIDATED NOTO EMOJI ELEMENTS
+     CREATE 24 EMOJI ELEMENTS
      ================================================================ */
 
-  async _createEmojis() {
+  _createEmojis() {
 
     console.log(
-      '[Emoji World] Validating Noto Emoji animation assets...'
+      '[Emoji World] Creating 24 native WebP emojis...'
     );
 
     this.nextSoundAt =
       performance.now() +
       3000 +
-      Math.random() * 5000;
+      Math.random() * 5000,
 
-    this.emojis.forEach((emoji) => {
-      if (emoji?.element?.parentNode) {
-        emoji.element.parentNode.removeChild(emoji.element);
+
+    /*
+     * Remove old DOM elements.
+     */
+
+    this.emojis.forEach(
+      emoji => {
+
+        if (
+          emoji.element &&
+          emoji.element.parentNode
+        ) {
+
+          emoji.element.parentNode.removeChild(
+            emoji.element
+          );
+
+        }
+
       }
-    });
+    );
 
-    this.emojis = [];
-    this.mobileStaticFrameReady.clear();
-    this.mobileStaticFrameLoading.clear();
-    this.mobileAnimatedReady.clear();
-    this.mobileAnimatedLoading.clear();
 
-    const assets = await selectValidatedEmojiSet(24);
-    this.emojiAssets = assets;
+    this.emojis =
+      [];
 
-    const layout = this._getGridLayout();
-    const { cols, spacing, startX, startY, emojiSize } = layout;
 
-    for (let i = 0; i < assets.length; i += 1) {
-      const asset = assets[i];
-      const col = i % cols;
-      const row = Math.floor(i / cols);
-      const x = startX + col * spacing;
-      const y = startY + row * spacing;
+    const layout =
+      this._getGridLayout();
 
-      const element = document.createElement('img');
-      element.className = 'emoji-webp';
-      element.alt = asset.name;
-      element.draggable = false;
-      element.decoding = 'async';
-      element.setAttribute('aria-hidden', 'true');
-      element.style.position = 'absolute';
-      element.style.left = `${x}px`;
-      element.style.top = `${y}px`;
-      element.style.width = `${emojiSize}px`;
-      element.style.height = `${emojiSize}px`;
-      element.style.transform = 'translate(-50%, -50%)';
-      element.style.objectFit = 'contain';
-      element.style.pointerEvents = 'none';
-      element.style.userSelect = 'none';
-      element.style.webkitUserDrag = 'none';
-      element.style.visibility = 'hidden';
-      element.style.opacity = '0';
+
+    const {
+      cols,
+      spacing,
+      startX,
+      startY,
+      emojiSize
+    } =
+      layout;
+
+
+    for (
+      let i = 0;
+      i < 24;
+      i++
+    ) {
+
+      const col =
+        i % cols;
+
+
+      const row =
+        Math.floor(
+          i / cols
+        );
+
+
+      const x =
+        startX +
+        col * spacing;
+
+
+      const y =
+        startY +
+        row * spacing;
+
+
+      const element =
+        document.createElement(
+          'img'
+        );
+
+
+      const src =
+        `/assets/emojis/512 (${i + 1}).webp`;
+
+
+      element.className =
+        'emoji-webp';
+
+
+      element.alt =
+        '';
+
+
+      element.draggable =
+        false;
+
+
+      element.decoding =
+        'async';
+
+
+      element.setAttribute(
+        'aria-hidden',
+        'true'
+      );
+
+
+      element.style.position =
+        'absolute';
+
+
+      element.style.left =
+        `${x}px`;
+
+
+      element.style.top =
+        `${y}px`;
+
+
+      element.style.width =
+        `${emojiSize}px`;
+
+
+      element.style.height =
+        `${emojiSize}px`;
+
+
+      element.style.transform =
+        'translate(-50%, -50%)';
+
+
+      element.style.objectFit =
+        'contain';
+
+
+      element.style.pointerEvents =
+        'none';
+
+
+      element.style.userSelect =
+        'none';
+
+
+      element.style.webkitUserDrag =
+        'none';
+
 
       /*
-       * The URL has already passed an image-load/decode check. It is safe to
-       * use as the real animated source; no broken-image element is exposed.
+       * will-change is intentionally not applied to all 24 images.
+       * It is enabled only for currently active mobile animations.
        */
-      element.dataset.src = asset.url;
-      element.dataset.codePoint = asset.codePoint;
-      element.dataset.emojiChar = asset.char;
-      element.dataset.emojiName = asset.name;
 
-      if (!this.isMobileOrTablet) {
-        element.src = asset.url;
-        element.style.visibility = 'visible';
-        element.style.opacity = '1';
+      /*
+       * Store the real animated WebP.
+       */
+
+      element.dataset.src =
+        src;
+
+
+      /*
+       * IMPORTANT MOBILE CHANGE:
+       *
+       * Do NOT leave mobile emojis hidden.
+       *
+       * Every emoji is visible immediately.
+       *
+       * Only the src of the currently active
+       * 5 emojis will be changed to the animated
+       * WebP by the scheduler.
+       *
+       * Inactive emojis use their static frame.
+       */
+
+      element.style.visibility =
+        'visible';
+
+      element.style.opacity =
+        '1';
+
+
+      /*
+       * Desktop immediately receives
+       * its animated WebP.
+       */
+
+      if (
+        !this.isMobileOrTablet
+      ) {
+
+        element.src =
+          src;
+
       }
 
-      this.emojiLayer.appendChild(element);
 
-      this.emojis.push({
-        index: i,
-        element,
-        x,
-        y,
-        originalX: x,
-        originalY: y,
-        targetX: x,
-        targetY: y,
-        size: emojiSize,
-        rotation: 0,
-        scale: 1,
-        cursorOffsetX: 0,
-        cursorOffsetY: 0,
-        idleTime: Math.random() * Math.PI * 2,
-        isFlying: false,
-        scannerState: null,
-        scannerOriginalParent: null,
-        scannerOriginalNextSibling: null,
-        isMobileActive: false,
-        animationEndsAt: 0,
-        staticReady: false,
-        staticURL: null,
-        animatedReady: false,
-        animatedPreloadPromise: null,
-        physicsBody: null,
-        codePoint: asset.codePoint,
-        char: asset.char,
-        name: asset.name,
-        url: asset.url,
-        config: this.emojiConfigs[i]
-      });
+      this.emojiLayer.appendChild(
+        element
+      );
+
+
+      const emoji = {
+
+        index:
+          i,
+
+        element:
+          element,
+
+        x:
+          x,
+
+        y:
+          y,
+
+        originalX:
+          x,
+
+        originalY:
+          y,
+
+        targetX:
+          x,
+
+        targetY:
+          y,
+
+        size:
+          emojiSize,
+
+        rotation:
+          0,
+
+        scale:
+          1,
+
+        cursorOffsetX:
+          0,
+
+        cursorOffsetY:
+          0,
+
+        idleTime:
+          Math.random() *
+          Math.PI *
+          2,
+
+        isFlying:
+          false,
+
+        /* Clipboard scanner state. The SAME emoji DOM node is
+         * temporarily portaled to <body>; no duplicate is created. */
+        scannerState:
+          null,
+
+        scannerOriginalParent:
+          null,
+
+        scannerOriginalNextSibling:
+          null,
+
+        isMobileActive:
+          false,
+
+        animationEndsAt:
+          0,
+
+        staticReady:
+          false,
+
+        staticURL:
+          null,
+
+        animatedReady:
+          false,
+
+        animatedPreloadPromise:
+          null,
+
+        physicsBody:
+          null,
+
+        config:
+          this.emojiConfigs[i]
+
+      };
+
+
+      this.emojis.push(
+        emoji
+      );
+
     }
 
+
     console.log(
-      `[Emoji World] ✓ ${this.emojis.length}/24 validated Noto Emoji animations ready`
+      `[Emoji World] ✓ ${this.emojis.length} emoji elements created`
     );
+
   }
+
 
   /* ================================================================
      MOBILE STATIC FRAME PREPARATION
@@ -2116,7 +2157,7 @@ export class EmojiWorld {
      SETUP SCENE
      ================================================================ */
 
-  async _setupScene() {
+  _setupScene() {
 
     /*
      * ------------------------------------------------------------
@@ -2175,7 +2216,7 @@ export class EmojiWorld {
      * ------------------------------------------------------------
      */
 
-    await this._createEmojisAndCubes();
+    this._createEmojisAndCubes();
 
 
     /* Reposition after creating the scene. No physics engine is used. */
@@ -2348,7 +2389,7 @@ export class EmojiWorld {
      CREATE EMOJIS + GLASS PLATFORMS
      ================================================================ */
 
-  async _createEmojisAndCubes() {
+  _createEmojisAndCubes() {
 
     this.cubes =
       [];
@@ -2367,7 +2408,7 @@ export class EmojiWorld {
      * Create the 24 native WebP elements.
      */
 
-    await this._createEmojis();
+    this._createEmojis();
 
 
     const layout =
@@ -8962,8 +9003,6 @@ export class EmojiWorld {
       '✓ Emoji World destroyed'
     );
 
-    this.emojiRefreshButton?.remove();
-    this.emojiRefreshButton = null;
   }
   /* ================================================================
      FINAL INITIALIZATION HELPERS
