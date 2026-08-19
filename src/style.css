@@ -1310,3 +1310,104 @@ html[data-theme="dark"] #app {
         transition: none;
     }
 }
+
+/* ============================================================
+   VISIBLE SUN / MOON CURSOR OVERRIDE
+   Use CSS-drawn shapes instead of relying on Unicode glyphs.
+   This keeps the cursor visible across Windows/macOS fonts.
+   ============================================================ */
+.emoji-cinematic-cursor {
+    width: 1px !important;
+    height: 1px !important;
+    z-index: 2147483647 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    overflow: visible !important;
+    pointer-events: none !important;
+}
+
+.emoji-cinematic-cursor__icon {
+    width: 54px !important;
+    height: 54px !important;
+    z-index: 10 !important;
+    font-size: 0 !important;
+    line-height: 0 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    overflow: visible !important;
+}
+
+/* Sun body */
+.emoji-cinematic-cursor.is-day .emoji-cinematic-cursor__icon::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 24px;
+    height: 24px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #fffbd5 0%, #ffe66b 28%, #ffc229 62%, #ff9f16 100%);
+    border: 1.5px solid rgba(255, 247, 190, .95);
+    box-shadow:
+        0 0 5px rgba(255, 250, 211, 1),
+        0 0 12px rgba(255, 202, 55, .98),
+        0 0 24px rgba(255, 160, 25, .85),
+        0 0 42px rgba(255, 153, 18, .52);
+}
+
+/* Sun rays */
+.emoji-cinematic-cursor.is-day .emoji-cinematic-cursor__icon::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 48px;
+    height: 48px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background:
+        linear-gradient(#ffd45a, #ffd45a) center top / 2px 8px no-repeat,
+        linear-gradient(#ffd45a, #ffd45a) center bottom / 2px 8px no-repeat,
+        linear-gradient(90deg, #ffd45a, #ffd45a) left center / 8px 2px no-repeat,
+        linear-gradient(90deg, #ffd45a, #ffd45a) right center / 8px 2px no-repeat,
+        linear-gradient(45deg, transparent 46%, #ffd45a 47%, #ffd45a 53%, transparent 54%) center / 100% 100% no-repeat;
+    filter: drop-shadow(0 0 5px rgba(255, 181, 32, .95));
+}
+
+/* Crescent moon */
+.emoji-cinematic-cursor.is-night .emoji-cinematic-cursor__icon::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 28px;
+    height: 28px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(circle at 32% 28%, #ffffff 0%, #eaf5ff 45%, #c5ddfa 100%);
+    box-shadow:
+        0 0 6px rgba(255,255,255,1),
+        0 0 14px rgba(209,232,255,.98),
+        0 0 27px rgba(151,201,255,.82),
+        0 0 46px rgba(122,181,255,.52);
+}
+
+.emoji-cinematic-cursor.is-night .emoji-cinematic-cursor__icon::after {
+    content: "";
+    position: absolute;
+    left: calc(50% + 8px);
+    top: calc(50% - 6px);
+    width: 29px;
+    height: 29px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: #121a29;
+    box-shadow: 0 0 5px rgba(126,181,255,.22);
+}
+
+@media (pointer: coarse) {
+    .emoji-cinematic-cursor {
+        display: none !important;
+    }
+}
