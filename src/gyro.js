@@ -45,15 +45,22 @@ export class GyroHandler {
     this.filteredAcceleration = 0;
     this.filteredRotation = 0;
 
+    /* High-pass shake filter. Slow tilt/rotation is intentionally
+     * filtered out so turning or gently moving the phone cannot
+     * trigger emoji drops. */
+    this.filteredAx = 0;
+    this.filteredAy = 0;
+    this.filteredAz = 0;
+    this.highPassMagnitude = 0;
+    this.shakeImpulseCount = 0;
+
     /* ==========================================================
        SHAKE SETTINGS
        ========================================================== */
 
     /*
-     * Lower than the old 25 threshold.
-     *
-     * This makes normal real-world phone shakes easier to detect
-     * while still filtering normal hand movement.
+     * Shake thresholds are applied to high-pass linear acceleration.
+     * Device rotation/orientation is never sufficient to trigger a drop.
      */
     /*
      * Hysteresis-based shake detection. There is deliberately NO
@@ -64,17 +71,17 @@ export class GyroHandler {
     this.shakeThreshold =
       Number.isFinite(options.shakeThreshold)
         ? options.shakeThreshold
-        : 7.0;
+        : 8.5;
 
     this.hardShakeThreshold =
       Number.isFinite(options.hardShakeThreshold)
         ? options.hardShakeThreshold
-        : 18.0;
+        : 20.0;
 
     this.shakeReleaseThreshold =
       Number.isFinite(options.shakeReleaseThreshold)
         ? options.shakeReleaseThreshold
-        : 4.5;
+        : 3.5;
 
     this.shakeArmed = true;
     this.lastShakeTime = 0;
@@ -317,7 +324,7 @@ export class GyroHandler {
       this.az =
         acceleration.z || 0;
 
-      this._detectShakeFromAcceleration(event.rotationRate);
+      this._detectShakeFromAcceleration();
 
       return;
     }
@@ -352,105 +359,57 @@ export class GyroHandler {
     this.ay = ay;
     this.az = az;
 
-    this._detectShakeWithGravity(event.rotationRate);
+    this._detectShakeWithGravity();
   }
 
   /* ============================================================
      SHAKE DETECTION
      ============================================================ */
 
-  _detectShakeFromAcceleration(rotationRate = null) {
-    const magnitude =
-      Math.sqrt(
-        this.ax * this.ax +
-        this.ay * this.ay +
-        this.az * this.az
-      );
-
-    /* The first sensor sample establishes a baseline. Never treat
-     * the jump from initial zeros as a real shake. */
-    if (!this.hasMotionBaseline) {
-      this.filteredAcceleration = magnitude;
-      this.previousAx = this.ax;
-      this.previousAy = this.ay;
-      this.previousAz = this.az;
-      this.hasMotionBaseline = true;
-      return;
-    }
-
+  _updateHighPassAcceleration() {
     /*
-     * Low-pass filtering.
+     * A slow phone turn/move produces a slowly changing acceleration
+     * vector. The low-pass component follows that slow change, leaving
+     * only quick acceleration changes in the high-pass signal.
      *
-     * Reduces sensor noise without adding noticeable delay.
+     * This is the important distinction between:
+     *   - tilt / orientation change -> ignored
+     *   - gentle hand movement      -> ignored
+     *   - actual shake impulse       -> detected
      */
+    const smoothing = 0.82;
 
-    this.filteredAcceleration +=
-      (magnitude -
-        this.filteredAcceleration) *
-      0.35;
+    this.filteredAx =
+      this.filteredAx * smoothing +
+      this.ax * (1 - smoothing);
 
-    /*
-     * Use the sudden acceleration change.
-     */
+    this.filteredAy =
+      this.filteredAy * smoothing +
+      this.ay * (1 - smoothing);
 
-    const delta =
-      Math.abs(
-        magnitude -
-        this.filteredAcceleration
-      );
+    this.filteredAz =
+      this.filteredAz * smoothing +
+      this.az * (1 - smoothing);
 
-    /*
-     * Combine acceleration magnitude and sudden movement.
-     */
+    const hx = this.ax - this.filteredAx;
+    const hy = this.ay - this.filteredAy;
+    const hz = this.az - this.filteredAz;
 
-    const rotationMagnitude =
-      rotationRate &&
-      Number.isFinite(rotationRate.alpha) &&
-      Number.isFinite(rotationRate.beta) &&
-      Number.isFinite(rotationRate.gamma)
-        ? Math.sqrt(
-            rotationRate.alpha * rotationRate.alpha +
-            rotationRate.beta * rotationRate.beta +
-            rotationRate.gamma * rotationRate.gamma
-          )
-        : 0;
+    this.highPassMagnitude =
+      Math.sqrt(hx * hx + hy * hy + hz * hz);
 
-    this.filteredRotation +=
-      (rotationMagnitude - this.filteredRotation) *
-      0.25;
-
-    const shakeForce =
-      Math.max(
-        magnitude,
-        delta * 2.5,
-        Math.max(0, rotationMagnitude - this.filteredRotation) * 0.55
-      );
-
-    this._triggerShakeIfNeeded(
-      shakeForce
-    );
+    return this.highPassMagnitude;
   }
 
-  /* ============================================================
-     SHAKE DETECTION WITH GRAVITY
-     * ============================================================ */
+  _detectShakeFromAcceleration() {
+    const highPass =
+      this._updateHighPassAcceleration();
 
-  _detectShakeWithGravity(rotationRate = null) {
-    /*
-     * Calculate total acceleration.
-     */
-
-    const magnitude =
-      Math.sqrt(
-        this.ax * this.ax +
-        this.ay * this.ay +
-        this.az * this.az
-      );
-
-    /* Ignore the first sensor packet: it establishes the baseline
-     * instead of looking like a huge jump from zero. */
     if (!this.hasMotionBaseline) {
-      this.filteredAcceleration = magnitude;
+      this.filteredAx = this.ax;
+      this.filteredAy = this.ay;
+      this.filteredAz = this.az;
+      this.highPassMagnitude = 0;
       this.previousAx = this.ax;
       this.previousAy = this.ay;
       this.previousAz = this.az;
@@ -459,97 +418,57 @@ export class GyroHandler {
     }
 
     /*
-     * Gravity is approximately 9.81 m/s².
+     * Only linear acceleration is allowed to trigger a shake.
+     * Rotation/orientation is deliberately NOT used as a trigger.
      */
+    this._triggerShakeIfNeeded(highPass);
+  }
 
-    const gravityRemoved =
-      Math.abs(
-        magnitude - 9.81
-      );
+  _detectShakeWithGravity() {
+    const highPass =
+      this._updateHighPassAcceleration();
+
+    if (!this.hasMotionBaseline) {
+      this.filteredAx = this.ax;
+      this.filteredAy = this.ay;
+      this.filteredAz = this.az;
+      this.highPassMagnitude = 0;
+      this.previousAx = this.ax;
+      this.previousAy = this.ay;
+      this.previousAz = this.az;
+      this.hasMotionBaseline = true;
+      return;
+    }
 
     /*
-     * Detect sudden change between sensor samples.
+     * accelerationIncludingGravity contains the ~9.81 m/s² gravity
+     * vector. The high-pass filter removes this stable component, and
+     * also removes slow changes caused by turning the phone.
      */
-
-    const deltaX =
-      this.ax -
-      this.previousAx;
-
-    const deltaY =
-      this.ay -
-      this.previousAy;
-
-    const deltaZ =
-      this.az -
-      this.previousAz;
-
-    const delta =
-      Math.sqrt(
-        deltaX * deltaX +
-        deltaY * deltaY +
-        deltaZ * deltaZ
-      );
-
-    /*
-     * Store current values.
-     */
-
-    this.previousAx =
-      this.ax;
-
-    this.previousAy =
-      this.ay;
-
-    this.previousAz =
-      this.az;
-
-    /*
-     * Combine both measurements.
-     *
-     * Sudden movement is more useful than simply checking
-     * total acceleration.
-     */
-
-    const rotationMagnitude =
-      rotationRate &&
-      Number.isFinite(rotationRate.alpha) &&
-      Number.isFinite(rotationRate.beta) &&
-      Number.isFinite(rotationRate.gamma)
-        ? Math.sqrt(
-            rotationRate.alpha * rotationRate.alpha +
-            rotationRate.beta * rotationRate.beta +
-            rotationRate.gamma * rotationRate.gamma
-          )
-        : 0;
-
-    this.filteredRotation +=
-      (rotationMagnitude - this.filteredRotation) *
-      0.25;
-
-    const shakeForce =
-      Math.max(
-        gravityRemoved,
-        delta,
-        Math.max(0, rotationMagnitude - this.filteredRotation) * 0.55
-      );
-
-    this._triggerShakeIfNeeded(
-      shakeForce
-    );
+    this._triggerShakeIfNeeded(highPass);
   }
 
   /* ============================================================
      TRIGGER SHAKE
      ============================================================ */
 
-  _triggerShakeIfNeeded(
-    shakeForce
-  ) {
+  _triggerShakeIfNeeded(shakeForce) {
     if (!Number.isFinite(shakeForce)) {
       return;
     }
 
-    /* Re-arm only after the motion has genuinely settled. */
+    /*
+     * Thresholds are based on the high-pass linear acceleration, not
+     * device rotation. This prevents a normal portrait/landscape turn
+     * or slight repositioning from being interpreted as a shake.
+     *
+     * Light shake:  quick, deliberate movement -> a small group drops
+     * Hard shake:   strong impulse             -> all available emojis drop
+     */
+    const lightThreshold = this.shakeThreshold;
+    const hardThreshold = this.hardShakeThreshold;
+
+    /* Re-arm after the phone has actually settled. No time cooldown. */
     if (
       !this.shakeArmed &&
       shakeForce <= this.shakeReleaseThreshold
@@ -560,7 +479,7 @@ export class GyroHandler {
 
     if (
       !this.shakeArmed ||
-      shakeForce < this.shakeThreshold
+      shakeForce < lightThreshold
     ) {
       return;
     }
@@ -573,7 +492,7 @@ export class GyroHandler {
 
     const payload = {
       force: shakeForce,
-      hard: shakeForce >= this.hardShakeThreshold,
+      hard: shakeForce >= hardThreshold,
       sequence: this.shakeSequence,
       timestamp: this.lastShakeTime
     };

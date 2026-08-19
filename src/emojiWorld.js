@@ -7938,6 +7938,88 @@ export class EmojiWorld {
 
     };
 
+    /*
+     * Cinematic DOM cursor icon.  The Pixi cursorLight continues to
+     * illuminate the scene; this element is only the visible cursor.
+     */
+    this.cursorVisual = null;
+    this.cursorVisualIcon = null;
+
+  }
+
+
+  /* ================================================================
+     CREATE CINEMATIC CURSOR VISUAL
+     ================================================================ */
+
+  _createCursorVisual() {
+
+    if (this.cursorVisual) {
+      return;
+    }
+
+    const cursor = document.createElement('div');
+    cursor.className = 'emoji-cinematic-cursor';
+    cursor.setAttribute('aria-hidden', 'true');
+
+    const icon = document.createElement('div');
+    icon.className = 'emoji-cinematic-cursor__icon';
+
+    cursor.appendChild(icon);
+    document.body.appendChild(cursor);
+
+    this.cursorVisual = cursor;
+    this.cursorVisualIcon = icon;
+
+    this._updateCursorVisualTheme();
+    this._updateCursorVisualPosition(true);
+
+  }
+
+
+  /* ================================================================
+     UPDATE CURSOR VISUAL THEME
+     ================================================================ */
+
+  _updateCursorVisualTheme() {
+
+    if (!this.cursorVisual || !this.cursorVisualIcon) {
+      return;
+    }
+
+    const dark = this.theme === 'dark';
+
+    this.cursorVisual.classList.toggle('is-night', dark);
+    this.cursorVisual.classList.toggle('is-day', !dark);
+
+    /* ☀ = warm sun / ☾ = crescent moon */
+    this.cursorVisualIcon.textContent = dark ? '☾' : '☀';
+
+  }
+
+
+  /* ================================================================
+     UPDATE CURSOR VISUAL POSITION
+     ================================================================ */
+
+  _updateCursorVisualPosition(instant = false) {
+
+    if (!this.cursorVisual) {
+      return;
+    }
+
+    const x = this.cursorLightX;
+    const y = this.cursorLightY;
+
+    this.cursorVisual.style.setProperty('--cursor-x', `${x}px`);
+    this.cursorVisual.style.setProperty('--cursor-y', `${y}px`);
+
+    if (instant) {
+      this.cursorVisual.style.setProperty('--cursor-transition', 'none');
+    } else {
+      this.cursorVisual.style.setProperty('--cursor-transition', 'transform 70ms linear');
+    }
+
   }
 
 
@@ -7999,6 +8081,8 @@ export class EmojiWorld {
 
     this.cursorLight =
       light;
+
+    this._createCursorVisual();
 
 
     /*
@@ -8130,6 +8214,7 @@ export class EmojiWorld {
 
 
     this._updateCursorLight();
+    this._updateCursorVisualPosition();
 
   }
 
@@ -8338,6 +8423,7 @@ export class EmojiWorld {
 
 
     this._createCursorLight();
+    this._createCursorVisual();
 
 
     this._createTitleGlow();
@@ -8503,6 +8589,7 @@ export class EmojiWorld {
 
 
     this._updateCursorLight();
+    this._updateCursorVisualTheme();
 
 
     this._updateTitleGlow();

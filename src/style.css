@@ -1170,3 +1170,143 @@ html[data-theme="dark"] #app {
         opacity: .06;
     }
 }
+
+/* ============================================================
+   CINEMATIC SUN / MOON CURSOR
+   ============================================================ */
+
+.emoji-cinematic-cursor {
+    --cursor-x: 50vw;
+    --cursor-y: 50vh;
+    --cursor-transition: transform 70ms linear;
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 1px;
+    height: 1px;
+    z-index: 2147483000;
+    pointer-events: none;
+    transform: translate3d(var(--cursor-x), var(--cursor-y), 0);
+    transition: var(--cursor-transition);
+    contain: layout style paint;
+}
+
+.emoji-cinematic-cursor__icon {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    transform: translate(-50%, -50%);
+    font-family: "Segoe UI Symbol", "Arial Unicode MS", sans-serif;
+    font-size: 31px;
+    line-height: 1;
+    font-weight: 700;
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Day: warm sun + orange/yellow cinematic glow */
+.emoji-cinematic-cursor.is-day::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 250px;
+    height: 250px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(circle,
+        rgba(255, 208, 72, 0.25) 0%,
+        rgba(255, 166, 35, 0.15) 18%,
+        rgba(255, 190, 70, 0.08) 38%,
+        rgba(255, 181, 65, 0.025) 60%,
+        rgba(255, 181, 65, 0) 76%);
+    filter: blur(2px);
+}
+
+.emoji-cinematic-cursor.is-day::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 78px;
+    height: 78px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(circle,
+        rgba(255, 239, 171, 0.52) 0%,
+        rgba(255, 191, 52, 0.22) 34%,
+        rgba(255, 166, 35, 0.05) 62%,
+        transparent 74%);
+}
+
+.emoji-cinematic-cursor.is-day .emoji-cinematic-cursor__icon {
+    color: #ffc928;
+    text-shadow:
+        0 0 4px rgba(255, 249, 201, 0.95),
+        0 0 10px rgba(255, 190, 46, 0.95),
+        0 0 20px rgba(255, 157, 24, 0.75),
+        0 0 34px rgba(255, 157, 24, 0.42);
+}
+
+/* Night: crescent moon + cool moonlight radius */
+.emoji-cinematic-cursor.is-night::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 270px;
+    height: 270px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(circle,
+        rgba(191, 220, 255, 0.20) 0%,
+        rgba(151, 195, 255, 0.12) 20%,
+        rgba(137, 184, 255, 0.06) 40%,
+        rgba(137, 184, 255, 0.018) 61%,
+        rgba(137, 184, 255, 0) 77%);
+    filter: blur(2px);
+}
+
+.emoji-cinematic-cursor.is-night::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 84px;
+    height: 84px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(circle,
+        rgba(235, 246, 255, 0.34) 0%,
+        rgba(188, 220, 255, 0.16) 35%,
+        rgba(146, 197, 255, 0.045) 62%,
+        transparent 75%);
+}
+
+.emoji-cinematic-cursor.is-night .emoji-cinematic-cursor__icon {
+    color: #e8f4ff;
+    font-size: 33px;
+    text-shadow:
+        0 0 4px rgba(255, 255, 255, 0.95),
+        0 0 11px rgba(205, 231, 255, 0.92),
+        0 0 22px rgba(144, 197, 255, 0.72),
+        0 0 36px rgba(126, 181, 255, 0.40);
+}
+
+@media (pointer: coarse) {
+    .emoji-cinematic-cursor {
+        display: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .emoji-cinematic-cursor {
+        transition: none;
+    }
+}
