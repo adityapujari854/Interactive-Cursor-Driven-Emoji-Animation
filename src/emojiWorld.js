@@ -7992,8 +7992,48 @@ export class EmojiWorld {
     this.cursorVisual.classList.toggle('is-night', dark);
     this.cursorVisual.classList.toggle('is-day', !dark);
 
-    /* ☀ = warm sun / ☾ = crescent moon */
-    this.cursorVisualIcon.textContent = dark ? '☾' : '☀';
+    /*
+     * Use inline SVG instead of Unicode glyphs. This makes the visible
+     * sun/moon cursor identical across Chrome, Edge, Android and Windows
+     * regardless of the fonts installed on the device.
+     */
+    this.cursorVisualIcon.innerHTML = dark
+      ? `
+        <svg class="cursor-moon-svg" viewBox="0 0 64 64" aria-hidden="true">
+          <defs>
+            <radialGradient id="moonFill" cx="35%" cy="30%">
+              <stop offset="0%" stop-color="#ffffff"/>
+              <stop offset="55%" stop-color="#e7f4ff"/>
+              <stop offset="100%" stop-color="#b7d9f7"/>
+            </radialGradient>
+          </defs>
+          <circle cx="31" cy="32" r="20" fill="url(#moonFill)"/>
+          <circle cx="41" cy="25" r="20" fill="#111722"/>
+          <circle cx="24" cy="24" r="2.2" fill="#c6def2" opacity=".75"/>
+          <circle cx="27" cy="39" r="1.5" fill="#c6def2" opacity=".55"/>
+        </svg>`
+      : `
+        <svg class="cursor-sun-svg" viewBox="0 0 64 64" aria-hidden="true">
+          <defs>
+            <radialGradient id="sunFill" cx="35%" cy="30%">
+              <stop offset="0%" stop-color="#fff8b5"/>
+              <stop offset="45%" stop-color="#ffd83d"/>
+              <stop offset="100%" stop-color="#ff9f1c"/>
+            </radialGradient>
+          </defs>
+          <g fill="#ffb51b">
+            <rect x="30" y="2" width="4" height="12" rx="2"/>
+            <rect x="30" y="50" width="4" height="12" rx="2"/>
+            <rect x="2" y="30" width="12" height="4" rx="2"/>
+            <rect x="50" y="30" width="12" height="4" rx="2"/>
+            <rect x="9" y="9" width="4" height="12" rx="2" transform="rotate(-45 11 15)"/>
+            <rect x="51" y="9" width="4" height="12" rx="2" transform="rotate(45 53 15)"/>
+            <rect x="9" y="43" width="4" height="12" rx="2" transform="rotate(45 11 49)"/>
+            <rect x="51" y="43" width="4" height="12" rx="2" transform="rotate(-45 53 49)"/>
+          </g>
+          <circle cx="32" cy="32" r="19" fill="url(#sunFill)"/>
+          <circle cx="25" cy="25" r="5" fill="#fff7ae" opacity=".45"/>
+        </svg>`;
 
   }
 

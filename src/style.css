@@ -1178,55 +1178,58 @@ html[data-theme="dark"] #app {
 .emoji-cinematic-cursor {
     --cursor-x: 50vw;
     --cursor-y: 50vh;
-    --cursor-transition: transform 70ms linear;
+    --cursor-transition: transform 55ms linear;
     position: fixed;
     left: 0;
     top: 0;
     width: 1px;
     height: 1px;
-    z-index: 2147483000;
+    z-index: 2147483647;
     pointer-events: none;
     transform: translate3d(var(--cursor-x), var(--cursor-y), 0);
     transition: var(--cursor-transition);
     contain: layout style paint;
+    isolation: isolate;
 }
 
 .emoji-cinematic-cursor__icon {
     position: absolute;
     left: 0;
     top: 0;
-    width: 42px;
-    height: 42px;
-    display: grid;
-    place-items: center;
+    width: 58px;
+    height: 58px;
     transform: translate(-50%, -50%);
-    font-family: "Segoe UI Symbol", "Arial Unicode MS", sans-serif;
-    font-size: 31px;
-    line-height: 1;
-    font-weight: 700;
+    display: block;
     pointer-events: none;
     user-select: none;
     -webkit-user-select: none;
-    -webkit-font-smoothing: antialiased;
 }
 
-/* Day: warm sun + orange/yellow cinematic glow */
+.emoji-cinematic-cursor__icon svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+/* Light mode: clearly visible golden sun + warm solar halo. */
 .emoji-cinematic-cursor.is-day::before {
     content: "";
     position: absolute;
     left: 0;
     top: 0;
-    width: 250px;
-    height: 250px;
+    width: 290px;
+    height: 290px;
     transform: translate(-50%, -50%);
     border-radius: 50%;
     background: radial-gradient(circle,
-        rgba(255, 208, 72, 0.25) 0%,
-        rgba(255, 166, 35, 0.15) 18%,
-        rgba(255, 190, 70, 0.08) 38%,
-        rgba(255, 181, 65, 0.025) 60%,
-        rgba(255, 181, 65, 0) 76%);
+        rgba(255, 224, 91, .30) 0%,
+        rgba(255, 181, 31, .20) 15%,
+        rgba(255, 165, 24, .10) 34%,
+        rgba(255, 181, 65, .035) 62%,
+        transparent 78%);
     filter: blur(2px);
+    z-index: -2;
 }
 
 .emoji-cinematic-cursor.is-day::after {
@@ -1234,43 +1237,45 @@ html[data-theme="dark"] #app {
     position: absolute;
     left: 0;
     top: 0;
-    width: 78px;
-    height: 78px;
+    width: 105px;
+    height: 105px;
     transform: translate(-50%, -50%);
     border-radius: 50%;
     background: radial-gradient(circle,
-        rgba(255, 239, 171, 0.52) 0%,
-        rgba(255, 191, 52, 0.22) 34%,
-        rgba(255, 166, 35, 0.05) 62%,
-        transparent 74%);
+        rgba(255, 250, 205, .60) 0%,
+        rgba(255, 213, 63, .30) 28%,
+        rgba(255, 164, 22, .11) 56%,
+        transparent 75%);
+    filter: blur(1px);
+    z-index: -1;
 }
 
 .emoji-cinematic-cursor.is-day .emoji-cinematic-cursor__icon {
-    color: #ffc928;
-    text-shadow:
-        0 0 4px rgba(255, 249, 201, 0.95),
-        0 0 10px rgba(255, 190, 46, 0.95),
-        0 0 20px rgba(255, 157, 24, 0.75),
-        0 0 34px rgba(255, 157, 24, 0.42);
+    filter:
+        drop-shadow(0 0 3px rgba(255,255,210,.95))
+        drop-shadow(0 0 9px rgba(255,193,43,.95))
+        drop-shadow(0 0 22px rgba(255,147,20,.78))
+        drop-shadow(0 0 38px rgba(255,150,20,.42));
 }
 
-/* Night: crescent moon + cool moonlight radius */
+/* Dark mode: clearly visible crescent moon + cool moonlight halo. */
 .emoji-cinematic-cursor.is-night::before {
     content: "";
     position: absolute;
     left: 0;
     top: 0;
-    width: 270px;
-    height: 270px;
+    width: 310px;
+    height: 310px;
     transform: translate(-50%, -50%);
     border-radius: 50%;
     background: radial-gradient(circle,
-        rgba(191, 220, 255, 0.20) 0%,
-        rgba(151, 195, 255, 0.12) 20%,
-        rgba(137, 184, 255, 0.06) 40%,
-        rgba(137, 184, 255, 0.018) 61%,
-        rgba(137, 184, 255, 0) 77%);
+        rgba(225, 242, 255, .23) 0%,
+        rgba(177, 215, 255, .15) 17%,
+        rgba(137, 190, 255, .075) 38%,
+        rgba(120, 178, 255, .025) 63%,
+        transparent 80%);
     filter: blur(2px);
+    z-index: -2;
 }
 
 .emoji-cinematic-cursor.is-night::after {
@@ -1278,25 +1283,24 @@ html[data-theme="dark"] #app {
     position: absolute;
     left: 0;
     top: 0;
-    width: 84px;
-    height: 84px;
+    width: 110px;
+    height: 110px;
     transform: translate(-50%, -50%);
     border-radius: 50%;
     background: radial-gradient(circle,
-        rgba(235, 246, 255, 0.34) 0%,
-        rgba(188, 220, 255, 0.16) 35%,
-        rgba(146, 197, 255, 0.045) 62%,
-        transparent 75%);
+        rgba(255,255,255,.42) 0%,
+        rgba(207,233,255,.24) 30%,
+        rgba(154,204,255,.08) 60%,
+        transparent 77%);
+    z-index: -1;
 }
 
 .emoji-cinematic-cursor.is-night .emoji-cinematic-cursor__icon {
-    color: #e8f4ff;
-    font-size: 33px;
-    text-shadow:
-        0 0 4px rgba(255, 255, 255, 0.95),
-        0 0 11px rgba(205, 231, 255, 0.92),
-        0 0 22px rgba(144, 197, 255, 0.72),
-        0 0 36px rgba(126, 181, 255, 0.40);
+    filter:
+        drop-shadow(0 0 4px rgba(255,255,255,1))
+        drop-shadow(0 0 10px rgba(215,239,255,.95))
+        drop-shadow(0 0 24px rgba(145,202,255,.80))
+        drop-shadow(0 0 42px rgba(113,177,255,.48));
 }
 
 @media (pointer: coarse) {
@@ -1308,106 +1312,5 @@ html[data-theme="dark"] #app {
 @media (prefers-reduced-motion: reduce) {
     .emoji-cinematic-cursor {
         transition: none;
-    }
-}
-
-/* ============================================================
-   VISIBLE SUN / MOON CURSOR OVERRIDE
-   Use CSS-drawn shapes instead of relying on Unicode glyphs.
-   This keeps the cursor visible across Windows/macOS fonts.
-   ============================================================ */
-.emoji-cinematic-cursor {
-    width: 1px !important;
-    height: 1px !important;
-    z-index: 2147483647 !important;
-    opacity: 1 !important;
-    visibility: visible !important;
-    overflow: visible !important;
-    pointer-events: none !important;
-}
-
-.emoji-cinematic-cursor__icon {
-    width: 54px !important;
-    height: 54px !important;
-    z-index: 10 !important;
-    font-size: 0 !important;
-    line-height: 0 !important;
-    opacity: 1 !important;
-    visibility: visible !important;
-    overflow: visible !important;
-}
-
-/* Sun body */
-.emoji-cinematic-cursor.is-day .emoji-cinematic-cursor__icon::before {
-    content: "";
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    width: 24px;
-    height: 24px;
-    transform: translate(-50%, -50%);
-    border-radius: 50%;
-    background: radial-gradient(circle at 35% 30%, #fffbd5 0%, #ffe66b 28%, #ffc229 62%, #ff9f16 100%);
-    border: 1.5px solid rgba(255, 247, 190, .95);
-    box-shadow:
-        0 0 5px rgba(255, 250, 211, 1),
-        0 0 12px rgba(255, 202, 55, .98),
-        0 0 24px rgba(255, 160, 25, .85),
-        0 0 42px rgba(255, 153, 18, .52);
-}
-
-/* Sun rays */
-.emoji-cinematic-cursor.is-day .emoji-cinematic-cursor__icon::after {
-    content: "";
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    width: 48px;
-    height: 48px;
-    transform: translate(-50%, -50%);
-    border-radius: 50%;
-    background:
-        linear-gradient(#ffd45a, #ffd45a) center top / 2px 8px no-repeat,
-        linear-gradient(#ffd45a, #ffd45a) center bottom / 2px 8px no-repeat,
-        linear-gradient(90deg, #ffd45a, #ffd45a) left center / 8px 2px no-repeat,
-        linear-gradient(90deg, #ffd45a, #ffd45a) right center / 8px 2px no-repeat,
-        linear-gradient(45deg, transparent 46%, #ffd45a 47%, #ffd45a 53%, transparent 54%) center / 100% 100% no-repeat;
-    filter: drop-shadow(0 0 5px rgba(255, 181, 32, .95));
-}
-
-/* Crescent moon */
-.emoji-cinematic-cursor.is-night .emoji-cinematic-cursor__icon::before {
-    content: "";
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    width: 28px;
-    height: 28px;
-    transform: translate(-50%, -50%);
-    border-radius: 50%;
-    background: radial-gradient(circle at 32% 28%, #ffffff 0%, #eaf5ff 45%, #c5ddfa 100%);
-    box-shadow:
-        0 0 6px rgba(255,255,255,1),
-        0 0 14px rgba(209,232,255,.98),
-        0 0 27px rgba(151,201,255,.82),
-        0 0 46px rgba(122,181,255,.52);
-}
-
-.emoji-cinematic-cursor.is-night .emoji-cinematic-cursor__icon::after {
-    content: "";
-    position: absolute;
-    left: calc(50% + 8px);
-    top: calc(50% - 6px);
-    width: 29px;
-    height: 29px;
-    transform: translate(-50%, -50%);
-    border-radius: 50%;
-    background: #121a29;
-    box-shadow: 0 0 5px rgba(126,181,255,.22);
-}
-
-@media (pointer: coarse) {
-    .emoji-cinematic-cursor {
-        display: none !important;
     }
 }
