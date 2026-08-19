@@ -7082,6 +7082,8 @@ export class EmojiWorld {
      */
     this.cursorVisual = null;
     this.cursorVisualIcon = null;
+    this.cursorEmojiTimer = null;
+    this.cursorEmojiIndex = -1;
 
   }
 
@@ -7111,6 +7113,8 @@ export class EmojiWorld {
 
     this._updateCursorVisualTheme();
     this._updateCursorVisualPosition(true);
+    this._setRandomCursorEmoji(true);
+    this._startCursorEmojiRotation();
 
   }
 
@@ -7133,11 +7137,81 @@ export class EmojiWorld {
      */
     this.cursorVisual.classList.toggle('is-night', dark);
     this.cursorVisual.classList.toggle('is-day', !dark);
-    this.cursorVisualIcon.textContent = '';
     this.cursorVisualIcon.setAttribute(
       'data-theme',
       dark ? 'dark' : 'light'
     );
+  }
+
+
+  /* ================================================================
+     RANDOM EMOJI CURSOR
+     ================================================================ */
+
+  _getCursorEmojiPool() {
+
+    return [
+      '😀','😃','😄','😁','😆','😅','😂','🤣','😊','😇','🙂','🙃',
+      '😉','😌','😍','🥰','😘','😗','😙','😚','😋','😛','😝','😜',
+      '🤪','🤨','🧐','🤓','😎','🥳','🤩','😏','😒','😞','😔','😟',
+      '😕','🙁','☹️','😣','😖','😫','😩','🥺','😢','😭','😤','😠',
+      '😡','🤬','🤯','😳','🥵','🥶','😱','😨','😰','😥','😓','🤗',
+      '🤔','🫡','🤭','🤫','🤥','😶','😐','😑','😬','🙄','😯','😦',
+      '😧','😮','😲','🥱','😴','🤤','😪','😵','🤐','🥴','🤢','🤮',
+      '🤧','😷','🤒','🤕','🤑','🤠','😈','👿','👹','👺','🤡','💩',
+      '👻','💀','☠️','👽','🤖','🎃','😺','😸','😹','😻','😼','😽',
+      '🙀','😿','😾','🙈','🙉','🙊','🐵','🦊','🐼','🐸','🦄','🐙',
+      '🦋','🌈','⭐','🌟','✨','🔥','💫','⚡','💥','🌙','☀️','🍀',
+      '🍕','🍔','🍩','🍪','🍉','🍓','🍌','🍎','🍭','🎈','🎉','🎊',
+      '🎁','🚀','🛸','💎','❤️','💙','💜','💚','🧡','💛','🩷','🤍',
+      '🖤','🤎','💖','💗','💓','💞','💘','💝','💟','👍','👎','👏',
+      '🙌','🤝','🙏','💪','👀','👋','✌️','🤟','👌','🤌','🫶','🧠'
+    ];
+
+  }
+
+
+  _setRandomCursorEmoji(initial = false) {
+
+    if (!this.cursorVisualIcon) {
+      return;
+    }
+
+    const pool = this._getCursorEmojiPool();
+
+    if (!pool.length) {
+      return;
+    }
+
+    let nextIndex = Math.floor(Math.random() * pool.length);
+
+    if (!initial && pool.length > 1 && nextIndex === this.cursorEmojiIndex) {
+      nextIndex = (nextIndex + 1 + Math.floor(Math.random() * (pool.length - 1))) % pool.length;
+    }
+
+    this.cursorEmojiIndex = nextIndex;
+    this.cursorVisualIcon.textContent = pool[nextIndex];
+    this.cursorVisualIcon.setAttribute('aria-label', `Cursor emoji ${pool[nextIndex]}`);
+
+    /* Restart the tiny float animation so each new emoji appears cleanly. */
+    this.cursorVisualIcon.style.animation = 'none';
+    void this.cursorVisualIcon.offsetWidth;
+    this.cursorVisualIcon.style.animation = '';
+
+  }
+
+
+  _startCursorEmojiRotation() {
+
+    if (this.cursorEmojiTimer) {
+      clearInterval(this.cursorEmojiTimer);
+    }
+
+    /* Change to a new random emoji every 5 seconds without reloading the page. */
+    this.cursorEmojiTimer = window.setInterval(() => {
+      this._setRandomCursorEmoji(false);
+    }, 5000);
+
   }
 
 
@@ -7266,24 +7340,12 @@ export class EmojiWorld {
       return;
     }
 
-    const x = this.cursorLightX;
-    const y = this.cursorLightY;
-    const dark = this.theme === 'dark';
-    const warm = 0xffb45f;
-    const cool = 0xdce8ff;
-
+    /*
+     * The visible pointer is now the random emoji DOM cursor.
+     * Keep the Pixi cursor-light layer empty so it cannot create the old
+     * large moving circles/halos underneath the pointer.
+     */
     this.cursorLight.clear();
-
-    /* Broad illumination used by the scene. */
-    this.cursorLight.circle(x, y, dark ? 145 : 115).fill({
-      color: dark ? warm : cool,
-      alpha: dark ? 0.075 : 0.055
-    });
-
-    this.cursorLight.circle(x, y, dark ? 75 : 62).fill({
-      color: dark ? warm : 0xffffff,
-      alpha: dark ? 0.11 : 0.075
-    });
 
 
   }
@@ -8939,6 +9001,18 @@ export class EmojiWorld {
     /*
      * Visual-effect cleanup.
      */
+
+    if (this.cursorEmojiTimer) {
+      clearInterval(this.cursorEmojiTimer);
+      this.cursorEmojiTimer = null;
+    }
+
+    if (this.cursorVisual && this.cursorVisual.parentNode) {
+      this.cursorVisual.parentNode.removeChild(this.cursorVisual);
+    }
+
+    this.cursorVisual = null;
+    this.cursorVisualIcon = null;
 
     this._destroyVisualEffects();
 
