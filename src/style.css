@@ -1796,39 +1796,114 @@ body.dark-mode .emoji-tutorial-card {
    PREMIUM MARBLE + GLASS FINISH
    ============================================================ */
 
+/* ============================================================
+   PREMIUM LIGHT MARBLE BACKGROUND
+   Applied to the actual cinematic-scene rendered by EmojiWorld.
+   ============================================================ */
+
 html[data-theme="light"],
 html[data-theme="light"] body,
 html[data-theme="light"] #app {
     background:
-        radial-gradient(circle at 50% 8%, rgba(255,255,255,.98) 0%, rgba(250,252,253,.96) 26%, rgba(239,245,249,.92) 63%, rgba(225,235,242,.96) 100%) !important;
+        radial-gradient(circle at 50% 6%, rgba(255,255,255,.99) 0%, rgba(250,252,254,.97) 24%, rgba(239,245,249,.96) 58%, rgba(221,232,240,.98) 100%),
+        linear-gradient(135deg, #ffffff 0%, #edf3f7 48%, #dce8ef 100%) !important;
 }
 
+/* Base depth behind the transparent Pixi canvas. */
 #cinematic-scene {
     background:
-        radial-gradient(circle at 50% 5%, #ffffff 0%, #f9fbfd 27%, #eef4f7 66%, #dfeaf0 100%) !important;
+        radial-gradient(circle at 50% 5%, #ffffff 0%, #f8fbfd 23%, #edf4f8 54%, #dce8ef 100%),
+        linear-gradient(135deg, #ffffff 0%, #edf3f7 50%, #dce8ef 100%) !important;
 }
 
+/* Soft, visible marble veins — intentionally subtle rather than noisy. */
 #cinematic-scene::after {
     content: "";
     position: absolute;
-    inset: -18%;
+    inset: -20%;
     z-index: 8;
     pointer-events: none;
-    opacity: .34;
+    opacity: .72;
     background:
-        radial-gradient(ellipse at 16% 28%, transparent 0 17%, rgba(143,166,182,.075) 18%, transparent 22%),
-        radial-gradient(ellipse at 72% 72%, transparent 0 20%, rgba(126,153,171,.06) 21%, transparent 25%),
-        repeating-linear-gradient(112deg, transparent 0 70px, rgba(122,151,169,.035) 72px, transparent 76px 150px),
-        repeating-linear-gradient(68deg, transparent 0 110px, rgba(255,255,255,.28) 112px, transparent 116px 230px);
-    filter: blur(8px) saturate(.8);
+        radial-gradient(ellipse at 12% 24%, transparent 0 14%, rgba(116,145,164,.095) 15%, transparent 19%),
+        radial-gradient(ellipse at 78% 70%, transparent 0 16%, rgba(116,145,164,.075) 17%, transparent 22%),
+        radial-gradient(ellipse at 45% 48%, transparent 0 24%, rgba(255,255,255,.42) 25%, transparent 29%),
+        repeating-linear-gradient(
+            112deg,
+            transparent 0 58px,
+            rgba(104,137,158,.055) 60px,
+            rgba(255,255,255,.18) 63px,
+            transparent 67px 150px
+        ),
+        repeating-linear-gradient(
+            68deg,
+            transparent 0 92px,
+            rgba(105,137,158,.042) 95px,
+            rgba(255,255,255,.20) 99px,
+            transparent 104px 210px
+        );
+    filter: blur(6px) saturate(.78);
     mix-blend-mode: multiply;
-    transform: translate3d(calc(var(--scene-x, 0px) * .12), calc(var(--scene-y, 0px) * .12), 0) scale(1.03);
+    transform: translate3d(
+        calc(var(--scene-x, 0px) * .12),
+        calc(var(--scene-y, 0px) * .12),
+        0
+    ) scale(1.04);
 }
 
+/* The atmosphere is the layer actually covering the page.
+   Give it enough tonal variation for the marble to remain visible. */
 #cinematic-scene .scene-atmosphere {
     background:
-        radial-gradient(circle at 50% 13%, rgba(255,255,255,.99) 0%, rgba(248,251,253,.95) 32%, rgba(233,241,246,.86) 69%, rgba(220,231,238,.82) 100%),
-        linear-gradient(145deg, #ffffff 0%, #edf4f8 100%) !important;
+        radial-gradient(
+            circle at 50% 10%,
+            rgba(255,255,255,.985) 0%,
+            rgba(249,252,254,.94) 25%,
+            rgba(238,245,249,.88) 58%,
+            rgba(218,231,239,.82) 100%
+        ),
+        linear-gradient(
+            145deg,
+            rgba(255,255,255,.96) 0%,
+            rgba(239,246,250,.88) 48%,
+            rgba(219,231,239,.92) 100%
+        ) !important;
+}
+
+/* Additional low-contrast flowing marble highlights. */
+html[data-theme="light"] #cinematic-scene .scene-horizon {
+    background:
+        radial-gradient(
+            ellipse at 50% 42%,
+            rgba(255,255,255,.62) 0%,
+            rgba(255,255,255,.24) 34%,
+            transparent 70%
+        );
+    opacity: .92;
+}
+
+html[data-theme="light"] #cinematic-scene .scene-floor-glow {
+    background:
+        radial-gradient(
+            ellipse at 50% 100%,
+            rgba(145,184,207,.22),
+            transparent 56%
+        ),
+        linear-gradient(
+            180deg,
+            transparent 0%,
+            rgba(255,255,255,.16) 100%
+        );
+}
+
+html[data-theme="light"] #cinematic-scene .scene-vignette {
+    background:
+        radial-gradient(
+            ellipse at center,
+            transparent 46%,
+            rgba(93,120,137,.095) 100%
+        );
+    opacity: .55;
 }
 
 /* ============================================================
