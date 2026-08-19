@@ -362,6 +362,9 @@ export class EmojiWorld {
 
       this._createEmojiDOMLayer();
 
+      /* Create the lightweight cinematic atmosphere before the scene. */
+      this._createCinematicScene();
+
 
       this._setupAudio();
 
@@ -625,6 +628,148 @@ export class EmojiWorld {
   }
 
     /* ================================================================
+     CINEMATIC ATMOSPHERE
+     ================================================================ */
+
+  _createCinematicScene() {
+    const appRoot =
+      document.getElementById('app') || document.body;
+
+    let scene =
+      document.getElementById('cinematic-scene');
+
+    if (!scene) {
+      scene = document.createElement('div');
+      scene.id = 'cinematic-scene';
+      scene.setAttribute('aria-hidden', 'true');
+
+      const atmosphere = document.createElement('div');
+      atmosphere.className = 'scene-atmosphere';
+
+      const horizon = document.createElement('div');
+      horizon.className = 'scene-horizon';
+
+      const floor = document.createElement('div');
+      floor.className = 'scene-floor-glow';
+
+      const stars = document.createElement('div');
+      stars.className = 'scene-particles';
+
+      const vignette = document.createElement('div');
+      vignette.className = 'scene-vignette';
+
+      const grain = document.createElement('div');
+      grain.className = 'scene-grain';
+
+      const titleHalo = document.createElement('div');
+      titleHalo.className = 'scene-title-halo';
+
+      scene.append(
+        atmosphere,
+        horizon,
+        floor,
+        stars,
+        titleHalo,
+        vignette,
+        grain
+      );
+
+      if (appRoot.firstChild) {
+        appRoot.insertBefore(scene, appRoot.firstChild);
+      } else {
+        appRoot.appendChild(scene);
+      }
+    }
+
+    this.cinematicScene = scene;
+    this.cinematicTime = 0;
+    this.cinematicIntro = 0;
+    this.cinematicParallaxX = 0;
+    this.cinematicParallaxY = 0;
+
+    const particles =
+      scene.querySelector('.scene-particles');
+
+    if (particles && !particles.childElementCount) {
+      const count = this.isMobileOrTablet ? 12 : 22;
+
+      for (let i = 0; i < count; i++) {
+        const particle = document.createElement('i');
+        particle.className = 'scene-particle';
+        particle.style.setProperty('--px', `${8 + Math.random() * 84}%`);
+        particle.style.setProperty('--py', `${10 + Math.random() * 78}%`);
+        particle.style.setProperty('--size', `${1 + Math.random() * 2.2}px`);
+        particle.style.setProperty('--delay', `${-Math.random() * 9}s`);
+        particle.style.setProperty('--duration', `${7 + Math.random() * 8}s`);
+        particles.appendChild(particle);
+      }
+    }
+
+    this._updateCinematicTheme();
+  }
+
+  _updateCinematicTheme() {
+    if (!this.cinematicScene) return;
+
+    this.cinematicScene.dataset.theme =
+      this.theme === 'dark' ? 'dark' : 'light';
+  }
+
+  _updateCinematicScene(dt) {
+    if (!this.cinematicScene) return;
+
+    this.cinematicTime += dt;
+    this.visualTime = (this.visualTime || 0) + dt;
+
+    this.cinematicIntro = Math.min(
+      1,
+      this.cinematicIntro + dt / 1.35
+    );
+
+    const isTouch =
+      this.isMobileOrTablet ||
+      'ontouchstart' in window ||
+      navigator.maxTouchPoints > 0;
+
+    let targetX = this.mouse.x - this.width * 0.5;
+    let targetY = this.mouse.y - this.height * 0.5;
+
+    if (isTouch && this.gyro && typeof this.gyro.getTilt === 'function') {
+      const tilt = this.gyro.getTilt();
+      targetX = tilt.x * this.width * 0.34;
+      targetY = tilt.y * this.height * 0.24;
+    }
+
+    targetX = Math.max(-this.width * 0.5, Math.min(this.width * 0.5, targetX));
+    targetY = Math.max(-this.height * 0.5, Math.min(this.height * 0.5, targetY));
+
+    const pxTarget = targetX * (this.isMobileOrTablet ? 0.012 : 0.018);
+    const pyTarget = targetY * (this.isMobileOrTablet ? 0.009 : 0.014);
+
+    this.cinematicParallaxX +=
+      (pxTarget - this.cinematicParallaxX) * Math.min(1, dt * 5.5);
+    this.cinematicParallaxY +=
+      (pyTarget - this.cinematicParallaxY) * Math.min(1, dt * 5.5);
+
+    const root = this.cinematicScene;
+    root.style.setProperty('--scene-x', `${this.cinematicParallaxX.toFixed(2)}px`);
+    root.style.setProperty('--scene-y', `${this.cinematicParallaxY.toFixed(2)}px`);
+    root.style.setProperty('--scene-intro', this.cinematicIntro.toFixed(3));
+
+    const lightX =
+      Math.max(0, Math.min(100, (this.mouse.x / Math.max(1, this.width)) * 100));
+    const lightY =
+      Math.max(0, Math.min(100, (this.mouse.y / Math.max(1, this.height)) * 100));
+
+    root.style.setProperty('--light-x', `${lightX.toFixed(1)}%`);
+    root.style.setProperty('--light-y', `${lightY.toFixed(1)}%`);
+
+    const pulse = 0.5 + 0.5 * Math.sin(this.cinematicTime * 0.72);
+    root.style.setProperty('--scene-pulse', pulse.toFixed(3));
+  }
+
+
+  /* ================================================================
      EMOJI CONFIGURATION
      ================================================================ */
 
@@ -2527,7 +2672,10 @@ export class EmojiWorld {
           y,
 
         index:
-          i
+          i,
+
+        entranceDelay:
+          Math.min(0.42, i * 0.018)
 
       });
 
@@ -2813,6 +2961,52 @@ export class EmojiWorld {
     );
 
 
+    /*
+     * Cinematic glass sheen: a narrow diagonal reflection and a
+     * lower bevel make the platform read as a solid piece of glass.
+     */
+    const reflection = new PIXI.Graphics();
+    reflection
+      .roundRect(
+        -size * 0.31,
+        -size * 0.055,
+        size * 0.26,
+        size * 0.028,
+        5
+      )
+      .fill({ color: 0xffffff, alpha: 0.48 });
+    reflection.rotation = -0.10;
+    group.addChild(reflection);
+
+    const lowerBevel = new PIXI.Graphics();
+    lowerBevel
+      .roundRect(
+        -size * 0.39,
+        size * 0.105,
+        size * 0.78,
+        size * 0.028,
+        6
+      )
+      .fill({ color: 0xffffff, alpha: 0.20 });
+    group.addChild(lowerBevel);
+
+    const rimGlow = new PIXI.Graphics();
+    rimGlow
+      .roundRect(
+        -size * 0.45,
+        -size * 0.13,
+        size * 0.90,
+        size * 0.30,
+        15
+      )
+      .stroke({
+        color: 0xffffff,
+        alpha: 0.12,
+        width: 2.2
+      });
+    group.addChild(rimGlow);
+
+
     group.position.set(
       x,
       y
@@ -2857,6 +3051,12 @@ export class EmojiWorld {
       microHighlight,
 
       edgeLight,
+
+      reflection,
+
+      lowerBevel,
+
+      rimGlow,
 
       cursorShadow
 
@@ -6083,6 +6283,8 @@ export class EmojiWorld {
       ? 'dark'
       : 'light';
 
+  this._updateCinematicTheme();
+
 
   /*
    * ------------------------------------------------------------
@@ -6417,6 +6619,57 @@ export class EmojiWorld {
     }
 
 
+    if (data.reflection) {
+      data.reflection.clear();
+      data.reflection
+        .roundRect(
+          -data.size * 0.31,
+          -data.size * 0.055,
+          data.size * 0.26,
+          data.size * 0.028,
+          5
+        )
+        .fill({
+          color: isDark ? 0xffe7cf : 0xffffff,
+          alpha: isDark ? 0.16 : 0.40
+        });
+      data.reflection.rotation = -0.10;
+    }
+
+    if (data.lowerBevel) {
+      data.lowerBevel.clear();
+      data.lowerBevel
+        .roundRect(
+          -data.size * 0.39,
+          data.size * 0.105,
+          data.size * 0.78,
+          data.size * 0.028,
+          6
+        )
+        .fill({
+          color: isDark ? 0xffd9b2 : 0xffffff,
+          alpha: isDark ? 0.12 : 0.22
+        });
+    }
+
+    if (data.rimGlow) {
+      data.rimGlow.clear();
+      data.rimGlow
+        .roundRect(
+          -data.size * 0.45,
+          -data.size * 0.13,
+          data.size * 0.90,
+          data.size * 0.30,
+          15
+        )
+        .stroke({
+          color: isDark ? 0xffd6a2 : 0xd8efff,
+          alpha: isDark ? 0.10 : 0.15,
+          width: 2.2
+        });
+    }
+
+
     /*
      * Shadows
      */
@@ -6583,6 +6836,9 @@ export class EmojiWorld {
       0.001;
 
 
+    this._updateCinematicScene(dt);
+
+
     /*
      * ------------------------------------------------------------
      * TITLE IDLE ANIMATION
@@ -6715,6 +6971,14 @@ export class EmojiWorld {
         const data =
           cubeData.sprite.userData;
 
+        /* Staggered cinematic platform reveal. */
+        const reveal =
+          Math.max(0, Math.min(1, (this.cinematicIntro - (cubeData.entranceDelay || 0)) / 0.55));
+        const revealEase =
+          this._easeOutCubic(reveal);
+        cubeData.sprite.alpha =
+          0.72 + revealEase * 0.28;
+
 
         const dx =
           this.mouse.x -
@@ -6783,6 +7047,24 @@ export class EmojiWorld {
             influence *
             0.28;
 
+        }
+
+
+        if (data.reflection) {
+          data.reflection.alpha =
+            (this.theme === 'dark' ? 0.16 : 0.40) + influence * 0.34;
+          data.reflection.x =
+            Math.max(-data.size * 0.08, Math.min(data.size * 0.08, dx * 0.035));
+        }
+
+        if (data.lowerBevel) {
+          data.lowerBevel.alpha =
+            (this.theme === 'dark' ? 0.12 : 0.22) + influence * 0.10;
+        }
+
+        if (data.rimGlow) {
+          data.rimGlow.alpha =
+            (this.theme === 'dark' ? 0.10 : 0.15) + influence * 0.24;
         }
 
 
@@ -7785,9 +8067,20 @@ export class EmojiWorld {
     });
 
     /* Visible glowing orb. */
-    this.cursorLight.circle(x, y, dark ? 22 : 19).fill({
+    const pulse =
+      1 +
+      (0.5 + 0.5 * Math.sin(this.visualTime * 2.2)) *
+      0.08;
+
+    this.cursorLight.circle(x, y, (dark ? 24 : 21) * pulse).fill({
       color: dark ? warm : 0x64748b,
-      alpha: dark ? 0.12 : 0.10
+      alpha: dark ? 0.13 : 0.095
+    });
+
+    this.cursorLight.circle(x, y, dark ? 15 : 13).stroke({
+      color: dark ? 0xffd7a3 : 0xffffff,
+      alpha: dark ? 0.20 : 0.18,
+      width: 1.2
     });
 
     this.cursorLight.circle(x, y, dark ? 8 : 7).fill({

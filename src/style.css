@@ -947,3 +947,226 @@ html[data-theme="dark"] #app {
         transform: translate3d(-50%, -50%, 0);
     }
 }
+
+
+/* ============================================================
+   CINEMATIC VISUAL UPGRADE
+   ============================================================ */
+
+#app {
+    background: transparent !important;
+}
+
+#cinematic-scene {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+    background: #fff;
+    isolation: isolate;
+    opacity: var(--scene-intro, 1);
+    transform: translate3d(0, 0, 0);
+    transition: background 700ms ease;
+}
+
+#cinematic-scene::before {
+    content: "";
+    position: absolute;
+    inset: -12%;
+    z-index: 0;
+    background:
+        radial-gradient(
+            circle at var(--light-x, 50%) var(--light-y, 35%),
+            rgba(255,255,255,.20),
+            transparent 22%
+        ),
+        radial-gradient(
+            ellipse at 50% 72%,
+            rgba(133,196,255,.10),
+            transparent 52%
+        );
+    transform: translate3d(var(--scene-x, 0px), var(--scene-y, 0px), 0) scale(1.08);
+    transition: opacity 700ms ease;
+}
+
+.scene-atmosphere,
+.scene-horizon,
+.scene-floor-glow,
+.scene-particles,
+.scene-title-halo,
+.scene-vignette,
+.scene-grain {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.scene-atmosphere {
+    z-index: 1;
+    background:
+        radial-gradient(circle at 50% 18%, rgba(255,255,255,.96) 0%, rgba(245,249,252,.88) 34%, rgba(228,237,244,.76) 70%, rgba(219,230,238,.72) 100%),
+        linear-gradient(180deg, #ffffff 0%, #edf4f8 100%);
+    transform: translate3d(calc(var(--scene-x, 0px) * .45), calc(var(--scene-y, 0px) * .45), 0) scale(1.025);
+}
+
+.scene-horizon {
+    z-index: 2;
+    top: 7%;
+    height: 48%;
+    inset-inline: 5%;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at center, rgba(255,255,255,.60), transparent 68%);
+    filter: blur(18px);
+    opacity: .8;
+    transform: translate3d(calc(var(--scene-x, 0px) * .7), calc(var(--scene-y, 0px) * .7), 0);
+}
+
+.scene-floor-glow {
+    z-index: 3;
+    top: 48%;
+    background:
+        radial-gradient(ellipse at 50% 100%, rgba(148,193,222,.18), transparent 54%),
+        linear-gradient(180deg, transparent 0%, rgba(255,255,255,.10) 100%);
+    transform: translate3d(calc(var(--scene-x, 0px) * .25), calc(var(--scene-y, 0px) * .25), 0);
+}
+
+.scene-particles {
+    z-index: 4;
+    opacity: .65;
+    transform: translate3d(calc(var(--scene-x, 0px) * .9), calc(var(--scene-y, 0px) * .9), 0);
+}
+
+.scene-particle {
+    position: absolute;
+    left: var(--px);
+    top: var(--py);
+    width: var(--size);
+    height: var(--size);
+    border-radius: 50%;
+    background: rgba(255,255,255,.85);
+    box-shadow: 0 0 12px rgba(170,215,244,.30);
+    opacity: .08;
+    animation: sceneParticleFloat var(--duration) ease-in-out var(--delay) infinite;
+}
+
+.scene-title-halo {
+    z-index: 5;
+    height: 36%;
+    background: radial-gradient(ellipse at 50% 42%, rgba(255,255,255,.34), transparent 56%);
+    transform: translate3d(calc(var(--scene-x, 0px) * .35), calc(var(--scene-y, 0px) * .35), 0);
+}
+
+.scene-vignette {
+    z-index: 6;
+    background: radial-gradient(ellipse at center, transparent 48%, rgba(20,35,48,.075) 100%);
+    opacity: .75;
+}
+
+.scene-grain {
+    z-index: 7;
+    opacity: .035;
+    background-image:
+        repeating-linear-gradient(0deg, rgba(0,0,0,.18) 0, rgba(0,0,0,.18) 1px, transparent 1px, transparent 3px),
+        repeating-linear-gradient(90deg, rgba(255,255,255,.12) 0, rgba(255,255,255,.12) 1px, transparent 1px, transparent 4px);
+    mix-blend-mode: soft-light;
+}
+
+#cinematic-scene[data-theme="dark"] .scene-atmosphere {
+    background:
+        radial-gradient(circle at 50% 20%, rgba(48,56,72,.98) 0%, rgba(26,31,41,.98) 42%, rgba(13,17,24,.99) 76%, #090c12 100%),
+        linear-gradient(180deg, #1b2230 0%, #090c12 100%);
+}
+
+#cinematic-scene[data-theme="dark"]::before {
+    background:
+        radial-gradient(
+            circle at var(--light-x, 50%) var(--light-y, 35%),
+            rgba(255,184,91,.18),
+            transparent 18%
+        ),
+        radial-gradient(
+            ellipse at 50% 72%,
+            rgba(86,126,170,.13),
+            transparent 56%
+        );
+}
+
+#cinematic-scene[data-theme="dark"] .scene-horizon {
+    background: radial-gradient(ellipse at center, rgba(255,186,103,.12), transparent 68%);
+    opacity: .95;
+}
+
+#cinematic-scene[data-theme="dark"] .scene-floor-glow {
+    background:
+        radial-gradient(ellipse at 50% 100%, rgba(255,171,91,.10), transparent 52%),
+        linear-gradient(180deg, transparent 0%, rgba(255,186,103,.035) 100%);
+}
+
+#cinematic-scene[data-theme="dark"] .scene-particle {
+    background: #ffd49d;
+    box-shadow: 0 0 13px rgba(255,174,88,.48);
+    opacity: .11;
+}
+
+#cinematic-scene[data-theme="dark"] .scene-title-halo {
+    background: radial-gradient(ellipse at 50% 42%, rgba(255,192,112,.12), transparent 58%);
+}
+
+#cinematic-scene[data-theme="dark"] .scene-vignette {
+    background: radial-gradient(ellipse at center, transparent 42%, rgba(0,0,0,.40) 100%);
+    opacity: .85;
+}
+
+@keyframes sceneParticleFloat {
+    0%, 100% {
+        transform: translate3d(0, 8px, 0) scale(.75);
+        opacity: .04;
+    }
+    45% {
+        transform: translate3d(6px, -16px, 0) scale(1);
+        opacity: .15;
+    }
+    70% {
+        transform: translate3d(-4px, -4px, 0) scale(.85);
+        opacity: .08;
+    }
+}
+
+/* Premium glass/platform presentation */
+[data-theme="light"] #emoji-layer,
+[data-theme="dark"] #emoji-layer {
+    perspective: 900px;
+}
+
+.emoji-webp {
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    transform-style: preserve-3d;
+    -webkit-transform-style: preserve-3d;
+}
+
+@media (max-width: 700px) {
+    #cinematic-scene::before {
+        opacity: .82;
+    }
+
+    .scene-particles {
+        opacity: .42;
+    }
+
+    .scene-grain {
+        opacity: .018;
+    }
+
+    .scene-vignette {
+        opacity: .58;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .scene-particle {
+        animation: none;
+        opacity: .06;
+    }
+}
