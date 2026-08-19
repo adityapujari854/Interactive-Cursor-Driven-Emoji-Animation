@@ -7,6 +7,15 @@
 const SCAN_DURATION = 2200;
 const COPY_DURATION = 10000;
 
+/*
+ * Mobile/tablet keyboard animation budget.
+ * Desktop remains unchanged: every keyboard WebP can animate.
+ */
+const MOBILE_KEYBOARD_ANIMATION_LIMIT = 6;
+const MOBILE_KEYBOARD_ANIMATION_CHECK_MS = 180;
+const MOBILE_KEYBOARD_ANIMATION_MIN_MS = 2600;
+const MOBILE_KEYBOARD_ANIMATION_MAX_MS = 5200;
+
 export class DesktopEmojiKeyboard {
   constructor(world) {
     this.world = world;
@@ -33,6 +42,12 @@ export class DesktopEmojiKeyboard {
     this.resizeHandler = () => this._syncVisibility();
     this.themeObserver = null;
     this.tutorialLocked = false;
+
+    this.keyboardAnimationLimit = MOBILE_KEYBOARD_ANIMATION_LIMIT;
+    this.keyboardActiveAnimations = new Set();
+    this.keyboardShuffleBag = [];
+    this.keyboardAnimationTimer = null;
+    this.keyboardAnimationGeneration = 0;
   }
 
   mount() {
@@ -40,6 +55,7 @@ export class DesktopEmojiKeyboard {
 
     this._build();
     this._syncVisibility();
+    this._syncKeyboardAnimationScheduler();
 
     window.addEventListener('resize', this.resizeHandler, { passive: true });
     window.addEventListener('orientationchange', this.resizeHandler, { passive: true });
@@ -59,6 +75,7 @@ export class DesktopEmojiKeyboard {
     clearTimeout(this.scanTimer);
     clearTimeout(this.copyTimer);
     cancelAnimationFrame(this.progressRaf);
+    this._stopKeyboardAnimationScheduler();
     window.removeEventListener('resize', this.resizeHandler);
     window.removeEventListener('orientationchange', this.resizeHandler);
     if (this.emojiSetChangeHandler) {
@@ -179,7 +196,8 @@ export class DesktopEmojiKeyboard {
         char: emoji.char,
         name: emoji.name || `Emoji ${index + 1}`,
         codePoint: emoji.codePoint,
-        url: emoji.url
+        url: emoji.url,
+        staticURL: emoji.staticURL || emoji.url
       }));
   }
 
@@ -225,6 +243,7 @@ export class DesktopEmojiKeyboard {
           event.stopPropagation();
           return;
         }
+        this._prioritizeKeyboardAnimation(index);
         this._select(index, button);
       });
 
@@ -239,6 +258,8 @@ export class DesktopEmojiKeyboard {
       this.selectedIndex = -1;
       this.selected = null;
     }
+
+    this._syncKeyboardAnimationScheduler();
   }
 
   _buildScanParticles() {
@@ -279,6 +300,200 @@ export class DesktopEmojiKeyboard {
     if (open) {
       requestAnimationFrame(() => this._syncScannerTarget());
     }
+  }
+
+  /* ============================================================
+     MOBILE / TABLET KEYBOARD ANIMATION LIMIT
+     ============================================================ */
+
+  _isMobileKeyboardMode() {
+    return this._isTouchDevice() && !this._isDesktop();
+  }
+
+  _syncKeyboardAnimationScheduler() {
+    if (this._isMobileKeyboardMode()) {
+      this._startKeyboardAnimationScheduler();
+    } else {
+      this._stopKeyboardAnimationScheduler();
+      this._setAllKeyboardAnimations(true);
+    }
+  }
+
+  _startKeyboardAnimationScheduler() {
+    if (!this._isMobileKeyboardMode() || !this.keys.length) return;
+
+    this._stopKeyboardAnimationScheduler();
+
+    const generation = ++this.keyboardAnimationGeneration;
+
+    this.keyboardActiveAnimations.clear();
+    this.keyboardShuffleBag = this.items.map((_, index) => index);
+    this._shuffleKeyboardAnimationBag();
+
+    /*
+     * Mobile/tablet starts with all keyboard emojis on their lightweight
+     * static frames, then fills exactly five animation slots.
+     */
+    this._setAllKeyboardAnimations(false);
+    this._fillKeyboardAnimationSlots();
+
+    this.keyboardAnimationTimer = window.setInterval(() => {
+      if (generation !== this.keyboardAnimationGeneration) return;
+      this._scheduleKeyboardAnimationCheck();
+    }, MOBILE_KEYBOARD_ANIMATION_CHECK_MS);
+  }
+
+  _stopKeyboardAnimationScheduler() {
+    this.keyboardAnimationGeneration += 1;
+
+    if (this.keyboardAnimationTimer !== null) {
+      clearInterval(this.keyboardAnimationTimer);
+      this.keyboardAnimationTimer = null;
+    }
+
+    for (const index of [...this.keyboardActiveAnimations]) {
+      this._deactivateKeyboardAnimation(index);
+    }
+
+    this.keyboardActiveAnimations.clear();
+    this.keyboardShuffleBag = [];
+  }
+
+  _setAllKeyboardAnimations(animated) {
+    this.keys.forEach((button, index) => {
+      const image = button.querySelector('.key-emoji-image');
+      const item = this.items[index];
+      if (!image || !item) return;
+
+      image.src = animated ? item.url : item.staticURL;
+    });
+  }
+
+  _shuffleKeyboardAnimationBag() {
+    for (let i = this.keyboardShuffleBag.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [this.keyboardShuffleBag[i], this.keyboardShuffleBag[j]] = [
+        this.keyboardShuffleBag[j],
+        this.keyboardShuffleBag[i]
+      ];
+    }
+  }
+
+  _getNextKeyboardAnimationIndex() {
+    if (!this.items.length) return -1;
+
+    if (!this.keyboardShuffleBag.length) {
+      this.keyboardShuffleBag = this.items.map((_, index) => index);
+      this._shuffleKeyboardAnimationBag();
+    }
+
+    for (let i = 0; i < this.keyboardShuffleBag.length; i += 1) {
+      const index = this.keyboardShuffleBag[i];
+
+      if (!this.keyboardActiveAnimations.has(index)) {
+        this.keyboardShuffleBag.splice(i, 1);
+        return index;
+      }
+    }
+
+    return -1;
+  }
+
+  _getKeyboardAnimationDuration() {
+    return MOBILE_KEYBOARD_ANIMATION_MIN_MS +
+      Math.random() * (
+        MOBILE_KEYBOARD_ANIMATION_MAX_MS -
+        MOBILE_KEYBOARD_ANIMATION_MIN_MS
+      );
+  }
+
+  _fillKeyboardAnimationSlots() {
+    if (!this._isMobileKeyboardMode()) return;
+
+    const available =
+      this.keyboardAnimationLimit -
+      this.keyboardActiveAnimations.size;
+
+    if (available <= 0) return;
+
+    /* One new slot per scheduler tick keeps decoder load smooth. */
+    const batchSize = Math.min(available, 1);
+
+    for (let i = 0; i < batchSize; i += 1) {
+      const index = this._getNextKeyboardAnimationIndex();
+
+      if (index < 0) break;
+
+      this._activateKeyboardAnimation(index);
+    }
+  }
+
+  _activateKeyboardAnimation(index) {
+    const item = this.items[index];
+    const button = this.keys[index];
+    const image = button?.querySelector('.key-emoji-image');
+
+    if (!item || !button || !image) return;
+    if (this.keyboardActiveAnimations.has(index)) return;
+
+    this.keyboardActiveAnimations.add(index);
+    image.src = item.url;
+    button.dataset.animationActive = 'true';
+    button.dataset.animationEndsAt = String(
+      performance.now() + this._getKeyboardAnimationDuration()
+    );
+  }
+
+  _deactivateKeyboardAnimation(index) {
+    const item = this.items[index];
+    const button = this.keys[index];
+    const image = button?.querySelector('.key-emoji-image');
+
+    if (!item || !button || !image) return;
+
+    this.keyboardActiveAnimations.delete(index);
+    image.src = item.staticURL;
+    button.removeAttribute('data-animation-active');
+    button.removeAttribute('data-animation-ends-at');
+  }
+
+  _scheduleKeyboardAnimationCheck() {
+    if (!this._isMobileKeyboardMode()) return;
+
+    const now = performance.now();
+
+    for (const index of [...this.keyboardActiveAnimations]) {
+      const button = this.keys[index];
+      const endsAt = Number(button?.dataset.animationEndsAt || 0);
+
+      if (endsAt > 0 && now >= endsAt) {
+        this._deactivateKeyboardAnimation(index);
+      }
+    }
+
+    this._fillKeyboardAnimationSlots();
+  }
+
+  _prioritizeKeyboardAnimation(index) {
+    if (!this._isMobileKeyboardMode()) return;
+
+    if (this.keyboardActiveAnimations.has(index)) return;
+
+    /*
+     * A tapped keyboard emoji gets an animation slot immediately.
+     * If all five slots are occupied, recycle the oldest active slot.
+     */
+    while (
+      this.keyboardActiveAnimations.size >= this.keyboardAnimationLimit
+    ) {
+      const first = this.keyboardActiveAnimations.values().next().value;
+
+      if (first === undefined) break;
+
+      this._deactivateKeyboardAnimation(first);
+    }
+
+    this._activateKeyboardAnimation(index);
   }
 
   _select(index, button) {
@@ -475,6 +690,8 @@ export class DesktopEmojiKeyboard {
     } else if (touch) {
       this.root.classList.remove('is-visible');
     }
+
+    this._syncKeyboardAnimationScheduler();
 
     if (this.busy) this._syncScannerTarget();
   }

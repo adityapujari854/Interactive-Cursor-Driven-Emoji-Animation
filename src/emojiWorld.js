@@ -78,12 +78,12 @@ export class EmojiWorld {
 
     /*
      * Mobile animation balance:
-     * Exactly 8 animated WebPs are active at once.
+     * Exactly 6 animated WebPs are active at once.
      * Animation slots are warmed and activated one at a time to
      * avoid decoder spikes and visible source-switch flicker.
      */
     this.mobileAnimationLimit =
-      8;
+      6;
 
     this.mobileActivationBatchSize =
       1;
@@ -110,7 +110,7 @@ export class EmojiWorld {
      *
      * All 24 emojis must remain visible on mobile.
      *
-     * Only 8 animated WebPs are active at once.
+     * Only 5 animated WebPs are active at once.
      * The remaining emojis use lightweight static
      * first-frame images.
      */
@@ -423,7 +423,7 @@ export class EmojiWorld {
 
       console.log(
         this.isMobileOrTablet
-          ? '📱 Mobile/tablet mode: maximum 8 animated emojis'
+          ? '📱 Mobile/tablet mode: maximum 5 animated emojis'
           : '🖥️ Desktop mode: all 24 animations enabled'
       );
 
@@ -4533,7 +4533,7 @@ export class EmojiWorld {
      *
      * 2.6s - 5.2s
      *
-     * This prevents the 8 emojis from
+     * This prevents the 5 emojis from
      * starting/stopping together.
      */
 
