@@ -1185,6 +1185,9 @@ html[data-theme="dark"] #app {
     width: 1px;
     height: 1px;
     z-index: 2147483647;
+    display: block;
+    visibility: visible;
+    opacity: 1;
     pointer-events: none;
     transform: translate3d(var(--cursor-x), var(--cursor-y), 0);
     transition: var(--cursor-transition);
@@ -1196,8 +1199,8 @@ html[data-theme="dark"] #app {
     position: absolute;
     left: 0;
     top: 0;
-    width: 58px;
-    height: 58px;
+    width: 68px;
+    height: 68px;
     transform: translate(-50%, -50%);
     display: block;
     pointer-events: none;
@@ -1303,9 +1306,10 @@ html[data-theme="dark"] #app {
         drop-shadow(0 0 42px rgba(113,177,255,.48));
 }
 
+/* Keep the cinematic sun/moon cursor visible on touch-capable devices too. */
 @media (pointer: coarse) {
     .emoji-cinematic-cursor {
-        display: none;
+        display: block;
     }
 }
 
