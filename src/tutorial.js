@@ -1,3 +1,10 @@
+/*
+ * The Emojis – Interactive Emoji Scanner & Cursor Animation
+ * Copyright © 2026 Aditya Pujari
+ * All Rights Reserved.
+ */
+
+
 /**
  * First-run tutorial for The Emojis.
  * Uses a cookie so the walkthrough appears only once per browser.

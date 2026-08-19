@@ -1,4 +1,10 @@
 /*
+ * The Emojis – Interactive Emoji Scanner & Cursor Animation
+ * Copyright © 2026 Aditya Pujari
+ * All Rights Reserved.
+ */
+
+/*
  * The Emojis — Noto Emoji animation catalog
  *
  * Uses the official Noto Emoji Animation web assets documented at:
