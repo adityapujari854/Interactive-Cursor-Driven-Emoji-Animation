@@ -14,6 +14,7 @@
  */
 
 import { EmojiWorld } from './emojiWorld.js';
+import { DesktopEmojiKeyboard } from './desktopEmojiKeyboard.js';
 import './style.css';
 
 'use strict';
@@ -22,6 +23,7 @@ console.log('🎮 Loading The Emojis...');
 
 let emojiWorld = null;
 let initialized = false;
+let desktopEmojiKeyboard = null;
 
 /* ============================================================
    APPLICATION INITIALIZATION
@@ -113,6 +115,9 @@ async function initializeEmojiWorld() {
     console.log(
       '📱 Mobile: tilt / shake your phone'
     );
+
+    desktopEmojiKeyboard = new DesktopEmojiKeyboard(emojiWorld);
+    desktopEmojiKeyboard.mount();
 
     /*
      * Optional event for external UI.
