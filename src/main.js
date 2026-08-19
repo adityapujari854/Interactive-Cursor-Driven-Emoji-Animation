@@ -15,6 +15,7 @@
 
 import { EmojiWorld } from './emojiWorld.js';
 import { DesktopEmojiKeyboard } from './desktopEmojiKeyboard.js';
+import { FirstRunTutorial } from './tutorial.js';
 import './style.css';
 
 'use strict';
@@ -113,11 +114,14 @@ async function initializeEmojiWorld() {
     );
 
     console.log(
-      '📱 Mobile: tilt / shake your phone'
+      '📱 Mobile: tap the keyboard button to open the scanner'
     );
 
     desktopEmojiKeyboard = new DesktopEmojiKeyboard(emojiWorld);
     desktopEmojiKeyboard.mount();
+
+    const firstRunTutorial = new FirstRunTutorial(emojiWorld, desktopEmojiKeyboard);
+    firstRunTutorial.startIfNeeded();
 
     /*
      * Optional event for external UI.

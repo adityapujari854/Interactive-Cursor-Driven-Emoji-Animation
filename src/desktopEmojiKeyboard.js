@@ -190,6 +190,12 @@ export class DesktopEmojiKeyboard {
     }
   }
 
+  openForTutorial() {
+    if (this._isTouchDevice()) {
+      this._setMobileOpen(true);
+    }
+  }
+
   _setMobileOpen(open) {
     if (!this._isTouchDevice() || !this.root) return;
     if (this.busy && !open) return;
