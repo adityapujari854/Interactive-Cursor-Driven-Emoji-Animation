@@ -3343,7 +3343,8 @@ export class EmojiWorld {
 
       if (
         emoji.physicsBody &&
-        !emoji.isFlying
+        !emoji.isFlying &&
+        !emoji.scannerState
       ) {
 
         emoji.physicsBody.x =
@@ -4022,28 +4023,57 @@ export class EmojiWorld {
 
   startScannerTransfer(index, targetX, targetY, options = {}) {
     const emoji = this.emojis?.[index];
-    if (!emoji || !emoji.element || emoji.scannerState || emoji.isFlying || this.isShaking || this.isRecovering) return false;
+
+    if (
+      !emoji ||
+      !emoji.element ||
+      emoji.scannerState ||
+      emoji.isFlying ||
+      this.isShaking ||
+      this.isRecovering
+    ) {
+      return false;
+    }
 
     const element = emoji.element;
     const now = performance.now();
-    const duration = Math.max(650, options.duration || 950);
-    const targetScale = Math.max(0.24, Math.min(0.55, options.targetScale || 0.38));
+
+    /* Slow, low-acceleration flight so the emoji feels like a bird. */
+    const duration = Math.max(
+      1500,
+      options.duration || 2050
+    );
+
+    const targetScale = Math.max(
+      0.24,
+      Math.min(0.55, options.targetScale || 0.36)
+    );
 
     emoji.scannerOriginalParent = element.parentNode;
     emoji.scannerOriginalNextSibling = element.nextSibling;
+
     emoji.scannerState = {
-      phase: 'out', startedAt: now, duration,
-      startX: emoji.x, startY: emoji.y,
+      phase: 'out',
+      startedAt: now,
+      duration,
+      startX: emoji.x,
+      startY: emoji.y,
       startRotation: emoji.rotation || 0,
       startScale: emoji.scale || 1,
-      targetX, targetY, targetScale,
-      arc: options.arc || 88,
+      targetX,
+      targetY,
+      targetScale,
+      arc: Math.max(28, options.arc || 72),
       returnStartedAt: 0,
-      returnDuration: Math.max(650, options.returnDuration || 900),
-      returnStartX: 0, returnStartY: 0
+      returnDuration: Math.max(
+        1300,
+        options.returnDuration || 1800
+      ),
+      returnStartX: 0,
+      returnStartY: 0
     };
 
-    /* Portal the SAME DOM node so the scanner never renders a duplicate. */
+    /* Portal the SAME DOM node; never clone or duplicate the emoji. */
     document.body.appendChild(element);
     element.classList.add('emoji-scanner-transfer');
     element.style.position = 'fixed';
@@ -4057,6 +4087,7 @@ export class EmojiWorld {
       emoji.physicsBody.isActive = false;
       emoji.physicsBody.vx = 0;
       emoji.physicsBody.vy = 0;
+      emoji.physicsBody.sleeping = true;
     }
 
     this._applyEmojiTransform(emoji);
@@ -4086,32 +4117,92 @@ export class EmojiWorld {
   _updateScannerEmoji(emoji, dtMs) {
     const state = emoji.scannerState;
     if (!state) return;
+
     const now = performance.now();
 
     if (state.phase === 'out') {
-      const progress = Math.min(1, Math.max(0, (now - state.startedAt) / state.duration));
-      const eased = progress < 0.5 ? 4 * progress * progress * progress : 1 - Math.pow(-2 * progress + 2, 3) / 2;
-      const arc = Math.sin(progress * Math.PI) * state.arc;
-      emoji.x = state.startX + (state.targetX - state.startX) * eased;
-      emoji.y = state.startY + (state.targetY - state.startY) * eased - arc;
-      emoji.rotation = state.startRotation + Math.sin(progress * Math.PI * 2) * 0.10;
-      emoji.scale = state.startScale + (state.targetScale - state.startScale) * eased;
-      if (progress >= 1) state.phase = 'hold';
-    } else if (state.phase === 'hold') {
-      const pulse = Math.sin(now * 0.0042);
-      emoji.x = state.targetX;
-      emoji.y = state.targetY + pulse * 3.5;
-      emoji.rotation = pulse * 0.025;
-      emoji.scale = state.targetScale * (1 + pulse * 0.025);
-    } else if (state.phase === 'return') {
-      const progress = Math.min(1, Math.max(0, (now - state.returnStartedAt) / state.returnDuration));
-      const eased = 1 - Math.pow(1 - progress, 3);
-      const arc = Math.sin(progress * Math.PI) * 52;
-      emoji.x = state.returnStartX + (emoji.originalX - state.returnStartX) * eased;
-      emoji.y = state.returnStartY + (emoji.originalY - state.returnStartY) * eased - arc;
-      emoji.rotation = 0;
-      emoji.scale = state.targetScale + (1 - state.targetScale) * eased;
+      const progress = Math.min(
+        1,
+        Math.max(0, (now - state.startedAt) / state.duration)
+      );
+
+      /* Smoothstep-like sine easing: gentle take-off and landing. */
+      const eased =
+        -(Math.cos(Math.PI * progress) - 1) / 2;
+
+      const arc =
+        Math.sin(Math.PI * progress) * state.arc;
+
+      const dx = state.targetX - state.startX;
+      const dy = state.targetY - state.startY;
+
+      emoji.x = state.startX + dx * eased;
+      emoji.y = state.startY + dy * eased - arc;
+
+      /* Tiny bank; no aggressive spinning. */
+      const flightAngle = Math.atan2(dy, dx);
+      const bank = Math.sin(Math.PI * progress) * 0.055;
+      emoji.rotation =
+        state.startRotation + flightAngle * 0.10 + bank;
+
+      emoji.scale =
+        state.startScale +
+        (state.targetScale - state.startScale) * eased;
+
       if (progress >= 1) {
+        emoji.x = state.targetX;
+        emoji.y = state.targetY;
+        emoji.rotation = 0;
+        emoji.scale = state.targetScale;
+        state.phase = 'hold';
+      }
+
+    } else if (state.phase === 'hold') {
+      /* Stay at the scanner while the complete copy sequence runs. */
+      const pulse = Math.sin(now * 0.0032);
+      emoji.x = state.targetX;
+      emoji.y = state.targetY + pulse * 2.4;
+      emoji.rotation = pulse * 0.018;
+      emoji.scale = state.targetScale * (1 + pulse * 0.018);
+
+    } else if (state.phase === 'return') {
+      const progress = Math.min(
+        1,
+        Math.max(
+          0,
+          (now - state.returnStartedAt) / state.returnDuration
+        )
+      );
+
+      const eased =
+        -(Math.cos(Math.PI * progress) - 1) / 2;
+
+      const arc =
+        Math.sin(Math.PI * progress) *
+        Math.min(58, state.arc * 0.72);
+
+      const targetX = emoji.originalX;
+      const targetY = emoji.originalY;
+      const dx = targetX - state.returnStartX;
+      const dy = targetY - state.returnStartY;
+
+      emoji.x = state.returnStartX + dx * eased;
+      emoji.y = state.returnStartY + dy * eased - arc;
+
+      const flightAngle = Math.atan2(dy, dx);
+      const bank = Math.sin(Math.PI * progress) * 0.045;
+      emoji.rotation = flightAngle * 0.08 + bank;
+
+      emoji.scale =
+        state.targetScale +
+        (1 - state.targetScale) * eased;
+
+      if (progress >= 1) {
+        /* Exact final snap before returning the node to its home layer. */
+        emoji.x = targetX;
+        emoji.y = targetY;
+        emoji.rotation = 0;
+        emoji.scale = 1;
         this._restoreScannerEmoji(emoji);
         return;
       }
@@ -4124,97 +4215,94 @@ export class EmojiWorld {
     const element = emoji.element;
     const parent = emoji.scannerOriginalParent || this.emojiLayer;
     const nextSibling = emoji.scannerOriginalNextSibling;
+
     if (parent) {
-      if (nextSibling && nextSibling.parentNode === parent) parent.insertBefore(element, nextSibling);
-      else parent.appendChild(element);
+      if (
+        nextSibling &&
+        nextSibling.parentNode === parent
+      ) {
+        parent.insertBefore(element, nextSibling);
+      } else {
+        parent.appendChild(element);
+      }
     }
+
     element.classList.remove('emoji-scanner-transfer');
-    element.style.position = 'fixed';
-    element.style.left = '0px';
-    element.style.top = '0px';
+
+    /* Return to the normal emojiLayer coordinate system. */
+    element.style.position = 'absolute';
+    element.style.left = `${emoji.originalX}px`;
+    element.style.top = `${emoji.originalY}px`;
     element.style.zIndex = '';
     element.style.pointerEvents = 'none';
     element.style.willChange = 'transform';
     element.style.filter = '';
+
     emoji.scannerState = null;
     emoji.scannerOriginalParent = null;
     emoji.scannerOriginalNextSibling = null;
+
     emoji.x = emoji.originalX;
     emoji.y = emoji.originalY;
+    emoji.targetX = emoji.originalX;
+    emoji.targetY = emoji.originalY;
     emoji.rotation = 0;
     emoji.scale = 1;
+    emoji.cursorOffsetX = 0;
+    emoji.cursorOffsetY = 0;
+
+    if (emoji.physicsBody) {
+      emoji.physicsBody.x = emoji.originalX;
+      emoji.physicsBody.y = emoji.originalY;
+      emoji.physicsBody.vx = 0;
+      emoji.physicsBody.vy = 0;
+      emoji.physicsBody.rotation = 0;
+      emoji.physicsBody.angularVelocity = 0;
+      emoji.physicsBody.isActive = false;
+      emoji.physicsBody.sleeping = true;
+    }
+
     this._applyEmojiTransform(emoji);
   }
 
   _applyEmojiTransform(emoji) {
+    if (!emoji || !emoji.element) {
+      return;
+    }
 
-  if (
-    !emoji ||
-    !emoji.element
-  ) {
-    return;
+    const element = emoji.element;
+    const scale = emoji.scale || 1;
+    const rotation = emoji.rotation || 0;
+
+    /*
+     * SCANNER MODE
+     * The same <img> has been portaled to <body>. Its x/y are viewport
+     * coordinates, so translate directly to those coordinates. This
+     * fixes the old origin/offset mismatch that caused the emoji to
+     * stop somewhere between the platform and scanner.
+     */
+    if (emoji.scannerState) {
+      element.style.transform =
+        `translate3d(${emoji.x}px, ${emoji.y}px, 0)
+         translate(-50%, -50%)
+         rotate(${rotation}rad)
+         scale(${scale})`;
+      return;
+    }
+
+    /* NORMAL MODE: left/top are anchored at the glass platform. */
+    const offsetX = emoji.x - emoji.originalX;
+    const offsetY = emoji.y - emoji.originalY;
+
+    element.style.transform =
+      `translate3d(
+        calc(-50% + ${offsetX}px),
+        calc(-50% + ${offsetY}px),
+        0
+      )
+      rotate(${rotation}rad)
+      scale(${scale})`;
   }
-
-  const scale =
-    emoji.scale || 1;
-
-  const rotation =
-    emoji.rotation || 0;
-
-  /*
-   * The emoji DOM element is positioned at
-   * originalX / originalY.
-   *
-   * Apply the animated x/y difference through
-   * GPU transform instead of changing left/top
-   * every frame.
-   */
-
-  const offsetX =
-    emoji.x -
-    emoji.originalX;
-
-  const offsetY =
-    emoji.y -
-    emoji.originalY;
-
-  /*
-   * Subtle depth shadow.
-   */
-
-  const shadowY =
-    4 +
-    Math.max(
-      0,
-      Math.abs(offsetY) * 0.12
-    );
-
-  const shadowBlur =
-    9 +
-    Math.min(
-      7,
-      Math.abs(offsetY) * 0.15
-    );
-
-  const proximityShadow =
-    emoji.cursorInfluence || 0;
-
-  emoji.element.style.transform =
-    `translate3d(
-      calc(-50% + ${offsetX}px),
-      calc(-50% + ${offsetY}px),
-      0
-    )
-    rotate(${rotation}rad)
-    scale(${scale})`;
-
-  /* Shadow/lighting is updated by _updateDynamicLighting(). */
-}
-
-
-  /* ================================================================
-     CURSOR PROXIMITY
-     ================================================================ */
 
   _addMouseProximityEffect(
     emoji

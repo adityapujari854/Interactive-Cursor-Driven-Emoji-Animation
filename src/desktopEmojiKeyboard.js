@@ -5,7 +5,7 @@ const EMOJIS = [
   ['😇','Angel'],['😬','Grimace'],['😎','Sunglasses'],['🙈','Peekaboo'],['🤯','Mind Blown'],['🙄','Eye Roll']
 ].map(([char, name]) => ({ char, name }));
 
-const SCAN_DURATION = 1400;
+const SCAN_DURATION = 2200;
 const COPY_DURATION = 10000;
 
 export class DesktopEmojiKeyboard {
@@ -233,10 +233,10 @@ export class DesktopEmojiKeyboard {
       target.x,
       target.y,
       {
-        duration: 1050,
+        duration: 2050,
         targetScale: this._isTouchDevice() ? 0.32 : 0.36,
-        arc: this._isTouchDevice() ? 70 : 105,
-        returnDuration: 900
+        arc: this._isTouchDevice() ? 55 : 72,
+        returnDuration: 1800
       }
     );
 
@@ -315,7 +315,7 @@ export class DesktopEmojiKeyboard {
       this.selected = null;
       this.selectedIndex = -1;
       if (this._isTouchDevice()) this._setMobileOpen(false);
-    }, 1150);
+    }, 2050);
   }
 
   _fallbackCopy(text) {

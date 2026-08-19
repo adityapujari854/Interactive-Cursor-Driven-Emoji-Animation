@@ -1366,7 +1366,7 @@ html[data-theme="dark"] #app {
     pointer-events: none !important;
     z-index: 10050 !important;
     filter: drop-shadow(0 12px 10px rgba(24, 58, 84, .20));
-    animation: scannerRealEmojiGlow 1.25s ease-in-out infinite;
+    animation: scannerRealEmojiGlow 1.8s ease-in-out infinite;
 }
 
 @keyframes scannerRealEmojiGlow {
