@@ -1817,16 +1817,10 @@ export class EmojiWorld {
      */
 
     const musicURL =
-      new URL(
-        '../assets/sound/emojis_music.mp3',
-        import.meta.url
-      ).href;
+      '/assets/sound/emojis_music.mp3';
 
     const talkingURL =
-      new URL(
-        '../assets/sound/emojis_talking.mp3',
-        import.meta.url
-      ).href;
+      '/assets/sound/emojis_talking.mp3';
 
 
     /*
@@ -5635,8 +5629,6 @@ export class EmojiWorld {
      UPDATE FALLING PHYSICS
      ================================================================ */
 
-
-     ================================================================ */
 
   _updateFallingAnimation(
     emoji
