@@ -2562,21 +2562,6 @@ export class EmojiWorld {
   _createGlassCube(x, y, size) {
     const group = new PIXI.Container();
 
-    /* Directional cast shadow: elongated and projected, not a moving circle. */
-    const castShadow = new PIXI.Graphics();
-    castShadow
-      .ellipse(0, size * 0.12, size * 0.50, size * 0.075)
-      .fill({ color: 0x000000, alpha: 0.16 });
-    castShadow.scale.y = 0.72;
-    group.addChild(castShadow);
-
-    /* Tight contact shadow where the emoji meets the glass. */
-    const contactShadow = new PIXI.Graphics();
-    contactShadow
-      .ellipse(0, size * 0.025, size * 0.29, size * 0.042)
-      .fill({ color: 0x000000, alpha: 0.18 });
-    group.addChild(contactShadow);
-
     /* Transparent glass slab. */
     const glass = new PIXI.Graphics();
     glass
@@ -2636,8 +2621,6 @@ export class EmojiWorld {
 
     group.userData = {
       size,
-      castShadow,
-      contactShadow,
       glass,
       innerGlass,
       highlight,
@@ -5319,8 +5302,6 @@ export class EmojiWorld {
       if (data.reflection) data.reflection.alpha = dark ? 0.18 : 0.22;
       if (data.lowerBevel) data.lowerBevel.alpha = dark ? 0.10 : 0.18;
       if (data.rimGlow) data.rimGlow.alpha = dark ? 0.20 : 0.16;
-      if (data.castShadow) data.castShadow.alpha = dark ? 0.32 : 0.16;
-      if (data.contactShadow) data.contactShadow.alpha = dark ? 0.30 : 0.18;
     }
 
     this._updateCursorLight();
@@ -5676,40 +5657,6 @@ export class EmojiWorld {
         if (data.rimGlow) {
           data.rimGlow.alpha =
             (this.theme === 'dark' ? 0.10 : 0.15) + influence * 0.24;
-        }
-
-
-        if (
-          data.contactShadow
-        ) {
-
-          data.contactShadow.alpha =
-            (
-              this.theme ===
-              'dark'
-                ? 0.34
-                : 0.14
-            ) -
-            influence *
-            0.035;
-
-        }
-
-
-        if (
-          data.deepShadow
-        ) {
-
-          data.deepShadow.alpha =
-            (
-              this.theme ===
-              'dark'
-                ? 0.30
-                : 0.11
-            ) -
-            influence *
-            0.025;
-
         }
 
       }
@@ -7270,7 +7217,8 @@ export class EmojiWorld {
       emoji.cursorInfluence = influence;
     }
 
-    /* Glass gets a moving specular streak and a physically-directed cast shadow. */
+    /* Glass receives only material/light response. No floating or moving
+       shadow ellipses are rendered underneath the emoji platforms. */
     for (const cubeData of this.cubes) {
       const cube = cubeData?.sprite;
       const data = cube?.userData;
@@ -7280,25 +7228,6 @@ export class EmojiWorld {
       const dy = cube.y - lightY;
       const distance = Math.hypot(dx, dy);
       const influence = Math.max(0, 1 - distance / 700);
-      const inv = distance > 0.001 ? 1 / distance : 0;
-
-      const castLength = 4 + influence * 14;
-      const sx = dx * inv * castLength;
-      const sy = 2 + dy * inv * castLength * 0.32;
-
-      if (data.castShadow) {
-        data.castShadow.x += (sx - data.castShadow.x) * 0.18;
-        data.castShadow.y += (sy - data.castShadow.y) * 0.18;
-        data.castShadow.scale.x = 1 + influence * 0.22;
-        data.castShadow.scale.y = 0.72 + influence * 0.16;
-        data.castShadow.alpha = (dark ? 0.27 : 0.13) + influence * (dark ? 0.20 : 0.13);
-        data.castShadow.rotation = Math.atan2(dy, dx) * 0.08;
-      }
-
-      if (data.contactShadow) {
-        data.contactShadow.alpha = (dark ? 0.30 : 0.16) + influence * 0.10;
-        data.contactShadow.scale.x = 1 + influence * 0.12;
-      }
 
       if (data.highlight) {
         data.highlight.alpha = (dark ? 0.24 : 0.56) + influence * 0.34;
