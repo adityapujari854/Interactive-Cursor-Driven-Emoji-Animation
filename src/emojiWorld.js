@@ -988,7 +988,7 @@ export class EmojiWorld {
       {
         index: 6,
         name: 'Party',
-        idleType: 'spin',
+        idleType: 'bob',
         mass: 0.9,
         idleSpeed: 0.045,
         idleAmplitude: 2,
